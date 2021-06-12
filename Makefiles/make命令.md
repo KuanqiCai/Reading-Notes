@@ -6,6 +6,9 @@ http://c.biancheng.net/view/7112.html
 - make命令本身不知道如何做出该文件，需要知道一系列规则
 - 编译compile：代码从高级语言 -> 汇编语言。 构建：编译的顺序安排(即上述的规则)
 - 这一系列规则写在Makefile文件里。
+- 使用：
+   - `make <>`编译
+   - `make clean`删除.o文件
 
 # Makefile文件
 
