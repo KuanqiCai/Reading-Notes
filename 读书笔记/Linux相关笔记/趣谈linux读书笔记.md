@@ -34,11 +34,18 @@
 https://elixir.bootlin.com/linux/latest/source
 
 kernel 	 内核管理核心代码-进程管理子系统
+
 mm		  内存管理代码-内存管理子系统
+
 drivers     驱动程序代码-设备管理子系统
+
 fs 			 文件系统代码-文件管理子系统
+
 net 		  网络协议代码-网络管理子系统
+
 arch		 体系结构代码，如x86、arm等
+
 ipc 		   进程间通信子系统
+
 init 		   Linux系统启动初始化相关代码
 
