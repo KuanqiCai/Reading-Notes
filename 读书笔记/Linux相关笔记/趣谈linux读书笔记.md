@@ -33,21 +33,34 @@
 
 https://elixir.bootlin.com/linux/latest/source
 
-kernel 	 内核管理核心代码-进程管理子系统
+| 文件夹名字    | 内容                                                         |
+| ------------- | ------------------------------------------------------------ |
+| arch          | 架构相关，存放了许多cpu架构，比如arm,x86,MIPS,PPC            |
+| block         | block表示块设备，以块(多个字节组成的整体)为单位来整体访问。比如sd卡、硬盘等都是块设备，可认为块设备就是存储设备。block目录下村粗着linux存储体系中关于块设备管理的代码。 |
+| certs         | 与证书相关                                                   |
+| crypto        | 加密。存放了一些常见的加密算法的C语言实现。比如crc32,md5,sha1。 |
+| Documentation | 说明文档，对每个目录的具体作用进行说明                       |
+| drivers       | 内核中所有设备的驱动程序，其中的每一个子目录对应一种设备驱动 |
+| fs            | fs就是file system，文件系统，里面列出了linux支持的各种文件系统的实现。 |
+| include       | 头文件目录，公共的（各种CPU架构共用的）头文件都在这里。每种CPU架构特有的一些头文件在arch/arm/include目录及其子目录下。 |
+| init          | init是初始化的意思，这个目录下的代码就是linux内核启动时初始化内核的代码。 |
+| ipc           | inter process commuication，进程间通信，里面都是linux支持的IPC的代码实现。 |
+| kernel        | linux内核，所以这个文件夹下放的就是内核本身需要的一些代码文件。与处理器架构相关的内核代码在/kernel/$ARCH/kernel。 |
+| lib           | 库。内核共用的函数库，与处理器架构相关的库在 /kernel/$ARCH/lib |
+| mm            | 内存管理代码，譬如页式存储管理内存的分配和释放等。与具体处理器架构相关的内存管理代码位于/arch/$ARCH/mm目录下。 |
+| net           | 网络相关的代码，譬如TCP/IP协议栈等都在这里。                 |
+| samples       | 示例代码。                                                   |
+| scripts       | 脚本，这个目录下全部是脚本文件.不是linux内核工作时使用的，而是用来辅助对linux内核进行配置编译生产的。用于实现内核配置的图形界面 |
+| sound         | 与音频有关的代码，包括与音频有关的驱动程序                   |
+| security      | 安全性相关的代码                                             |
+| tools         | Linux中的常用工具                                            |
+| usr           | 为内核尚未完全启动时执行用户空间代码提供了支持               |
+| virt          | 此文件夹包含了虚拟化代码，它允许用户一次运行多个操作系统     |
+| Kbuild        | Kbuild是kernel build的意思，就是内核编译的意思。这个文件就是linux内核特有的内核编译体系需要用到的文件。 |
+| Kconfig       | 配置哪些文件编译，那些文件不用编译                           |
+| CREDITS       | 贡献者列表                                                   |
 
-mm		  内存管理代码-内存管理子系统
 
-drivers     驱动程序代码-设备管理子系统
-
-fs 			 文件系统代码-文件管理子系统
-
-net 		  网络协议代码-网络管理子系统
-
-arch		 体系结构代码，如x86、arm等
-
-ipc 		   进程间通信子系统
-
-init 		   Linux系统启动初始化相关代码
 
 ## 2.系统调用
 
@@ -221,3 +234,142 @@ X86架构是微处理器执行的计算机语言指令集，指一个intel通用
   2. 选择操作系统
   3. 例如选择 linux16, 会先读取内核头部数据进行检查, 检查通过后加载完整系统内核
   4. 启动系统内核
+
+## 3. 内核初始化
+
+从实模式切换到保护模式后，有了更强的寻址能力，就要开始启动内核了
+
+- 内核的启动从入口函数 start_kernel() 开始。
+
+  在 init/main.c 文件中，start_kernel 相当于内核的 main 函数。里面是各种各样初始化函数 XXXX_init。
+
+  ![](https://static001.geekbang.org/resource/image/cd/01/cdfc33db2fe1e07b6acf8faa3959cb01.jpeg)
+
+1. 首先初始化项目管理部门
+
+   `set_task_stack_end_magic(&init_task)`创建**0号进程**
+
+   - 参数`init_task`定义是`struct task_struct init_task = INIT_TASK(init_task)`
+   - 它是系统创建的第一个进程，称为 **0 号进程**。这是唯一一个没有通过 fork 或者 kernel_thread 产生的进程，是**进程列表**的第一个。
+   - 进程列表（Process List），就是咱们前面说的项目管理工具，里面列着我们所有接的项目。
+
+2. 接着初始化办事大厅
+
+   `tarp_init()`设置了很多中断门（Interrupt Gate），用于处理各种中断。
+
+   - `set_system_intr_gate(IA32_SYSCALL_VECTOR, entry_INT80_32)`系统调用的中断门。系统调用也是通过发送中断的方式进行的
+
+3. 初始化会议室管理系统
+
+   `mm_init()`初始化内存管理模块。
+
+4. 初始化项目管理调度
+
+   `sched_init()`初始化调度模块
+
+5. 文件系统初始化
+
+   - `vfs_caches_init()`初始化基于内存的文件系统 rootfs
+
+     - 这个函数里面，会调用 mnt_init()->init_rootfs() 这里有一行代码：`register_filesystem(&rootfs_fs_type)`。rootfs_fs_type是在 VFS 虚拟文件系统里面注册的一种类型，`struct file_system_type rootfs_fs_type。`
+     - VFS（Virtual File System），虚拟文件系统。
+       - 文件系统是我们的项目资料库，为了兼容各种各样的文件系统，我们需要将文件的相关数据结构和操作抽象出来，形成一个抽象层对上提供统一的接口。这个抽象层就是vfs
+
+6. 最后start_kernel做其他初始化
+
+   `rest_init()`做了很多初始化的工作
+
+   1. 初始化 1 号进程（用户态所有进程的祖先）
+
+      - 用 `kernel_thread(kernel_init, NULL, CLONE_FS)` 创建第二个进程，这个是 1 号进程
+
+        - 有了其他进程后，就要区分哪些是核心资源，哪些是核心人员才能访问的核心保密区
+
+        - x86提供了分层的权限机制，把区域分成了4个ring，越往里权限越高
+
+          ![](https://static001.geekbang.org/resource/image/2b/42/2b53b470673cde8f9d8e2573f7d07242.jpg)
+
+          - **内核态（Kernel Mode）**
+
+            - 能够访问关键资源的代码放在 Ring0
+
+          - **用户态（User Mode）**
+
+            - 普通的程序代码放在 Ring3
+
+            - 如果用户态的代码想要访问核心资源，就要通过系统调用。用户态代码不用管后面发生了什么，系统调用背后是内核态。
+
+            - 当用户态程序运行到一半访问一个核心资源时，当前运行会停止并调用系统调用。暂停时，用户态程序运行代码到哪一行，当前的栈在哪里，这些信息都存在寄存器里。
+
+                 ![](https://static001.geekbang.org/resource/image/71/e6/71b04097edb2d47f01ab5585fd2ea4e6.jpeg)
+
+            - 调用过程：用户态 - 系统调用 - 保存寄存器 - 内核态执行系统调用 - 恢复寄存器 - 返回用户态，然后接着运行。
+
+   2. 从内核态到用户态
+
+      - 在1号进程启动的时候，还处在内核态，现在要转到用户态去运行一个程序。
+
+        `kernel_thread`的参数是一个函数`kernel_init`，即1号进程会运行这个函数。这个函数会调用`kernel_init_freeable()`。里面有一代码：
+
+        ```c
+        if (!ramdisk_execute_command)
+            ramdisk_execute_command = "/init";
+        ```
+
+        ramdisk在第3步，进入用户态后启用。
+
+        - 1号进程`run_init_process()`函数会调用`do_execve`
+
+          - execve 是一个系统调用，它的作用是运行一个执行文件。加一个 do_ 的往往是内核系统调用的实现。
+          - 它会尝试运行 ramdisk 的“/init”，或者普通文件系统上的“/sbin/init”“/etc/init”“/bin/init”“/bin/sh”。不同版本的 Linux 会选择不同的文件启动，但是只要有一个起来了就可以。
+          -  从内核态执行系统调用开始：do_execve->do_execveat_common->exec_binprm->search_binary_handler
+            - 运行一个程序，在这里会加载一个二进制文件，linux下通常为ELF（Executable and Linkable Format，可执行与可链接格式）
+
+        - 最后调用`start_thread`
+
+          ```c
+          
+          void
+          start_thread(struct pt_regs *regs, unsigned long new_ip, unsigned long new_sp){
+          	set_user_gs(regs, 0);
+          	regs->fs  = 0;
+          	regs->ds  = __USER_DS;
+          	regs->es  = __USER_DS;
+          	regs->ss  = __USER_DS;
+          	regs->cs  = __USER_CS;
+          	regs->ip  = new_ip;
+          	regs->sp  = new_sp;
+          	regs->flags  = X86_EFLAGS_IF;
+          	force_iret();
+          }
+          EXPORT_SYMBOL_GPL(start_thread);
+          ```
+
+          - `struct pt_regs`即寄存器，系统调用时在内核中保存用户态运行上下文
+
+          - 用户态的代码段CS设置为`_USER_CS`
+
+          - 用户态的数据段DS设置为`_USER_DS`
+
+          - 指针寄存器IP
+
+          - 栈指针寄存器SP
+
+          - force_iret()：用于从系统调用中返回，恢复寄存器。
+
+      - 到达用户态后：ramdisk的作用
+
+        - 一开始到用户态的是 ramdisk 的 init，后来会启动真正根文件系统上的 init，成为所有用户态进程的祖先。
+      
+        - ramdisk是解决init程序的存储问题，在内核启动过程中需要init文件，如果从文件系统直接获取那么我们必须有各种磁盘的驱动才能从磁盘之上的文件系统读取到我们需要的文件，这样内核就复杂化啦，而采用ramdisk就是弱化磁盘驱动依赖，采用内存保存，这样就能直接启动。
+        - 一开始运行 ramdisk 上的 /init。等它运行完了就已经在用户态了。/init 这个程序会先根据存储系统的类型加载驱动，有了驱动就可以设置真正的根文件系统了。有了真正的根文件系统，ramdisk 上的 /init 会启动文件系统上的 init。
+        - 接下来就是各种系统的初始化。启动系统的服务，启动控制台，用户就可以登录进来了
+
+   3. 创建2号进程（内核态所有线程运行的祖先）
+   
+      用户态的所有进程都有大师兄1号进程了。内核态的进程也需要一个进程统一管理：2号进程。
+   
+      - `kernel_thread(kthreadd, NULL, CLONE_FS | CLONE_FILES)`创建2号进程
+        - 函数`kthreadd`负责所有内核态的线程的调度和管理，是内核态所有线程运行的祖先。
+        - 为什么创建进程的函数名字叫kernel_thread()线程呢？因为从内核态来看，无论是进程，还是线程，我们都可以统称为任务（Task），都使用相同的数据结构，平放在同一个链表中。
+
