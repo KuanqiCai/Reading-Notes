@@ -373,3 +373,368 @@ X86架构是微处理器执行的计算机语言指令集，指一个intel通用
         - 函数`kthreadd`负责所有内核态的线程的调度和管理，是内核态所有线程运行的祖先。
         - 为什么创建进程的函数名字叫kernel_thread()线程呢？因为从内核态来看，无论是进程，还是线程，我们都可以统称为任务（Task），都使用相同的数据结构，平放在同一个链表中。
 
+## 4. 系统调用
+
+**glibc** Linux提供的中介，将系统调用封装成更友好的接口。
+
+https://www.gnu.org/software/libc/started.html
+
+### glibc对系统调用的封装：
+
+- 以系统调用open打开一个文件为例。我们调用的是glibc里面的open函数
+
+`int open(const char *pathname, int flags, mode_t mode)`
+
+- glibc有一个脚本make-syscall.sh，可以根据上面的配置文件对于每一个封装好的系统调用，生成一个文件。这个文件里面定义了一些宏，如：
+
+  `define SYSCALL_NAME open`
+
+- glibc有一个文件syscall-template.S ,使用了上面这个宏，定义了这个系统调用的调用方式。
+
+  ```c
+  
+  T_PSEUDO (SYSCALL_SYMBOL, SYSCALL_NAME, SYSCALL_NARGS)
+      ret
+  T_PSEUDO_END (SYSCALL_SYMBOL)
+  
+  #define T_PSEUDO(SYMBOL, NAME, N)    PSEUDO (SYMBOL, NAME, N)
+  ```
+
+  - 这里的 PSEUDO 也是一个宏，它的定义如下
+
+    ```c
+    
+    #define PSEUDO(name, syscall_name, args)                      \
+      .text;                                      \
+      ENTRY (name)                                    \
+        DO_CALL (syscall_name, args);                         \
+        cmpl $-4095, %eax;                               \
+        jae SYSCALL_ERROR_LABEL
+    ```
+
+  - 里面对于任何一个系统调用，会调用 DO_CALL。这也是一个宏，这个宏 32 位和 64 位的定义是不一样的。
+
+### 32位系统调用过程
+
+sysdeps/unix/sysv/linux/i386目录下的sysdep.h文件
+
+https://elixir.bootlin.com/glibc/glibc-2.34.9000/source/sysdeps/unix/sysv/linux/i386/sysdep.h#L77:
+
+```c
+
+/* Linux takes system call arguments in registers:
+  syscall number  %eax       call-clobbered
+  arg 1    %ebx       call-saved
+  arg 2    %ecx       call-clobbered
+  arg 3    %edx       call-clobbered
+  arg 4    %esi       call-saved
+  arg 5    %edi       call-saved
+  arg 6    %ebp       call-saved
+......
+*/
+#define DO_CALL(syscall_name, args)                           \
+    PUSHARGS_##args                               \
+    DOARGS_##args                                 \
+    movl $SYS_ify (syscall_name), %eax;                          \
+    ENTER_KERNEL                                  \
+    POPARGS_##args
+```
+
+- 将请求参数放在寄存器里面，根据系统调用的名称，得到系统调用号，放在寄存器 eax 里面，然后执行 ENTER_KERNEL。
+
+  - ENTER_KERNEL的定义：
+
+    `# define ENTER_KERNEL int $0x80`
+
+    int 就是 interrupt，也就是“中断”的意思。int $0x80 就是触发一个软中断，通过它就可以陷入（trap）内核。
+
+- 内核启动的时候，有一个 trap_init()，其中有代码:
+
+  `set_system_intr_gate(IA32_SYSCALL_VECTOR, entry_INT80_32);`
+
+  这是一个软中断的陷入门，当接收到一个系统调用的时候，entry_INT80_32就被调用了。
+
+  ```c
+  
+  ENTRY(entry_INT80_32)
+          ASM_CLAC
+          pushl   %eax                    /* pt_regs->orig_ax */
+          SAVE_ALL pt_regs_ax=$-ENOSYS    /* save rest */
+          movl    %esp, %eax
+          call    do_syscall_32_irqs_on
+  .Lsyscall_32_done:
+  ......
+  .Lirq_return:
+    INTERRUPT_RETURN
+  ```
+
+  - 通过 push 和 SAVE_ALL 将当前用户态的寄存器，保存在 pt_regs 结构里面。
+
+  - 进入内核之前，保存所有的寄存器，然后调用 do_syscall_32_irqs_on。它的实现如下
+
+    ```c
+    
+    static __always_inline void do_syscall_32_irqs_on(struct pt_regs *regs)
+    {
+      struct thread_info *ti = current_thread_info();
+      unsigned int nr = (unsigned int)regs->orig_ax;
+    ......
+      if (likely(nr < IA32_NR_syscalls)) {
+        regs->ax = ia32_sys_call_table[nr](
+          (unsigned int)regs->bx, (unsigned int)regs->cx,
+          (unsigned int)regs->dx, (unsigned int)regs->si,
+          (unsigned int)regs->di, (unsigned int)regs->bp);
+      }
+      syscall_return_slowpath(regs);
+    }
+    ```
+
+    - 将系统调用号从 eax 里面取出来，然后根据系统调用号，在系统调用表中找到相应的函数进行调用，并将寄存器中保存的参数取出来，作为函数参数。这些参数所对应的寄存器，和 Linux 的注释是一样的。
+
+      根据宏定义，`#define ia32_sys_call_table sys_call_table`，系统调用就是放在这个表里面
+
+- 当系统调用结束之后，在 `entry_INT80_32` 之后，紧接着调用的是 `INTERRUPT_RETURN`，我们能够找到它的定义，也就是 `iret`
+
+  `#define INTERRUPT_RETURN                iret`
+
+  iret 指令将原来用户态保存的现场恢复回来，包含代码段、指令指针寄存器等。这时候用户态进程恢复执行。
+
+- 总结：
+
+  ![](https://static001.geekbang.org/resource/image/56/06/566299fe7411161bae25b62e7fe20506.jpg)
+
+### 64位系统调用过程
+
+/sysdeps/unix/sysv/linux/x86_64/sysdep.h
+
+https://elixir.bootlin.com/glibc/glibc-2.34.9000/source/sysdeps/unix/sysv/linux/x86_64/sysdep.h
+
+```c
+
+/* The Linux/x86-64 kernel expects the system call parameters in
+   registers according to the following table:
+    syscall number  rax
+    arg 1    rdi
+    arg 2    rsi
+    arg 3    rdx
+    arg 4    r10
+    arg 5    r8
+    arg 6    r9
+......
+*/
+#define DO_CALL(syscall_name, args)                \
+  lea SYS_ify (syscall_name), %rax;                \
+  syscall
+```
+
+- 将系统调用名称转换为系统调用号。相比较于32位，系统调用号会放到寄存器 rax；且不再是int中断而是改用syscall指令，减少了一次查表过程，性能有所提高。
+
+  - syscall指令使用一种特殊的寄存器，叫做**特殊模块寄存器MSR(Model Specific Registers)**。是CPU为了完成某些特殊控制功能而用的寄存器，包括系统调用。
+
+- 系统初始化的时候，trap_init会初始化上面的中断模式，并调用cpu_init->syscall_init.有代码：`wrmsrl(MSR_LSTAR, (unsigned long)entry_SYSCALL_64);`
+
+  - rdmsr 和 wrmsr 是用来读写特殊模块寄存器的。MSR_LSTAR 就是这样一个特殊的寄存器，当 syscall 指令调用的时候，会从这个寄存器里面拿出函数地址来调用，也就是调用 entry_SYSCALL_64。
+
+  - 在 arch/x86/entry/entry_64.S 中定义了 entry_SYSCALL_64
+
+    ```c
+    
+    ENTRY(entry_SYSCALL_64)
+            /* Construct struct pt_regs on stack */
+            pushq   $__USER_DS                      /* pt_regs->ss */
+            pushq   PER_CPU_VAR(rsp_scratch)        /* pt_regs->sp */
+            pushq   %r11                            /* pt_regs->flags */
+            pushq   $__USER_CS                      /* pt_regs->cs */
+            pushq   %rcx                            /* pt_regs->ip */
+            pushq   %rax                            /* pt_regs->orig_ax */
+            pushq   %rdi                            /* pt_regs->di */
+            pushq   %rsi                            /* pt_regs->si */
+            pushq   %rdx                            /* pt_regs->dx */
+            pushq   %rcx                            /* pt_regs->cx */
+            pushq   $-ENOSYS                        /* pt_regs->ax */
+            pushq   %r8                             /* pt_regs->r8 */
+            pushq   %r9                             /* pt_regs->r9 */
+            pushq   %r10                            /* pt_regs->r10 */
+            pushq   %r11                            /* pt_regs->r11 */
+            sub     $(6*8), %rsp                    /* pt_regs->bp, bx, r12-15 not saved */
+            movq    PER_CPU_VAR(current_task), %r11
+            testl   $_TIF_WORK_SYSCALL_ENTRY|_TIF_ALLWORK_MASK, TASK_TI_flags(%r11)
+            jnz     entry_SYSCALL64_slow_path
+    ......
+    entry_SYSCALL64_slow_path:
+            /* IRQs are off. */
+            SAVE_EXTRA_REGS
+            movq    %rsp, %rdi
+            call    do_syscall_64           /* returns with IRQs disabled */
+    return_from_SYSCALL_64:
+      RESTORE_EXTRA_REGS
+      TRACE_IRQS_IRETQ
+      movq  RCX(%rsp), %rcx
+      movq  RIP(%rsp), %r11
+        movq  R11(%rsp), %r11
+    ......
+    syscall_return_via_sysret:
+      /* rcx and r11 are already restored (see code above) */
+      RESTORE_C_REGS_EXCEPT_RCX_R11
+      movq  RSP(%rsp), %rsp
+      USERGS_SYSRET64
+    ```
+
+    - 先保存了很多寄存器到 pt_regs 结构里面，例如用户态的代码段、数据段、保存参数的寄存器，然后调用 entry_SYSCALL64_slow_pat->do_syscall_64:
+
+      ```c
+      
+      __visible void do_syscall_64(struct pt_regs *regs)
+      {
+              struct thread_info *ti = current_thread_info();
+              unsigned long nr = regs->orig_ax;
+      ......
+              if (likely((nr & __SYSCALL_MASK) < NR_syscalls)) {
+                      regs->ax = sys_call_table[nr & __SYSCALL_MASK](
+                              regs->di, regs->si, regs->dx,
+                              regs->r10, regs->r8, regs->r9);
+              }
+              syscall_return_slowpath(regs);
+      }
+      ```
+
+      - 在 do_syscall_64 里面，从 rax 里面拿出系统调用号，然后根据系统调用号，在系统调用表 sys_call_table 中找到相应的函数进行调用，并将寄存器中保存的参数取出来，作为函数参数。
+      - **与32位一样，都会到系统调用表sys_call_table这来。**
+
+- 64 位的系统调用返回的时候，执行的是 USERGS_SYSRET64。定义如下：
+
+  ```c
+  
+  #define USERGS_SYSRET64        \
+    swapgs;          \
+    sysretq;
+  ```
+
+  返回用户态的指令变成了 sysretq。
+
+- 总结：
+
+  https://static001.geekbang.org/resource/image/1f/d7/1fc62ab8406c218de6e0b8c7e01fdbd7.jpg
+
+### 系统调用表
+
+- 32 位的系统调用表定义在 arch/x86/entry/syscalls/syscall_32.tbl 文件里,如open
+
+  `5  i386  open      sys_open  compat_sys_open`
+
+- 64 位的系统调用定义在另一个文件 arch/x86/entry/syscalls/syscall_64.tbl 里,如open
+
+  `2  common  open      sys_open`
+
+  - 第一列的数字是系统调用号。可以看出，32 位和 64 位的系统调用号是不一样的
+  - 第三列是系统调用的名字
+  - 第四列是系统调用在内核的实现函数。不过，它们都是以 sys_ 开头
+
+- 系统调用在内核中的实现函数要有一个声明。声明往往在 include/linux/syscalls.h 文件中。例如 sys_open 是这样声明的：
+
+  ```c
+  
+  asmlinkage long sys_open(const char __user *filename,
+                                  int flags, umode_t mode);
+  ```
+
+  真正的实现这个系统调用，一般在一个.c 文件里面，例如 sys_open 的实现在 fs/open.c 里面:
+
+  ```c
+  
+  SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t, mode)
+  {
+          if (force_o_largefile())
+                  flags |= O_LARGEFILE;
+          return do_sys_open(AT_FDCWD, filename, flags, mode);
+  }
+  ```
+
+  - SYSCALL_DEFINE3 是一个宏系统调用最多六个参数，根据参数的数目选择宏。具体是这样定义的：
+
+    ```c
+    
+    #define SYSCALL_DEFINE1(name, ...) SYSCALL_DEFINEx(1, _##name, __VA_ARGS__)
+    #define SYSCALL_DEFINE2(name, ...) SYSCALL_DEFINEx(2, _##name, __VA_ARGS__)
+    #define SYSCALL_DEFINE3(name, ...) SYSCALL_DEFINEx(3, _##name, __VA_ARGS__)
+    #define SYSCALL_DEFINE4(name, ...) SYSCALL_DEFINEx(4, _##name, __VA_ARGS__)
+    #define SYSCALL_DEFINE5(name, ...) SYSCALL_DEFINEx(5, _##name, __VA_ARGS__)
+    #define SYSCALL_DEFINE6(name, ...) SYSCALL_DEFINEx(6, _##name, __VA_ARGS__)
+    
+    
+    #define SYSCALL_DEFINEx(x, sname, ...)                          \
+            SYSCALL_METADATA(sname, x, __VA_ARGS__)                 \
+            __SYSCALL_DEFINEx(x, sname, __VA_ARGS__)
+    
+    
+    #define __PROTECT(...) asmlinkage_protect(__VA_ARGS__)
+    #define __SYSCALL_DEFINEx(x, name, ...)                                 \
+            asmlinkage long sys##name(__MAP(x,__SC_DECL,__VA_ARGS__))       \
+                    __attribute__((alias(__stringify(SyS##name))));         \
+            static inline long SYSC##name(__MAP(x,__SC_DECL,__VA_ARGS__));  \
+            asmlinkage long SyS##name(__MAP(x,__SC_LONG,__VA_ARGS__));      \
+            asmlinkage long SyS##name(__MAP(x,__SC_LONG,__VA_ARGS__))       \
+            {                                                               \
+                    long ret = SYSC##name(__MAP(x,__SC_CAST,__VA_ARGS__));  \
+                    __MAP(x,__SC_TEST,__VA_ARGS__);                         \
+                    __PROTECT(x, ret,__MAP(x,__SC_ARGS,__VA_ARGS__));       \
+                    return ret;                                             \
+            }                                                               \
+            static inline long SYSC##name(__MAP(x,__SC_DECL,__VA_ARGS__)
+    ```
+
+  - 把宏展开之后，实现如下，和声明的是一样的。
+
+    ```c
+    
+    asmlinkage long sys_open(const char __user * filename, int flags, int mode)
+    {
+     long ret;
+    
+    
+     if (force_o_largefile())
+      flags |= O_LARGEFILE;
+    
+    
+     ret = do_sys_open(AT_FDCWD, filename, flags, mode);
+     asmlinkage_protect(3, ret, filename, flags, mode);
+     return ret;
+    ```
+
+- 声明和实现都好了。接下来，在编译的过程中，需要根据 syscall_32.tbl 和 syscall_64.tbl 生成自己的 unistd_32.h 和 unistd_64.h。生成方式在 arch/x86/entry/syscalls/Makefile 中。
+
+  - 这里面会使用两个脚本:
+
+  1. 第一个脚本 arch/x86/entry/syscalls/syscallhdr.sh，会在文件中生成 #define __NR_open
+  2. 第二个脚本 arch/x86/entry/syscalls/syscalltbl.sh，会在文件中生成 \__SYSCALL(__NR_open, sys_open)。
+
+- 在文件 arch/x86/entry/syscall_32.c，定义了这样一个表，里面 include 了这个头文件，从而所有的 sys_ 系统调用都在这个表里面了。
+
+  ```c
+  __visible const sys_call_ptr_t ia32_sys_call_table[__NR_syscall_compat_max+1] = {
+          /*
+           * Smells like a compiler bug -- it doesn't work
+           * when the & below is removed.
+           */
+          [0 ... __NR_syscall_compat_max] = &sys_ni_syscall,
+  #include <asm/syscalls_32.h>
+  };
+  ```
+
+- 同理，在文件 arch/x86/entry/syscall_64.c，定义了这样一个表，里面 include 了这个头文件，这样所有的 sys_ 系统调用就都在这个表里面了。
+
+  ```c
+  /* System call table for x86-64. */
+  asmlinkage const sys_call_ptr_t sys_call_table[__NR_syscall_max+1] = {
+    /*
+     * Smells like a compiler bug -- it doesn't work
+     * when the & below is removed.
+     */
+    [0 ... __NR_syscall_max] = &sys_ni_syscall,
+  #include <asm/syscalls_64.h>
+  };
+  ```
+
+- 总结
+
+  ![64位](https://static001.geekbang.org/resource/image/86/a5/868db3f559ad08659ddc74db07a9a0a5.jpg)
