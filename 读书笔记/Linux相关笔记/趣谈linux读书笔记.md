@@ -738,3 +738,219 @@ https://elixir.bootlin.com/glibc/glibc-2.34.9000/source/sysdeps/unix/sysv/linux/
 - 总结
 
   ![64位](https://static001.geekbang.org/resource/image/86/a5/868db3f559ad08659ddc74db07a9a0a5.jpg)
+
+# 三、 进程管理
+
+## 1.  进程
+
+### 代码：用系统调用创建进程
+
+- 一个创建进程的函数
+
+  ```c
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <sys/types.h>
+  #include <unistd.h>
+        
+  extern int create_process (char* program, char** arg_list);
+          
+  int create_process (char* program, char** arg_list)
+  {
+      pid_t child_pid;
+      child_pid = fork ();
+      if (child_pid != 0)
+          return child_pid;
+      else {
+          execvp (program, arg_list);
+          abort ();
+      }
+  }
+  ```
+
+  - 这里的if-else根据fork返回值的不同，父进程和子进程就分道扬镳了。
+  - 在子进程中，用execvp运行一个新的程序。
+
+- 调用上面这个函数
+
+  ```c
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <sys/types.h>
+  #include <unistd.h>
+  
+  extern int create_process (char* program, char** arg_list);
+  
+  int main ()
+  {
+      char* arg_list[] = {
+          "ls",
+          "-l",
+          "/etc/yum.repos.d/",
+          NULL
+      };
+      create_process ("ls", arg_list);
+      return 0;
+  }
+  ```
+
+  - 用子进程运行ls命令
+
+### 编译compile
+
+将程序编译位二进制文件，其有严格的格式ELF（Executeable and Linkable Format可执行与可链接格式）有**几种ELF的格式：**
+
+![](https://static001.geekbang.org/resource/image/85/de/85320245cd80ce61e69c8391958240de.jpeg)
+
+#### 1. .o文件：可重定位文件（Relocatable File)，
+
+```c
+gcc -c -fPIC process.c
+gcc -c -fPIC createprocess.c
+    
+## -fPIC 作用于编译阶段，告诉编译器产生与位置无关代码(Position-Independent Code)，则产生的代码中，没有绝对地址，全部使用相对地址，故而代码可以被加载器加载到内存的任意位置，都可以正确的执行。这正是共享库所要求的，共享库被加载时，在内存的位置不是固定的。
+```
+
+![](https://static001.geekbang.org/resource/image/e9/d6/e9c2b4c67f8784a8eec7392628ce6cd6.jpg)
+
+- 文件格式为：
+  - ELF 文件的头是用于描述整个文件的
+  - .text：放编译好的二进制可执行代码
+  - .data：已经初始化好的全局变量
+  - .rodata：只读数据，例如字符串常量、const 的变量
+  - .bss：未初始化全局变量，运行时会置 0
+  - .symtab：符号表，记录的则是函数和变量
+  - .strtab：字符串表、字符串常量和变量名
+  - .rel.text：标注某个函数是需要重定位的。比如当前函数a调用了另一个函数b，但b在另一个.o文件里，那么当前.o文件不知道被调用函数的位置，只能在这里先标注b函数，之后再定位。
+  - 节头部表（Section Header Table）：保存前面各个节section的元数据信息。
+
+- .a文件Archives**静态链接库**。让 create_process 这个函数作为库文件被重用
+
+	```
+	ar cr libstaticprocess.a process.o
+  ```
+
+	虽然这里 libstaticprocess.a 里面只有一个.o，但是实际情况可以有多个.o。当有程序要使用这个静态连接库的时候，会将.o 文件提取出来，链接到程序中。
+
+	```
+	gcc -o staticcreateprocess createprocess.o -L. -lstaticprocess
+	```
+
+	- -L 表示在当前目录下找.a 文件
+	- -lstaticprocess 会自动补全文件名，比如加前缀 lib，后缀.a，变成 libstaticprocess.a
+	- 找到这个.a 文件后，将里面的 process.o 取出来，和 createprocess.o 做一个链接，形成二进制执行文件 **staticcreateprocess**。
+	- 这个链接的过程，重定位就起作用了，原来 createprocess.o 里面调用了 create_process 函数，但是不能确定位置，现在将 process.o 合并了进来，就知道位置了。
+
+#### 2. **可执行文件**,即上面形成的2进制文件staticcreateprocess,ELF的第二种格式。
+
+![](https://static001.geekbang.org/resource/image/1d/60/1d8de36a58a98a53352b40efa81e9660.jpg)
+
+- 这里的section是多个.o文件合并过的，可以马上就加载到内存里去。代码段和数据段会被加载到内存里，其他的不会。
+
+- 小的section被合并成了大的段segment，并再最前面加了一个段头表(Segment Header Table)。里面除了有对于段的描述外，还有p_vaddr是这个段加载到内存的虚拟地址。
+
+  运行后：
+
+  ```
+  yang@yang:~/Desktop/test$ ./staticcreateprocess 
+  yang@yang:~/Desktop/test$ total 2097256
+  drwxr-xr-x   2 root root       4096 Sep 16 10:53 bin
+  ....
+  ```
+
+  
+
+- 静态链接库和动态链接库：
+
+  - 静态链接库一旦链接进去，代码和变量的 section 都合并了，因而程序运行的时候，就不依赖于这个库是否存在。
+    - 缺点，就是相同的代码段，如果被多个程序使用的话，在内存里面就有多份，而且一旦静态链接库更新了，如果二进制执行文件不重新编译，也不随着更新。
+  - 动态链接库（Shared Libraries）多个对象文件的重新组合，可被多个程序共享。
+
+  ```
+  gcc -shared -fPIC -o libdynamicprocess.so process.o
+  ```
+
+  当一个动态链接库被链接到一个程序文件中的时候，最后的程序文件并不包括动态链接库中的代码，而仅仅包括对动态链接库的引用，并且不保存动态链接库的全路径，仅仅保存动态链接库的名称。
+
+  ```
+  gcc -o dynamiccreateprocess createprocess.o -L. -ldynamicprocess
+  ```
+
+  当运行这个程序的时候，首先寻找动态链接库，然后加载它。默认情况下，系统在 /lib 和 /usr/lib 文件夹下寻找动态链接库。如果找不到就会报错，我们可以设定 LD_LIBRARY_PATH 环境变量，程序运行时会在此环境变量指定的文件夹下寻找动态链接库。
+
+  运行后：
+
+  ```
+  yang@yang:~/Desktop/test$ export LD_LIBRARY_PATH=.
+  yang@yang:~/Desktop/test$ ./dynamiccreateprocess 
+  yang@yang:~/Desktop/test$ total 2097256
+  drwxr-xr-x   2 root root       4096 Sep 16 10:53 bin
+  ```
+
+#### 3.动态链接库，即ELF的第三种类型：**共享对象文件**Shared Object
+
+- 相比静态连裤生成的二进制文件格式ELF，多了一个.interp的段Segment，这里面是ld-linux.so动态链接器，也就是说，运行时的链接动作都是它做的。
+- 还多了2个section,一个是.plt，过程链接表（Procedure Linkage Table，**PLT**），一个是.got.plt，全局偏移量表（Global Offset Table，**GOT**）。
+
+  - dynamiccreateprocess 这个程序要调用 libdynamicprocess.so 里的 create_process 函数。由于是运行时才去找，编译的时候，压根不知道这个函数在哪里，所以就在 **PLT** 里面建立一项 PLT[x]。
+
+    - 这一项也是一些代码，有点像一个本地的代理，在二进制程序里面，不直接调用 create_process 函数，而是调用 PLT[x]里面的代理代码，这个代理代码会在运行的时候找真正的 create_process 函数。
+
+  - 去哪里找代理代码呢？这就用到了 **GOT**，这里面也会为 create_process 函数创建一项 GOT[y]。这一项是运行时 create_process 函数在内存中真正的地址。
+
+    - 程序调用共享库里的create_process的时候，调用的是对应代理PLT[x]，PLT[x]再去调用GOT[y]。GOT[y]对应的就是create_process在内存中的位置
+
+    - GOT[y]的值哪来的呢？：对于 create_process 函数，GOT 一开始就会创建一项 GOT[y]，但是这里面没有真正的地址需要回调PLT来找create_process 函数的真实地址.
+
+      PLT 这个时候会转而调用 PLT[0]，也即第一项，PLT[0]转而调用 GOT[2]，这里面是 ld-linux.so 的入口函数，这个函数会找到加载到内存中的libdynamicprocess.so 里面的 create_process 函数的地址，然后把这个地址放在 GOT[y]里面。下次，PLT[x]的代理函数就能够直接调用了。
+
+  - 为什么绕来绕去？因为要统一PLT和GOT的作用，PLT就是用来放代理代码的，也即stub代码的，GOT是用来存放so对应的真实代码的地址的。
+
+    ld-linux.so虽然默认会被加载，但是也是一个so，所以会放在GOT里面。要调用这个so里面的代码，也是需要从stub里面统一调用进去的，所以要回到PLT去调用。
+
+### 运行程序为进程
+
+linux内核有如下数据结构来定义加载二进制文件到内存中的方法：
+
+```c
+struct linux_binfmt {
+        struct list_head lh;
+        struct module *module;
+        int (*load_binary)(struct linux_binprm *);
+        int (*load_shlib)(struct file *);
+        int (*core_dump)(struct coredump_params *cprm);
+        unsigned long min_coredump;     /* minimal dump size */
+} __randomize_layout;
+```
+
+对ELF文件格式：
+
+```c
+static struct linux_binfmt elf_format = {
+        .module         = THIS_MODULE,
+        .load_binary    = load_elf_binary,
+        .load_shlib     = load_elf_library,
+        .core_dump      = elf_core_dump,
+        .min_coredump   = ELF_EXEC_PAGESIZE,
+};
+```
+
+用`ps -ef`命令查看当前系统启动的进程，有三类
+
+```shell
+yang@yang:~/Desktop/test$ ps -ef
+UID         PID   PPID  C STIME TTY          TIME CMD
+root          1      0  0 11:01 ?        00:00:01 /sbin/init splash
+root          2      0  0 11:01 ?        00:00:00 [kthreadd]
+yang       1705      1  0 11:01 ?        00:00:00 /lib/systemd/systemd --user
+yang       3593   1705  0 13:28 ?        00:00:01 /usr/lib/gnome-terminal/gnome-
+yang       3602   3593  0 13:28 pts/0    00:00:00 bash
+yang       3873   3602  0 14:12 pts/0    00:00:00 ps -ef
+
+```
+
+- PID 1 的进程就是我们的 init 进程 init splash。用户态不带中括号
+- PID 2 的进程是内核线程 kthreadd。内核态带中括号
+- tty那一列是问号的说明不是前台启动的，一般都是后台的服务
+- PPID告诉了这个进程是从哪一个进程fork而来的。
+
