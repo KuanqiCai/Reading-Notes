@@ -908,7 +908,7 @@ gcc -c -fPIC createprocess.c
 
     ld-linux.so虽然默认会被加载，但是也是一个so，所以会放在GOT里面。要调用这个so里面的代码，也是需要从stub里面统一调用进去的，所以要回到PLT去调用。
 
-### 运行程序为进程
+### 查看各个进程
 
 linux内核有如下数据结构来定义加载二进制文件到内存中的方法：
 
@@ -954,3 +954,274 @@ yang       3873   3602  0 14:12 pts/0    00:00:00 ps -ef
 - tty那一列是问号的说明不是前台启动的，一般都是后台的服务
 - PPID告诉了这个进程是从哪一个进程fork而来的。
 
+## 2.线程
+
+### 为什么要有线程
+
+- 任何一个进程默认有一个主线程，线程负责执行二进制命令。进程除了执行指令外，还要管理内存和文件系统等。所以进程相当于一个项目，而线程就是为了完成项目需求，而建立的一个个开发任务。
+- 对于并行任务，进程有2个问题：第一，创建进程占用资源太多；第二，进程之间的通信需要数据在不同的内存空间传来传去，无法共享。
+- 多线程还能留出1个单独的线程处理突发事件，不用让主线程停下来去处理。
+
+### 创建线程
+
+```c
+
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define NUM_OF_TASKS 5
+
+void *downloadfile(void *filename)
+{
+   printf("I am downloading the file %s!\n", (char *)filename);
+   sleep(10);
+   long downloadtime = rand()%100;
+   printf("I finish downloading the file within %d minutes!\n", downloadtime);
+   pthread_exit((void *)downloadtime); //pthread_exit退出线程，传入一个参数转为void*类型作为线程退出的返回值
+}
+
+int main(int argc, char *argv[])
+{
+   char files[NUM_OF_TASKS][20]={"file1.avi","file2.rmvb","file3.mp4","file4.wmv","file5.flv"};
+   pthread_t threads[NUM_OF_TASKS]; //一个有5个pthread_t线程对象的数组
+   int rc;
+   int t;
+   int downloadtime;
+
+   pthread_attr_t thread_attr;	//线程属性
+   pthread_attr_init(&thread_attr);	//初始化这个线程属性
+   pthread_attr_setdetachstate(&thread_attr,PTHREAD_CREATE_JOINABLE);//设置属性为PTHREAD_CREATE_JOINABLE，表示将来主线程程等待这个线程的结束，并获取退出时的状态
+	
+   /*对每一个任务用pthread_create创建一个线程*/
+   for(t=0;t<NUM_OF_TASKS;t++){
+     printf("creating thread %d, please help me to download %s\n", t, files[t]);
+     rc = pthread_create(&threads[t], &thread_attr, downloadfile, (void *)files[t]);//1.线程对象2.线程属性3.线程运行函数4，线程运行函数的参数
+     if (rc){
+       printf("ERROR; return code from pthread_create() is %d\n", rc);
+       exit(-1);
+     }
+   }
+
+   pthread_attr_destroy(&thread_attr);//销毁线程属性
+
+   for(t=0;t<NUM_OF_TASKS;t++){
+     pthread_join(threads[t],(void**)&downloadtime);	//停止线程，主线程接收与pthread_t类型threads所关联的返回值downloadtime
+     printf("Thread %d downloads the file %s in %d minutes.\n",t,files[t],downloadtime);
+   }
+
+   pthread_exit(NULL);
+}
+```
+
+编译：
+
+`gcc download.c -lpthread`
+
+### 线程的数据
+
+- 线程访问的数据有3类：
+
+  1. 线程栈上的本地数据。比如函数执行过程中的局部变量
+
+     - 栈的大小可以通过命令 ulimit -a 查看，默认情况下线程栈大小为 8192（8MB）。我们可以使用命令 ulimit -s 修改。
+
+     - 修改线程栈的大小：
+
+       `int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize);`
+
+     - 主线程在内存中有一个栈空间，其他线程栈也拥有独立的栈空间。为了避免线程之间的栈空间踩踏，线程栈之间还会有小块区域，用来隔离保护各自的栈空间。
+
+  2. 在整个进程里共享的全局数据。比如全局变量
+
+  3. 线程私有数据Thread Specific Data
+
+     - 创建一个key,伴随一个析构函数。等到线程退出的时候，就会调用析构函数释放 value。
+
+       `int pthread_key_create(pthread_key_t *key, void (*destructor)(void*))`
+
+       key 一旦被创建，所有线程都可以访问它，但各线程可根据自己的需要往 key 中填入不同的值，这就相当于提供了一个同名而不同值的全局变量。
+
+     - 设置 key 对应的 value。
+
+       `int pthread_setspecific(pthread_key_t key, const void *value)`
+
+     - 获取 key 对应的 value
+
+       `void *pthread_getspecific(pthread_key_t key)`
+
+### 数据的保护
+
+ #### 1. Mutex互斥（Mutual Exclusion）
+
+- 在共享数据访问的时候，去申请加把锁，谁先拿到锁，谁就拿到了访问权限，其他人就只好在门外等着，等这个人访问结束，把锁打开，其他人再去争夺，还是遵循谁先拿到谁访问。
+
+- 一个转账的场景
+
+  ```c
+  
+  #include <pthread.h>
+  #include <stdio.h>
+  #include <stdlib.h>
+  
+  #define NUM_OF_TASKS 5
+  
+  int money_of_tom = 100;
+  int money_of_jerry = 100;
+  //第一次运行去掉下面这行
+  pthread_mutex_t g_money_lock;
+  
+  void *transfer(void *notused)
+  {
+    pthread_t tid = pthread_self();
+    printf("Thread %u is transfering money!\n", (unsigned int)tid);
+    //第一次运行去掉下面这行
+    pthread_mutex_lock(&g_money_lock);
+    sleep(rand()%10);
+    money_of_tom+=10;
+    sleep(rand()%10);
+    money_of_jerry-=10;
+    //第一次运行去掉下面这行
+    pthread_mutex_unlock(&g_money_lock);
+    printf("Thread %u finish transfering money!\n", (unsigned int)tid);
+    pthread_exit((void *)0);
+  }
+  
+  int main(int argc, char *argv[])
+  {
+    pthread_t threads[NUM_OF_TASKS];
+    int rc;
+    int t;
+    //第一次运行去掉下面这行
+    pthread_mutex_init(&g_money_lock, NULL);//初始化这个Mutex
+  
+    for(t=0;t<NUM_OF_TASKS;t++){
+      rc = pthread_create(&threads[t], NULL, transfer, NULL);
+      if (rc){
+        printf("ERROR; return code from pthread_create() is %d\n", rc);
+        exit(-1);
+      }
+    }
+    
+    for(t=0;t<100;t++){
+      //第一次运行去掉下面这行
+      pthread_mutex_lock(&g_money_lock);	//去抢这把锁，抢到了就执行下一行程序，对共享变量进行访问。没抢到，就被堵塞在这等待
+      /*如果不想被阻塞，可以使用 pthread_mutex_trylock 去抢那把锁，如果抢到了，就可以执行下一行程序，对共享变量进行访问；如果没抢到，不会被阻塞，而是返回一个错误码。*/
+      printf("money_of_tom + money_of_jerry = %d\n", money_of_tom + money_of_jerry);
+      //第一次运行去掉下面这行
+      pthread_mutex_unlock(&g_money_lock);//访问结束后，释放锁
+    }
+    //第一次运行去掉下面这行
+    pthread_mutex_destroy(&g_money_lock);
+    pthread_exit(NULL);
+  }
+  ```
+
+  编译：
+
+  `gcc mutex.c -lpthread`
+
+#### 2. 条件变量
+
+- 用pthread_mutex_trylock()，就可以不用等着，去干点儿别的，但是我怎么知道什么时候回来再试一下，是不是轮到我了呢？能不能在轮到我的时候，通知我一下呢？
+
+  **通过条件变量。**
+
+  但是当它接到了通知，来操作共享资源的时候，还是需要抢互斥锁，因为可能很多人都受到了通知，都来访问了，所以条件变量和互斥锁是配合使用的。
+
+- 分配3员工干活的例子
+
+  ```c
+  
+  #include <pthread.h>
+  #include <stdio.h>
+  #include <stdlib.h>
+  
+  #define NUM_OF_TASKS 3
+  #define MAX_TASK_QUEUE 11	//10 个任务，每个任务一个字符
+  
+  char tasklist[MAX_TASK_QUEUE]="ABCDEFGHIJ";
+  int head = 0;	//当前分配的工作从哪里开始，如果 head 等于 tail，则当前的工作分配完毕；
+  int tail = 0;	//当前分配的工作到哪里结束，如果 tail 加 N，就是新分配了 N 个工作。
+  
+  int quit = 0;
+  
+  pthread_mutex_t g_task_lock;//声明锁
+  pthread_cond_t g_task_cv;	//声明条件变量
+  
+  void *coder(void *notused)
+  {
+    pthread_t tid = pthread_self();
+  
+    while(!quit){
+  
+      pthread_mutex_lock(&g_task_lock);
+      //判断head和tail是否相等，不相等就是有任务，跳过while执行下面的任务去
+      /*相等就是没任务调用 pthread_cond_wait 进行等待，这个函数会把锁也作为变量传进去。这是因为等待的过程中需要解锁，要不然，你不干活，等待睡大觉，还把门给锁了，别人也干不了活，而且老板也没办法获取锁来分配任务。*/
+      while(tail == head){
+        if(quit){
+          pthread_mutex_unlock(&g_task_lock);
+          pthread_exit((void *)0);
+        }
+        printf("No task now! Thread %u is waiting!\n", (unsigned int)tid);
+          
+        pthread_cond_wait(&g_task_cv, &g_task_lock);//通过互斥锁来阻塞线程
+        printf("Have task now! Thread %u is grabing the task !\n", (unsigned int)tid);
+      }
+      char task = tasklist[head++];
+      pthread_mutex_unlock(&g_task_lock);
+      printf("Thread %u has a task %c now!\n", (unsigned int)tid, task);
+      sleep(5);
+      printf("Thread %u finish the task %c!\n", (unsigned int)tid, task);
+    }
+  
+    pthread_exit((void *)0);
+  }
+  
+  int main(int argc, char *argv[])
+  {
+    pthread_t threads[NUM_OF_TASKS];
+    int rc;
+    int t;
+  
+    pthread_mutex_init(&g_task_lock, NULL);	//初始化锁
+    pthread_cond_init(&g_task_cv, NULL);		//初始化条件变量
+  	
+    //主线程上。它初始化了条件变量和锁，然后创建三个线程，也就是我们说的招聘了三个员工。
+    for(t=0;t<NUM_OF_TASKS;t++){
+      rc = pthread_create(&threads[t], NULL, coder, NULL);
+      //一开始三个员工都是在等待的状态，因为初始化的时候，head 和 tail 相等都为零。  
+      if (rc){
+        printf("ERROR; return code from pthread_create() is %d\n", rc);
+        exit(-1);
+      }
+    }
+  
+    sleep(5);
+      
+    /*接下来分配任务，总共 10 个任务。老板分四批分配，第一批一个任务三个人抢，第二批两个任务，第三批三个任务，正好每人抢到一个，第四批四个任务，可能有一个员工抢到两个任务。*/
+    for(t=1;t<=4;t++){
+      /*老板分配工作的时候，也是要先获取锁 pthread_mutex_lock，然后通过 tail 加一来分配任务，这个时候 head 和 tail 已经不一样了*/
+      pthread_mutex_lock(&g_task_lock);
+      tail+=t;
+      printf("I am Boss, I assigned %d tasks, I notify all coders!\n", t);
+      /*这个时候三个员工还在 pthread_cond_wait 那里睡着呢，接下来老板要调用 pthread_cond_broadcast 通知所有的员工，“来活了，醒醒，起来干活”*/
+      pthread_cond_broadcast(&g_task_cv);	//通知（解锁）所有线程
+      pthread_mutex_unlock(&g_task_lock);	//老板解锁
+      /*3个员工醒过来先抢锁，抢锁由pthread_cond_wait 在收到通知的时候，自动做*/
+      /*抢到锁的员工就通过 while 再次判断 head 和 tail 是否相同。这次因为有了任务，不相同了，所以就抢到了任务。而没有抢到任务的员工，由于抢锁失败，只好等待抢到任务的员工释放锁，抢到任务的员工在 tasklist 里面拿到任务后，将 head 加一，然后就释放锁。这个时候，另外两个员工才能从 pthread_cond_wait 中返回，然后也会再次通过 while 判断 head 和 tail 是否相同。不过已经晚了，任务都让人家抢走了，head 和 tail 又一样了，所以只好再次进入 pthread_cond_wait，接着等任务。*/  
+      sleep(20);
+    }
+  
+    pthread_mutex_lock(&g_task_lock);
+    quit = 1;
+    pthread_cond_broadcast(&g_task_cv);
+    pthread_mutex_unlock(&g_task_lock);
+  
+    pthread_mutex_destroy(&g_task_lock);
+    pthread_cond_destroy(&g_task_cv);		//销毁共享变量
+    pthread_exit(NULL);
+  }
+  ```
+
+  
