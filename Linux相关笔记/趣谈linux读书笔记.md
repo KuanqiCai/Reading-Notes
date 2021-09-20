@@ -1,4 +1,4 @@
-# 一、Linux操作系统综述
+一、Linux操作系统综述
 
 ## 1.一些比喻
 
@@ -1138,7 +1138,6 @@ int main(int argc, char *argv[])
 - 分配3员工干活的例子
 
   ```c
-  
   #include <pthread.h>
   #include <stdio.h>
   #include <stdlib.h>
@@ -1233,3 +1232,260 @@ int main(int argc, char *argv[])
 ### 写多线程的套路
 
   ![](https://static001.geekbang.org/resource/image/02/58/02a774d7c0f83bb69fec4662622d6d58.png)
+
+## 3.进程管理的数据结构task_struct
+
+### 任务id和任务state
+
+![](https://static001.geekbang.org/resource/image/75/2d/75c4d28a9d2daa4acc1107832be84e2d.jpeg)
+
+1. 链表： 
+
+   将所有的task_struct串起来。
+
+   `struct list_head    tasks;`
+
+2. 任务ID
+
+   ```c
+   pid_t pid;
+   pid_t tgid;
+   struct task_struct *group_leader; 
+   ```
+
+   - pid是process id
+   - tgid thread group id
+   - 因为在内核里，进程和线程都叫做任务，所以这里用2种id加以区分。
+   - task_struct例关于信号处理的字段
+
+   ```c
+   /* Signal handlers: */
+   struct signal_struct    *signal;
+   struct sighand_struct    *sighand;	//正在通过信号处理函数进行处理的信号
+   sigset_t      blocked;			//被阻塞不处理的信号
+   sigset_t      real_blocked;
+   sigset_t      saved_sigmask;
+   struct sigpending    pending;	//等待被处理的信号
+   //信号处理函数默认使用用户态的函数栈，当然也可以开辟新的栈专门用于信号处理，这就是 sas_ss_xxx 这三个变量的作用。
+   unsigned long      sas_ss_sp;
+   size_t        sas_ss_size;
+   unsigned int      sas_ss_flags;
+   ```
+
+3. 任务状态
+
+   涉及任务状态的几个变量
+
+   ```c
+   volatile long state;    /* -1 unrunnable, 0 runnable, >0 stopped */
+   int exit_state;
+   unsigned int flags;
+   ```
+
+- 状态state可以取的值定义在include/linux/sched.h头文件中。可见state是通过Bitset的方式来设置的。
+
+   ```c
+   /* Used in tsk->state: */
+   #define TASK_RUNNING                    0
+   #define TASK_INTERRUPTIBLE              1
+   #define TASK_UNINTERRUPTIBLE            2
+   #define __TASK_STOPPED                  4
+   #define __TASK_TRACED                   8
+   /* Used in tsk->exit_state: */
+   #define EXIT_DEAD                       16
+   #define EXIT_ZOMBIE                     32
+   #define EXIT_TRACE                      (EXIT_ZOMBIE | EXIT_DEAD)
+   /* Used in tsk->state again: */
+   #define TASK_DEAD                       64
+   #define TASK_WAKEKILL                   128
+   #define TASK_WAKING                     256
+   #define TASK_PARKED                     512
+   #define TASK_NOLOAD                     1024
+   #define TASK_NEW                        2048
+   #define TASK_STATE_MAX                  4096
+   ```
+
+   ![](https://static001.geekbang.org/resource/image/e2/88/e2fa348c67ce41ef730048ff9ca4c988.jpeg)
+
+   - TASK_RUNNING
+
+     TASK_RUNNING 并不是说进程正在运行，而是表示进程在时刻准备运行的状态。
+
+     - 处于这个状态的进程获得时间片的时候，就是在运行中；
+     - 没有获得时间片，就说明它被其他进程抢占了，在等待再次分配时间片。
+
+   - Linux中2种睡眠状态
+
+     在运行中的进程，一旦要进行一些 I/O 操作，需要等待 I/O 完毕，这个时候会释放 CPU，进入睡眠状态：
+
+     1. TASK_INTERRUPTIBLE，可中断的睡眠状态。
+
+        这是一种浅睡眠的状态，也就是说，虽然在睡眠，等待 I/O 完成，但是这个时候一个信号来的时候，进程还是要被唤醒。只不过唤醒后，不是继续刚才的操作，而是进行信号处理。当然程序员可以根据自己的意愿，来写信号处理函数，例如收到某些信号，就放弃等待这个 I/O 操作完成，直接退出；或者收到某些信息，继续等待。
+
+     2. TASK_UNINTERRUPTIBLE，不可中断的睡眠状态.
+
+        这是一种深度睡眠状态，不可被信号唤醒，只能死等 I/O 操作完成。一旦 I/O 操作因为特殊原因不能完成，这个时候，谁也叫不醒这个进程了。你可能会说，我 kill 它呢？别忘了，kill 本身也是一个信号，既然这个状态不可被信号唤醒，kill 信号也被忽略了。除非重启电脑，没有其他办法。
+
+     3. TASK_KILLABLE，可以终止的新睡眠状态
+		
+        程处于这种状态中，它的运行原理类似 TASK_UNINTERRUPTIBLE，只不过可以响应致命信号。是TASK_UNINTERRUPTIBLE和TASK_WAKEKILL都设置的状态
+     
+        `#define TASK_KILLABLE           (TASK_WAKEKILL | TASK_UNINTERRUPTIBLE)`
+     
+   - TASK_STOPPED
+   
+     是在进程接收到 SIGSTOP、SIGTTIN、SIGTSTP 或者 SIGTTOU 信号之后进入该状态。
+   
+   - TASK_TRACED
+   
+     表示进程被 debugger 等进程监视，进程执行被调试程序所停止。当一个进程被另外的进程所监视，每一个信号都会让进程进入该状态。
+   
+   - EXIT_ZOMBIE
+   
+     一旦一个进程要结束，先进入的是 EXIT_ZOMBIE 状态，但是这个时候它的父进程还没有使用 wait() 等系统调用来获知它的终止信息，此时进程就成了僵尸进程。
+   
+   - EXIT_DEAD
+   
+     进程的最终状态。
+   
+- 标志
+
+   上面的进程状态和进程的运行、调度有关系，还有其他的一些状态，我们称为标志。放在 flags 字段中，这些字段都被定义成为宏，以 PF 开头。
+
+   ```c
+   #define PF_EXITING 		0x00000004
+   #define PF_VCPU 		0x00000010
+   #define PF_FORKNOEXEC 	0x00000040
+   ```
+
+   - PF_EXITING 表示正在退出。当有这个 flag 的时候，在函数 find_alive_thread 中，找活着的线程，遇到有这个 flag 的，就直接跳过。
+   - PF_VCPU 表示进程运行在虚拟 CPU 上。在函数 account_system_time 中，统计进程的系统运行时间，如果有这个 flag，就调用 account_guest_time，按照客户机的时间进行统计。
+   - PF_FORKNOEXEC 表示 fork 完了，还没有 exec。在 _do_fork 函数里面调用 copy_process，这个时候把 flag 设置为 PF_FORKNOEXEC。当 exec 中调用了 load_elf_binary 的时候，又把这个 flag 去掉。
+
+### 各任务的信息、关系、权限
+
+1. 运行统计信息：
+
+   在进程的运行过程中，会有一些统计量，这里面有进程在用户态和内核态消耗的时间、上下文切换的次数等等。
+
+   ```c
+   u64        utime;//用户态消耗的CPU时间
+   u64        stime;//内核态消耗的CPU时间
+   unsigned long      nvcsw;//自愿(voluntary)上下文切换计数
+   unsigned long      nivcsw;//非自愿(involuntary)上下文切换计数
+   u64        start_time;//进程启动时间，不包含睡眠时间
+   u64        real_start_time;//进程启动时间，包含睡眠时间
+   ```
+
+2. 进程亲缘关系
+
+   整个进程其实就是一棵进程树。而拥有同一父进程的所有进程都具有兄弟关系。
+
+   ```c
+   struct task_struct __rcu *real_parent; /* real parent process */
+   struct task_struct __rcu *parent; /* recipient of SIGCHLD, wait4() reports */
+   struct list_head children;      /* list of my children */
+   struct list_head sibling;       /* linkage in my parent's children list */
+   ```
+
+   ![](https://static001.geekbang.org/resource/image/92/04/92711107d8dcdf2c19e8fe4ee3965304.jpeg)
+
+   - parent 指向其父进程。当它终止时，必须向它的父进程发送信号。
+     - 通常情况下，real_parent 和 parent 是一样的，但是也会有另外的情况存在。例如，bash 创建一个进程，那进程的 parent 和 real_parent 就都是 bash。如果在 bash 上使用 GDB 来 debug (监督)一个进程，这个时候 GDB 是 parent，bash 是这个进程的 real_parent。
+   - children 表示链表的头部。链表中的所有元素都是它的子进程。有环的双向链表的双向链表的表头，直线第一个子进程和最后一个子进程。
+   - sibling 用于把当前进程插入到兄弟链表中。sibling: 有环的双向链表，用于组织兄弟进程，每个新的兄弟进程，都会加入到这个双向环链表中。
+
+3. 进程权限
+
+   对权限的定义：
+
+   ```c
+   /* Objective and real subjective task credentials (COW): */
+   const struct cred __rcu         *real_cred;
+   /* Effective (overridable) subjective task credentials (COW): */
+   const struct cred __rcu         *cred;
+   ```
+
+   - Obejective:那个被操作的对象
+
+     real_cred:说明谁能操作我这个进程
+
+   - Subjective:那个操作别人的对象
+
+     cred:说明我能操作哪些进程
+
+   - Cred的定义：
+
+   ```c
+   struct cred {
+   ......
+           kuid_t          uid;            /* real UID of the task */
+           kgid_t          gid;            /* real GID of the task */
+           kuid_t          suid;           /* saved UID of the task */
+           kgid_t          sgid;           /* saved GID of the task */
+           kuid_t          euid;           /* effective UID of the task */
+           kgid_t          egid;           /* effective GID of the task */
+           kuid_t          fsuid;          /* UID for VFS ops */
+           kgid_t          fsgid;          /* GID for VFS ops */
+   ......
+           kernel_cap_t    cap_inheritable; /* caps our children can inherit */
+           kernel_cap_t    cap_permitted;  /* caps we're permitted */
+           kernel_cap_t    cap_effective;  /* caps we can actually use */
+           kernel_cap_t    cap_bset;       /* capability bounding set */
+           kernel_cap_t    cap_ambient;    /* Ambient capability set */
+   ......
+   } __randomize_layout;
+   ```
+
+   1. uid,gid:注释是 real user/group id。一般情况下，谁启动的进程，就是谁的 ID。但是权限审核的时候，往往不比较这两个，也就是说不大起作用。
+   2. euid,egid:注释是 effective user/group id。一看这个名字，就知道这个是起“作用”的。当这个进程要操作消息队列、共享内存、信号量等对象的时候，其实就是在比较这个用户和组是否有权限。
+   3. fsuid 和 fsgid，也就是 filesystem user/group id。这个是对文件操作会审核的权限。
+   4. suid 和 sgid:在 Linux 里面，一个进程可以随时通过 setuid 设置用户 ID，所以，游戏程序的用户 B 的 ID 还会保存在一个地方，也就是 saved uid 和 save gid
+
+   5. 一般说来，fsuid、euid，和 uid 是一样的，fsgid、egid，和 gid 也是一样的。因为谁启动的进程，就应该审核启动的用户到底有没有这个权限。
+
+      但是也有特殊的情况。:
+
+      - 用户 A 想玩一个游戏，这个游戏的程序是用户 B 安装的。游戏这个程序文件的权限为 rwxr–r--。A 是没有权限运行这个程序的，所以用户 B 要给用户 A 权限才行。
+
+   ![](C:\Users\51212\Desktop\Reading-Notes\c4688c36afd90f933727483c56500ff7.jpeg)
+
+   - capabilities:Linux另一个控制权限的机制
+
+4. 内存管理
+
+   ```c
+   struct mm_struct                *mm;
+   struct mm_struct                *active_mm;
+   ```
+
+5. 文件与文件系统
+
+   ```c
+   /* Filesystem information: */
+   struct fs_struct                *fs;
+   /* Open file information: */
+   struct files_struct             *files;
+   ```
+
+### 系统调用
+
+在程序执行过程中，一旦调用到系统调用，就需要进入内核继续执行。那如何将用户态的执行和内核态的执行串起来呢？
+
+需要2个重要的成员变量
+
+```c
+struct thread_info    thread_info;
+void  *stack;
+```
+
+
+
+​     
+
+   
+
+   
+
+
+
