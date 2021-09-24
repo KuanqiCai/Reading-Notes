@@ -120,7 +120,7 @@
         yang@yang-virtual-machine:~/Desktop$ cp ~/Documents/read\ me  ./readme.txt
         将家目录下的文件 复制到了桌面上
 
-## mv
+## mv移动、重命名
 - mv命令可以用来移动文件或目录，也可以给文件或目录重命名。
 - 在用mv命令时，一定要加-i，防止覆盖掉重要的文件
 
