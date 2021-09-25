@@ -3,13 +3,15 @@ githubt官方文档：https://docs.github.com/cn
    - ~$ git config --global user.name "Yang"
    - ~$ git config --global user.email "512127058@qq.com"
    - ~$ git config --list   //查看配置信息
+   
 - 获得帮助，以config 为例
    1. git help config
    2. git config --help
    3. man git-config
+   
 - 如何配置ssh到github
    - https://docs.github.com/cn/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
-    
+   
    
    Windows:
    - 创建私钥
@@ -35,6 +37,7 @@ githubt官方文档：https://docs.github.com/cn
    $ sudo apt-get install xclip
    $ xclip -sel clip < ~/.ssh/id_ed25519.pub
    ```
+   
 - windows下更新git 版本
    - git update-git-for-windows
 
@@ -48,17 +51,36 @@ githubt官方文档：https://docs.github.com/cn
        - `git push -u origin master`: 第一次推送master分支时，加上-u参数，git会在推送内容的同时，关联本地master和远程master分支，以后可以简化命令。
    7. `git diff 文件名` : 查看上次修改了什么内容
    8. `git log` : 查看我们所有的commit记录
+   
+- 其他地方更改了库，本地更新
+
+   ```shell
+   git remote add origin [//your github url]
+   
+   //pull those changes
+   
+   git pull origin main 
+   
+   // or optionally, 'git pull origin master --allow-unrelated-histories' if you have initialized repo in github and also committed locally
+   
+   //now, push your work to your new repo
+   
+   git push origin main
+   ```
+
 - 退回某一个版本
    - 在git中，用HEAD表示当前版本也就是最新的commit id，上一个版本使HEAD^,上上个使HEAD^^,还可以用HEAD~100表示往上100个版本。HEAD指向的是分支，如master指向最新的提交，HEAD指向master就确定了当前分支的提交点。
    1. `git reset --hard HEAD^` : 退回到上一个版本
    2. `git reset --hard 版本号` : 回到指定的版本,也可以在后悔回退到过去时由此退回到未来
    3. `git reflog`: 查看git记录下的每一条命令。如果忘了之前的版本号，由此查看。
+   
 - 撤销删改
    1. `git checkout -- file`: 撤销文件在工作区的全部修改，回到最近一个git commit 或git add时的状态。
    2. `git reset HEAD 文件名`: 如果add到缓存区了，可以用这个名利把缓存区的修改撤销掉unstage,重新回到工作区 
    3. `git rm 文件名` 从版本库中删除文件，和add一样之后要跟commit。
    4. `git remote -v`:查看远程库的信息
    5. `git remote rm 库名`:删除本地与远程库的绑定关系
+   
 - 分支管理
    1. `git checkout -b dev`: 创建并切换到dev分支,相当于下面2条命令。
        - `git branch dev`
@@ -74,6 +96,7 @@ githubt官方文档：https://docs.github.com/cn
        - `git stash pop`: 恢复工作现场，并删除stash内容
        - `git stash apply`: 恢复工作现场，不删除stash内容，得输入`git stash drop`来删除。
     9. `git cherry-pick <commit id>`: 在master分支上修复了bug，而dev其他工作开发了一半，显然不可能从master重新分出来，在dev上再修复bug很麻烦。该命令可以把修复bug的那一次修改复制到dev分支来。
+   
 - 多人协作
    1. 查看远程库信息，使用`git remote -v`；
    2. 首先，试图用`git push origin <branch-name>`推送自己的修改
@@ -83,6 +106,7 @@ githubt官方文档：https://docs.github.com/cn
        - 在本地创建和远程分支对应的分支，使用`git checkout -b branch-name origin/branch-name`，本地和远程分支的名称最好一致；
        - 建立本地分支和远程分支的关联，使用`git branch --set-upstream branch-name origin/branch-name`；
    - `git rebase`: 把本地未push的分叉提交历史整理成直线,然后用`git log`查看
+   
 - 标签管理
    - `git tag v1.0`:给当前分支打上标签v1.0
    - `git tag v0.9 f52c643`: 指定给某一个历史提交打上标签。标签总是和某个commit挂钩，若该commit出现在不同的2个分支上，这2个分支上都可以看到标签。
