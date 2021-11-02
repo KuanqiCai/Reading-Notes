@@ -87,6 +87,8 @@ $ echo $ROS_PACKAGE_PATH
 
 - **编译catkin workspace并sorcing setup文件**
 
+  因为roscd只能在已经被加入ros环境的地址中寻找
+
   ```shell
   $ cd ~/catkin_ws
   $ catkin_make
@@ -274,10 +276,155 @@ $ echo $ROS_PACKAGE_PATH
 
     用于绘制发布在话题上的scrolling time plot滚动时间图。例`rosrun rqt_plot rqt_plot`
 
-    
+## #、ROS服务和参数
 
-    
+- Services:
 
-    
+  服务是另一种节点通信方式，允许节点发送request请求和接收响应。
 
+- `Rosservis`
+
+  提供了很多命令，能被用于ROS 的 client/service 框架
+
+  ```
+  rosservice list         print information about active services
+  rosservice call         call the service with the provided args
+  rosservice type         print service type
+  rosservice find         find services by service type
+  rosservice uri          print service ROSRPC uri
+  ```
+
+  - `$ rosservice list`
+
+    列出节点所用的所有服务
+
+  - `$ rosservice type [service]`
+
+    显式某一个服务的类型，比如一个/clear 服务：`$ rosservice type /spawn`
+
+    - 得到turtlesim/Spawn后可用`rossrv show turtlesim/Spawn`可以查看改类型的具体定义
+
+      也可直接：`$ rosservice type /spawn | rossrv show`
+
+  - `$ rosservice call [service] [args]`
+
+    调用某个服务，比如调用/clear服务:`$ rosservice call /clear`
+
+    ​						   比如调用/spawn服务：`$ rosservice call /spawn 2 2 0.2 ""`
+
+- `Rosparam`
+
+  用于存储和manipulate操作Parameter Server参数服务器的数据。
+
+  ```
+  rosparam set            set parameter
+  rosparam get            get parameter
+  rosparam load           load parameters from file
+  rosparam dump           dump parameters to file
+  rosparam delete         delete parameter
+  rosparam list           list parameter names
+  ```
+
+  - `$ rosparam list`
+
+    查看所有节点所有的参数
     
+  - `rosparam set [param_name]`和`rosparam get [param_name]`
+
+    - 设置背景rgb中r的值为150.
+
+      `$ rosparam set /turtlesim/background_r 150`
+
+      使参数变化起效果
+
+      `$ rosservice call /ckear`
+
+    - 得到某一个参数的值，比如rgb中的g值
+
+      `$ rosparam get /turtlesim/background_g `
+
+      得到参数服务器中所有参数的值
+
+      `$ rosparam get /`
+
+  - `rosparam dump [file_name] [namespace]`和`rosparam load [file_name] [namespace]`
+
+    - 将所有的参数存入params,yaml文件
+
+      `$ rosparam dump params.yaml`
+
+    - 将参数导入一个新的命名空间`copy_turtle`
+
+      `$ rosparam load params.yaml copy_turtle`
+
+## #、调试和同时启动多个节点
+
+- 使用`rqt_console`和`rqt_logger_level`   debug
+
+  `rqt_concole`依附于ROS的logging framework来展现节点的输出
+
+  `rqt_logger_level`允许改变在节点运行时改变他们的verbosity level详细等级(DEBUG,WARN,INFO and ERROR)
+
+  在2个新终端分别启动：
+
+  ```
+  #新终端
+  $ rosrun rqt_console rqt_console
+  #新终端
+  $ rosrun rqt_logger_level rqt_logger_level
+  ```
+
+- logger level
+
+  ```
+  #按优先权高低排列：
+  Fatal	有最高优先权
+  Error	
+  Warn
+  Info
+  Debug	有最低优先权
+  # 设置为哪一个等级，我们就会得到它和更高等级的信息
+  # 比如设置为Warn,则会得到Warn,Error,Fatal的消息
+  ```
+
+- 使用roslaunch同时打开多个节点
+
+  用法：`$ roslaunch [package] [filename.launch]`
+
+  1. 回到工作空间`$ cd ~/catkin_ws`
+
+  2. 将当前环境导入ROS环境`$ cd ~/catkin_ws`
+
+  3. 寻找之前创建好的包`$ roscd ~/catkin_ws`
+
+  4. 创建一个launch文件夹`$ mkdir launch` 并`$ cd launch`
+
+  5. 创建一个启动文件turtlemimic.launch,输入如下代码
+
+     ```xml
+     切换行号显示
+     	 <!--launch tag说明这个文件是一个launch file-->
+        1 <launch>
+        2 
+            <!--这里开始2个命名空间为turtlesim1/2的group，都用名字为sim的turtlesim节点-->
+        3   <group ns="turtlesim1">
+        4     <node pkg="turtlesim" name="sim" type="turtlesim_node"/>
+        5   </group>
+        6 
+        7   <group ns="turtlesim2">
+        8     <node pkg="turtlesim" name="sim" type="turtlesim_node"/>
+        9   </group>
+       10   <!--这里开始一个叫mimic并有2个话题input/output的节点，这里会把节点顺序变为turtlesim1->mimic-> turtlesim2-->
+       11   <node pkg="turtlesim" name="mimic" type="mimic">
+       12     <remap from="input" to="turtlesim1/turtle1"/>
+       13     <remap from="output" to="turtlesim2/turtle1"/>
+       14   </node>
+       15 
+       16 </launch>
+     ```
+
+  6. 运行这个launch file:`$ roslaunch beginner_tutorials turtlemimic.launch`
+
+  7. 在新终端给他们提供命令：`$ rostopic pub /turtlesim1/turtle1/cmd_vel geometry_msgs/Twist -r 1 -- '[2.0, 0.0, 0.0]' '[0.0, 0.0, -1.8]'`
+
+  8. 使用`$ rqt_graph`查看节点关系.
