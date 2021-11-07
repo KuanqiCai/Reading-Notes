@@ -119,7 +119,7 @@ $ echo $ROS_PACKAGE_PATH
 
     `$ rospack depends beginner_tutorials`
 
-### 定制自己的包
+### 定制自己的包package.xml
 
 通过修改**package.xml**来customize包。
 
@@ -157,7 +157,7 @@ $ echo $ROS_PACKAGE_PATH
    59   <exec_depend>std_msgs</exec_depend>
    ```
 
-## 三、构建包
+## 三、构建包catkin_make
 
 - 首先使用catkin_make 
 
@@ -178,7 +178,7 @@ $ echo $ROS_PACKAGE_PATH
 
   
 
- ## #、节点
+ ## #、节点node
 
 - 一些概念
   - [Nodes](http://wiki.ros.org/Nodes): A node is an executable that uses ROS to communicate with other nodes.
@@ -206,7 +206,7 @@ $ echo $ROS_PACKAGE_PATH
 
       ​			`$ rosrun turtlesim turtlesim_node __name:=my_turtle`还能reassign名
 
-## #、话题
+## #、话题topic
 
 - 小案例
 
@@ -276,7 +276,7 @@ $ echo $ROS_PACKAGE_PATH
 
     用于绘制发布在话题上的scrolling time plot滚动时间图。例`rosrun rqt_plot rqt_plot`
 
-## #、ROS服务和参数
+## #、ROS Services和Parameters
 
 - Services:
 
@@ -357,7 +357,7 @@ $ echo $ROS_PACKAGE_PATH
 
       `$ rosparam load params.yaml copy_turtle`
 
-## #、调试和同时启动多个节点
+## #、调试(rqt_console)和启动文件(roslaunch)
 
 - 使用`rqt_console`和`rqt_logger_level`   debug
 
@@ -428,3 +428,227 @@ $ echo $ROS_PACKAGE_PATH
   7. 在新终端给他们提供命令：`$ rostopic pub /turtlesim1/turtle1/cmd_vel geometry_msgs/Twist -r 1 -- '[2.0, 0.0, 0.0]' '[0.0, 0.0, -1.8]'`
 
   8. 使用`$ rqt_graph`查看节点关系.
+
+## #、编辑rosed
+
+可以直接在一个包内直接用vim打开一个文件来编辑，而不需要具体的地址
+
+使用：`$ rosed [package_name] [filename]`
+
+例子：`$ rosed roscpp Logger.msg`
+
+技巧：`$ rosed [package_name] <tab><tab>`
+
+​			如果不知道具体的文件名，可以按两下tab显式这个包下所有的文件名。
+
+## 四、创建ROS msg和srv
+
+### 1.msg,srv简介
+
+- **msg**: msg files是描述the fields of a ROS message的简单文本文件。他们以不同的语言来生成messages的源代码。储存在msg directory目录。
+
+  - msg由一行行field type字段类型和field name字段名称组成，可用的字段类型:
+
+    ```
+    -int8, int16, int32, int64 (plus uint*)
+    -float32, float64
+    -string
+    -time, duration
+    -other msg files
+    -variable-length array[] and fixed-length array[C]
+    ```
+
+  - msg还有一个特殊的类型header:包含一个timestamp时间戳和coordinate frame information坐标系信息。
+
+  - 一个包含一个Header,一个string primitive,2个 other msg 文件
+
+    ```
+    string primitive  Header header
+    string child_frame_id
+    geometry_msgs/PoseWithCovariance pose
+    geometry_msgs/TwistWithCovariance twist
+    ```
+
+    
+
+- **srv**: srv files描述了一个服务，包含2个部分：request 和 response。储存在srv directory。
+
+  - src也由一行行field type 和 field name组成。request和response由"---"隔开。
+
+    ```
+    int64 A
+    int64 B
+    ---
+    int64 Sum
+    ```
+
+    A,B是request,Sum是response
+
+### 2.使用msg
+
+- Creating a Msg 
+  
+  **1.创建一个msg文件**
+	
+	```
+	$ roscd beginner_tutorials
+	$ mkdir msg
+	$ echo "int64 num" > msg/Num.msg	#输出消息到一个新的文件
+  ```
+  
+  - `rosmsg`可以用来查看已有的msg:
+  
+    - 使用：`$ rosmsg show [message type]`
+  
+    - 例子：`$ rosmsg show beginner_tutorials/Num `
+  
+      如果忘了包名：`$ rosmsg show Num`
+
+   **2.还可以`$ rosed beginner_tutorials Num.msg`,然后在里面输入**
+  
+    ```
+    string first_name
+    string last_name
+    uint8 age
+    uint32 score
+    ```
+  
+  **3.确保能将msg文件转为c++，python或其他语言**
+  
+  ​	**3.1**：用`rosed beginner_tutorials package.xml`打开配置文件package.xml，加入如下两行
+  
+  ```xml
+  <!--在build time我们需要message_generation-->
+  <build_depend>message_generation</build_depend>
+  <!--在run time我们需要message_runtime-->
+  <exec_depend>message_runtime</exec_depend>
+  ```
+  
+  ​	**3.2**：用`rosed beginner_tutorials CMakeLists.txt`打开编译文件CMakeLists.tx,
+  
+  ​		(1)将message_generation依赖加入find_package。
+  
+  ```
+  # Do not just add this to your CMakeLists.txt, modify the existing text to add message_generation before the closing parenthesis
+  find_package(catkin REQUIRED COMPONENTS
+     roscpp
+     rospy
+     std_msgs
+     message_generation
+  )
+  ```
+  
+  ​		(2)将message_runtime依赖加入catkin_package。
+  
+  ```
+  catkin_package(
+    ...
+    CATKIN_DEPENDS message_runtime ...
+    ...)
+  ```
+  
+  ​		(3)修改add_message_files为：
+  
+  ```
+  /*通过手动添加.msg文件，确保CMake在我们添加了其他.msg文件后会重新配置项目*/
+  add_message_files(
+    FILES
+    Num.msg
+  )
+  ```
+  
+  ​		(4)将generate_messages()函数投入使用，出去#
+  
+  ```
+  generate_messages(
+    DEPENDENCIES
+    std_msgs
+  )
+  ```
+
+### 3.使用srv
+
+- Creating a srv
+
+  **1. 创建srv文件夹**
+
+  ```
+  $ roscd beginner_tutorials
+  $ mkdir srv
+  ```
+
+  **2. 用roscp从另一个包那复制一个srv文件来**
+
+  使用：`$ roscp [package_name] [file_to_copy_path] [copy_path]`
+
+  例子：从rospy_tutorials包那复制它的srv到当前文件夹
+
+  ```
+  $ roscp rospy_tutorials AddTwoInts.srv srv/AddTwoInts.srv
+  ```
+
+  - 使用`rossrv`来查看当前已有的srv文件
+
+    - 使用：`$ rossrv show <service type>`
+
+    - 例子:
+
+      ```
+      $ rossrv show beginner_tutorials/AddTwoInts
+      ```
+
+      不记得包名：
+
+      ```
+      $ rossrv show AddTwoInts
+      ```
+
+  **3. 确保srv文件能转为c++,python或其他语言**
+
+  ​	**3.1**: 编辑包内的package.xml,加入如下两行（当然在创建msg时已设置）
+
+  ```xml
+  <build_depend>message_generation</build_depend><exec_depend>message_runtime</exec_depend>
+  ```
+
+  ​	**3.2**: 编辑包内的CMakeLists.txt（当然在创建msg时已设置）
+
+  ​		(1): 将message_generation依赖加入find_package。
+
+  ```
+  # Do not just add this line to your CMakeLists.txt, modify the existing line
+  find_package(catkin REQUIRED COMPONENTS
+    roscpp
+    rospy
+    std_msgs
+    message_generation	#同时服务于msg,srv
+  )
+  ```
+
+  ​		(2): 修改add_service_files
+
+  ```
+  add_service_files(
+    FILES
+    AddTwoInts.srv
+  )
+  ```
+
+### 4. 重新编译
+
+添加完msg和srv后需要重新编译
+
+```
+# 需要在工作空间里使用catkin_make
+$ roscd beginner_tutorials
+$ cd ../..
+$ catkin_make
+$ cd -
+```
+
+## 五、写一个简单的Publisher 和 Subscriber
+
+### 五(一)使用c++来写
+
+### 五(二)使用python来写
+
