@@ -998,4 +998,90 @@ $ cd -
    $ rosrun beginner_tutorials listener.py  (Python) 
    ```
 
-   
+
+
+
+# ROS进阶
+
+## #、ROS中TF的使用
+
+- 简介：
+
+  - TF(TranssForm)坐标转换，包括位置和姿态2个方面。**要注意区分坐标转换和坐标系frame的转换**
+
+    `坐标转换是一个坐标在不同坐标系下的表示，而坐标系转换不同坐标系的相对位姿关系`
+
+  - tf是一个树状结构，维护坐标系之间的关系，靠**话题通信机制**来持续地发布不同link(比如手部、头部、某关节)之间的坐标关系。
+
+    作为树状结构，要保证父子坐标系都有某个节点在持续地发布他们之间的位姿关系，才能使树状结构保持完整。只有父子坐标系的位姿关系能被正确的发布，才能保证任意两个frame之间的连通。
+
+  - 每两个相邻frame之间靠节点发布它们之间的位姿关系，这种节点称为**broadcaster**。broadcaster就是一个发布器publisher,如果两个frame之间发生了相对运动，broadcaster就会发布相关消息。
+
+- 一个frame转换的例子：
+
+  ```c++
+  #include <ros/ros.h>
+  #include <ros/console.h>
+  #include <tf/transform_broadcaster.h>
+  #include <iostream>
+  #include <cmath>
+  
+  class FramesPublisherNode{
+   //创建节点句柄nh
+   ros::NodeHandle nh;
+   ros::Time startup_time;
+  
+   ros::Timer heartbeat;
+   //1.定义2个广播broadcaster br1和br2
+   tf::TransformBroadcaster br1;	
+   tf::TransformBroadcaster br2;
+  
+   public:
+    FramesPublisherNode(){
+      // NOTE: This method is run once, when the node is launched.
+      startup_time = ros::Time::now();
+      heartbeat = nh.createTimer(ros::Duration(0.02), &FramesPublisherNode::onPublish, this);
+      heartbeat.start();
+    }
+  
+    void onPublish(const ros::TimerEvent&){
+      ros::Duration E_time = ros::Time::now() - startup_time;
+      double time = E_time.toSec();
+  
+      //2. 声明2个变量用来分别存储2个无人机的转换信息
+      tf::Transform AV1World(tf::Transform::getIdentity());
+      tf::Transform AV2World(tf::Transform::getIdentity());
+  
+      //3. 设置坐标原点，（0.1，0，0.2）为子坐标系激光坐标系base_laser在父坐标系小车base_link坐标系中的坐标，
+      AV1World.setOrigin(tf::Vector3(std::cos(time), std::sin(time), 0));
+      AV2World.setOrigin(tf::Vector3(std::sin(time), 0, std::cos(2*time)));
+  	
+      // 4.1 定义无人机1号的旋转
+      tf::Quaternion q1;
+      q1.setRPY(0,0,time);//（0，0，time）为base_laser在base_link坐标系下的roll(绕X轴)，pitch(绕Y轴)，yaw(绕Z轴) 的旋转度数.
+      AV1World.setRotation(q1);
+        
+      // 4.2 定义无人机2号的旋转
+      tf::Quaternion q2;
+      q2.setRPY(0,0,0);//（0，0，0）为base_laser在base_link坐标系下的roll(绕X轴)，pitch(绕Y轴)，yaw(绕Z轴) 的旋转度数，现在都是0度
+      AV2World.setRotation(q2);
+  
+  	//将变换广播出去，发布了world和无人机1号av1，2号av2之间的坐标关系
+      br1.sendTransform(tf::StampedTransform(AV1World, ros::Time::now(),"world", "av1"));
+      br2.sendTransform(tf::StampedTransform(AV2World, ros::Time::now(),"world", "av2"));
+    }
+  };
+  
+  int main(int argc, char** argv){
+    //初始化ROS，节点名为frames_publisher_node
+    ros::init(argc, argv, "frames_publisher_node");
+    FramesPublisherNode node;
+    ros::spin();
+    return 0;
+  }
+  
+  ```
+
+  
+
+  
