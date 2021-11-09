@@ -6,12 +6,32 @@
 ## 创建工作空间
 $ mkdir -p ~/catkin_ws/src
 $ cd ~/catkin_ws/
+$ catkin_make
+## 对于ros时Melodic版本的Python 3用户
 $ catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3
-## source the new setup.*sh file
+## 激活工作空间。一个系统可以有多个工作空间，但只能有1个处于激活状态
 $ source devel/setup.bash
-## 检查环境变量是否包含了当前工作空间
+## 检查环境变量查看当前激活的是哪个工作空间
 $ echo $ROS_PACKAGE_PATH
 ```
+
+- src源文件空间：放置各个功能包和一个关于这些功能包的配置文件CMakeLists.txt用于编译的配置。
+
+- build编译空间：放置CMake和catkin编译功能包时产生的缓存、配置、中间文件等
+
+- devel开发空间：放置编译好的可执行程序。
+
+- 对于激活工作空间：
+
+  ```
+  ## 每一次打开终端都要输入一遍
+  $ source devel/setup.bash
+  
+  ## 如果之后都只开发该工作空间，可以直接将它写入.bashrc文件
+  $ gedit ~/.bashrc
+  # 然后在该文件中末尾加入：
+  source ~/Destktop/as_ws/devel/setup.bash
+  ```
 
 ## #、ROS文件系统Filesystem Concepts
 
@@ -650,5 +670,280 @@ $ cd -
 
 ### 五(一)使用c++来写
 
+#### 1.写一个Publisher Node
+
+- 创建一个cpp文件
+
+  ```
+  $ roscd beginner_tutorials	#来到要实现某功能的包
+  $ mkdir -p src				#这个文件夹放所有包
+  $ touch talker.cpp			#创建cpp文件
+  ```
+
+- 然后将[1.1](http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28c%2B%2B%29)的代码拷贝入talker.cpp
+  
+  需要做的事情：
+  
+  1. 初始化ROS系统
+  2. 将关于chatter主题的std_msgs/String消息发送给master
+  3. 每0.1秒循环发布一条消息到chatter
+  
+  ```c++
+  #include "ros/ros.h"			//包含ROS系统所需要的大部分头文件
+  #include "std_msgs/String.h"	//包含字符串类型的msg
+  
+  #include <sstream>
+  
+  /**
+   * This tutorial demonstrates simple sending of messages over the ROS system.
+   */
+  int main(int argc, char **argv)
+  {
+    /**
+     * The ros::init() function needs to see argc and argv so that it can perform
+     * any ROS arguments and name remapping that were provided at the command line.
+     * For programmatic remappings you can use a different version of init() which takes
+     * remappings directly, but for most command-line programs, passing argc and argv is
+     * the easiest way to do it.  The third argument to init() is the name of the node.
+     *
+     * You must call one of the versions of ros::init() before using any other
+     * part of the ROS system.
+     */
+    ros::init(argc, argv, "talker");	//初始化ros,允许通过命令行进行name remapping
+      								//也是定义我们节点名字的地方"talker"
+  
+    /**
+     * NodeHandle is the main access point to communications with the ROS system.
+     * The first NodeHandle constructed will fully initialize this node, and the last
+     * NodeHandle destructed will close down the node.
+     */
+    ros::NodeHandle n;	//创建当前进程节点的句柄Handle
+  
+    /**
+     * The advertise() function is how you tell ROS that you want to
+     * publish on a given topic name. This invokes a call to the ROS
+     * master node, which keeps a registry of who is publishing and who
+     * is subscribing. After this advertise() call is made, the master
+     * node will notify anyone who is trying to subscribe to this topic name,
+     * and they will in turn negotiate a peer-to-peer connection with this
+     * node.  advertise() returns a Publisher object which allows you to
+     * publish messages on that topic through a call to publish().  Once
+     * all copies of the returned Publisher object are destroyed, the topic
+     * will be automatically unadvertised.
+     *
+     * The second parameter to advertise() is the size of the message queue
+     * used for publishing messages.  If messages are published more quickly
+     * than we can send them, the number here specifies how many messages to
+     * buffer up before throwing some away.
+     */	
+    /*告诉master，将要发送一个std_msgs/String类型的message到话题chatter。
+      这时master会让所有节点接听来自chatter将要发送的消息。
+      第二个参数是发布队列的大小，如果发布的太快，会在丢弃旧消息前保存1000条。
+    
+      NodeHandle::advertise()返回一个ros::Publisher对象。提供2个功能：
+      1.包含一个publish()方法，可以发送消息到创建的topic上
+      2.当它超过范围，它会自动停止发送*/
+    ros::Publisher chatter_pub = n.advertise<std_msgs::String>("chatter", 1000);
+    
+    //ros::Rate对象object 允许设置一个想要的循环频率，这里是0.1s/10hz
+    //追踪上次调用的ros::sleep()后过了多久来保证正确的睡眠时间
+    ros::Rate loop_rate(10);
+  
+    /**
+     * A count of how many messages we have sent. This is used to create
+     * a unique string for each message.
+     */
+    /*
+    	roscpp文件自带SIGINT,可以提供诸如ctrl+c这样的信号。
+    	ros::ok()如下情况会返回false：
+    		1.收到一个SIGINT信号
+    		2.被另一个同名的节点踢出了网络
+    		3.ros::shutdown()被程序的其他部分调用
+    		4.所有的ros::NodeHandles被销毁了
+    */
+    int count = 0;
+    while (ros::ok())
+    {
+      /**
+       * This is a message object. You stuff it with data, and then publish it.
+       */
+      std_msgs::String msg;
+  
+      std::stringstream ss;
+      ss << "hello world " << count;
+      msg.data = ss.str();//各种各样的消息类型都是可以发送的，这里发送的是msg.data类型
+  
+      ROS_INFO("%s", msg.data.c_str());//可以在终端打印该消息
+  
+      /**
+       * The publish() function is how you send messages. The parameter
+       * is the message object. The type of this object must agree with the type
+       * given as a template parameter to the advertise<>() call, as was done
+       * in the constructor above.
+       */
+      chatter_pub.publish(msg);//将消息发送给所有连接在一起的节点
+  
+      ros::spinOnce();	//接收callback响应
+  
+      loop_rate.sleep();	//使用上面定义过的ros::rate对象来睡眠。
+      ++count;
+    }
+  
+  
+    return 0;
+  }
+  ```
+  
+
+#### 2.写一个Subscriber Node
+
+- 创建一个cpp文件
+
+  ```
+  touch listener.cpp
+  ```
+
+- 将[2.1](http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28c%2B%2B%29)的代码复制过去
+
+  需要做的事情
+
+  1. 初始化ros系统
+  2. subscribe订阅chatter话题
+  3. spin()循环，等待消息的到达
+  4. 当消息到达，调用chatterCallback
+
+  ```c++
+  #include "ros/ros.h"
+  #include "std_msgs/String.h"
+  
+  /**
+   * This tutorial demonstrates simple receipt of messages over the ROS system.
+   */
+  /*
+  这是一个Callback函数，当chatter话题收到一个新message的时候会被调用。
+  这些消息在boost shared_ptr中传递，所有我们可以根据需要将他存储起来。
+  */
+  void chatterCallback(const std_msgs::String::ConstPtr& msg)
+  {
+    ROS_INFO("I heard: [%s]", msg->data.c_str());
+  }
+  
+  int main(int argc, char **argv)
+  {
+    /**
+     * The ros::init() function needs to see argc and argv so that it can perform
+     * any ROS arguments and name remapping that were provided at the command line.
+     * For programmatic remappings you can use a different version of init() which takes
+     * remappings directly, but for most command-line programs, passing argc and argv is
+     * the easiest way to do it.  The third argument to init() is the name of the node.
+     *
+     * You must call one of the versions of ros::init() before using any other
+     * part of the ROS system.
+     */
+    ros::init(argc, argv, "listener");
+  
+    /**
+     * NodeHandle is the main access point to communications with the ROS system.
+     * The first NodeHandle constructed will fully initialize this node, and the last
+     * NodeHandle destructed will close down the node.
+     */
+    ros::NodeHandle n;
+  
+    /**
+     * The subscribe() call is how you tell ROS that you want to receive messages
+     * on a given topic.  This invokes a call to the ROS
+     * master node, which keeps a registry of who is publishing and who
+     * is subscribing.  Messages are passed to a callback function, here
+     * called chatterCallback.  subscribe() returns a Subscriber object that you
+     * must hold on to until you want to unsubscribe.  When all copies of the Subscriber
+     * object go out of scope, this callback will automatically be unsubscribed from
+     * this topic.
+     *
+     * The second parameter to the subscribe() function is the size of the message
+     * queue.  If messages are arriving faster than they are being processed, this
+     * is the number of messages that will be buffered up before beginning to throw
+     * away the oldest ones.
+     */
+    /*
+    从master那订阅chatter话题。ROS会在每次有新消息到达时，调用chatterCallback()函数。
+    第二个参数是消息队列的大小，以防我们处理消息的速度不够快时可以先把消息保存起来。超过1000条 
+    消息的时候会在新消息到达时删除旧消息。
+    
+    NodeHandle::subscribe()返回一个ros::Subscriber对象。这个对象必须被hold on保留，直到
+    我们不想订阅为止。
+    */
+    ros::Subscriber sub = n.subscribe("chatter", 1000, chatterCallback);
+  
+    /**
+     * ros::spin() will enter a loop, pumping callbacks.  With this version, all
+     * callbacks will be called from within this thread (the main one).  ros::spin()
+     * will exit when Ctrl-C is pressed, or the node is shutdown by the master.
+     */
+    /*
+    ros::spin()会进入一个循环，并尽可能块的调用message callbacks.
+    当ros::ok()返回错误的时候，ros::spin()也会跟着自动停止。
+    */
+    ros::spin();
+  
+    return 0;
+  }
+  ```
+
+#### 3.构建building上面写好的节点
+
+- 打开CMakeLists.txt
+
+  ```
+  $ source ./catkin_ws/devel/setup.bash
+  #将包加入ros环境后使用rosed
+  $ rosed beginner_tutorials CMakeLists.txt
+  ```
+
+- 编辑CMakeLists.txt
+
+  将如下代码加入文件末尾
+
+  ```
+  add_executable(talker src/talker.cpp)
+  # 作为Groovy常规,可以使用下面的变量去依赖所有必要的目标
+  target_link_libraries(talker ${catkin_LIBRARIES})
+  # 确保包的消息头文件在使用之前先被调用。如果消息来自工作空间内的其他包，需要给他们各自的
+  # generation targets添加依赖项，因为catkin会并行的编译所有projects.
+  add_dependencies(talker beginner_tutorials_generate_messages_cpp)
+  
+  add_executable(listener src/listener.cpp)
+  target_link_libraries(listener ${catkin_LIBRARIES})
+  add_dependencies(listener beginner_tutorials_generate_messages_cpp)
+  ```
+
+- 运行catkin_make
+
+  ```
+  # In your catkin workspace
+  $ cd ~/catkin_ws
+  $ catkin_make  
+  ```
+
 ### 五(二)使用python来写
 
+### 五(三)测试Publisher和Subscriber
+
+1. `$ roscore`
+
+2. 1每开一个终端都要`$ source ./devel/setup.bash `
+
+3. 新终端中运行发布者
+
+   ```
+   $ rosrun beginner_tutorials talker      (C++)
+   $ rosrun beginner_tutorials talker.py   (Python) 
+   ```
+
+4. 新终端中运行接收者
+
+   ```
+   $ rosrun beginner_tutorials listener     (C++)
+   $ rosrun beginner_tutorials listener.py  (Python) 
+   ```
+
+   
