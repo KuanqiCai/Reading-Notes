@@ -722,7 +722,7 @@ $ cd -
 
 ### 五(一)使用c++来写
 
-#### 1.写一个Publisher Node
+#### 1. 写一个Publisher Node
 
 - 创建一个cpp文件
 
@@ -847,7 +847,7 @@ $ cd -
   ```
   
 
-#### 2.写一个Subscriber Node
+#### 2. 写一个Subscriber Node
 
 - 创建一个cpp文件
 
@@ -941,7 +941,7 @@ $ cd -
   }
   ```
 
-#### 3.构建building上面写好的节点
+#### 3. 构建building上面写好的节点
 
 - 打开CMakeLists.txt
 
@@ -978,11 +978,130 @@ $ cd -
 
 ### 五(二)使用python来写
 
+#### 1. 写一个Publisher Node
+
+- 创建文件
+
+  ```shell
+  $ roscd beginner_tutorials
+  $ mkdir scripts				##scripts文件夹放py脚本，src文件夹放c++程序。
+  $ cd scripts
+  ##教程上的publisher下下来
+  $ wget https://raw.github.com/ros/ros_tutorials/kinetic-devel/rospy_tutorials/001_talker_listener/talker.py
+  $ chmod +x talker.py		##给talker.py文件加权限，x表示可执行
+  ```
+
+- 代码
+
+  ```python
+  #!/usr/bin/env python				每个ROS节点都会有这么一行，保证脚本是被用作python script
+  # license removed for brevity
+  import rospy						
+  from std_msgs.msg import String		
+  
+  def talker():
+      #说明这个节点是用来给chatter话题传输String类型的消息的。queue_size是当subsriber接收速度不够快时，排队消息的数量。
+      pub = rospy.Publisher('chatter', String, queue_size=10)
+      #初始化，且定义该节点名为talker.
+      #anonymous=True通过在talker后加随机数来确保节点名是唯一的，因为一个ROS系统中不能出现同名节点，否则会被刷掉。
+      rospy.init_node('talker', anonymous=True)
+      rate = rospy.Rate(10) # 10hz
+      #rospy.is_shutdown()用于判断是否存在需要停止程序的情况，比如ctrl+c。
+      while not rospy.is_shutdown():
+          hello_str = "hello world %s" % rospy.get_time()
+  		"""
+  		rospy.loginfo(str)具有3个功能triple-duty
+  		1. 将消息输出到屏幕
+  		2. 将消息写入Node's log file
+  		3. 将消息写给rosout.rosout是一个handy方便的debug工具
+  		"""
+          rospy.loginfo(hello_str)
+          #发布消息给chatter话题
+          pub.publish(hello_str)
+          rate.sleep()
+  
+  if __name__ == '__main__':
+      try:
+          talker()
+      except rospy.ROSInterruptException:
+          pass
+  ```
+
+  - 并把py脚本加入CMakeLists.txt,以保证脚本正确的被加载和编译
+
+    用`rosed beginner_tutorials CMakeLists.txt`打开后加入：
+
+    ```
+    catkin_install_python(
+    	PROGRAMS scripts/talker.py
+      	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    )
+    ```
+
+#### 2. 写一个Subscriber Node
+
+- 创建一个py文件
+
+  这里直接从教材下载一个subscriber
+
+  ```shell
+  $ roscd beginner_tutorials/scripts/
+  $ wget https://raw.github.com/ros/ros_tutorials/kinetic-devel/rospy_tutorials/001_talker_listener/listener.py
+  $ chmod +x listener.py
+  ```
+
+- 代码：
+
+  ```python
+  #!/usr/bin/env python
+  import rospy
+  from std_msgs.msg import String
+  
+  def callback(data):
+      rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+      
+  def listener():
+  
+      # In ROS, nodes are uniquely named. If two nodes with the same
+      # name are launched, the previous one is kicked off. The
+      # anonymous=True flag means that rospy will choose a unique
+      # name for our 'listener' node so that multiple listeners can
+      # run simultaneously.
+      rospy.init_node('listener', anonymous=True)
+  	
+      # 当subscriber从chatter话题那收到string类型的消息时，会调用callback
+      rospy.Subscriber("chatter", String, callback)
+  
+      # spin() simply keeps python from exiting until this node is stopped
+      rospy.spin()
+  
+  if __name__ == '__main__':
+      listener()
+  ```
+
+  - 同样将subsrciber加入到CMakeLists.txt
+
+    ```
+    catkin_install_python(
+    	PROGRAMS scripts/talker.py scripts/listener.py
+     	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    )
+    ```
+
+#### 3. building上面写好的节点
+
+```
+$ cd ~/Desktop/catkin_ws
+$ catkin_make
+```
+
 ### 五(三)测试Publisher和Subscriber
 
 1. `$ roscore`
 
-2. 1每开一个终端都要`$ source ./devel/setup.bash `
+2. 每开一个终端都要`$ source ./devel/setup.bash `
+
+   也可以直接在~/.bashrc中加入想要用的工作空间的/devel/setup.bash
 
 3. 新终端中运行发布者
 
