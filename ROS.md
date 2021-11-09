@@ -207,6 +207,7 @@ $ echo $ROS_PACKAGE_PATH
   - [Master](http://wiki.ros.org/Master): Name service for ROS (i.e. helps nodes find each other)
   - [rosout](http://wiki.ros.org/rosout): ROS equivalent of stdout/stderr
   - [roscore](http://wiki.ros.org/roscore): Master(provides name service for ROS) + rosout + parameter server 
+  
 - `roscore`
   - 使用ROS第一步就是输入`roscore`
 
@@ -218,13 +219,104 @@ $ echo $ROS_PACKAGE_PATH
 
   - `rosnode info /rosout`返回特定节点的信息
 
-- `rosrun`
+### 用`rosrun`启动单个节点
 
   - `rosrun [package_name] [node_name]`直接运行某一个包下的某节点
 
     - 例子：`$ rosrun turtlesim turtlesim_node`
 
-      ​			`$ rosrun turtlesim turtlesim_node __name:=my_turtle`还能reassign名
+      ​			`$ rosrun turtlesim turtlesim_node __name:=my_turtle`给节点单独命名
+
+### 用roslaunch启动多个节点
+
+用法：`$ roslaunch [package] [filename.launch]`
+
+1. 回到工作空间`$ cd ~/catkin_ws`
+
+2. 将当前环境导入ROS环境`$ cd ~/catkin_ws`
+
+3. 寻找之前创建好的包`$ roscd ~/catkin_ws`
+
+4. 创建一个launch文件夹`$ mkdir launch` 并`$ cd launch`
+
+5. 创建一个启动文件turtlemimic.launch,输入如下代码
+
+   ```xml
+   切换行号显示
+   	 <!--launch tag说明这个文件是一个launch file-->
+      1 <launch>
+      2 
+          <!--这里开始2个命名空间为turtlesim1/2的group，都用名字为sim的turtlesim节点-->
+      3   <group ns="turtlesim1">
+      4     <node pkg="turtlesim" name="sim" type="turtlesim_node"/>
+      5   </group>
+      6 
+      7   <group ns="turtlesim2">
+      8     <node pkg="turtlesim" name="sim" type="turtlesim_node"/>
+      9   </group>
+     10   <!--这里开始一个叫mimic并有2个话题input/output的节点，这里会把节点顺序变为turtlesim1->mimic-> turtlesim2-->
+     11   <node pkg="turtlesim" name="mimic" type="mimic">
+     12     <remap from="input" to="turtlesim1/turtle1"/>
+     13     <remap from="output" to="turtlesim2/turtle1"/>
+     14   </node>
+     15 
+     16 </launch>
+   ```
+
+6. 运行这个launch file:`$ roslaunch beginner_tutorials turtlemimic.launch`
+
+7. 在新终端给他们提供命令：`$ rostopic pub /turtlesim1/turtle1/cmd_vel geometry_msgs/Twist -r 1 -- '[2.0, 0.0, 0.0]' '[0.0, 0.0, -1.8]'`
+
+8. 使用`$ rqt_graph`查看节点关系.
+
+### 转换roslaunch和rosrun
+
+1. **例1**
+
+​	roslaunch中：
+
+```xml
+<node pkg="tf" type="static_transform_publisher" name="av1broadcaster" args ="1 0 0 0 0 0 1 world av1 100" />
+```
+
+​	rosrun中：
+
+```shell
+rosrun tf static_transform_publisher 1 0 0 0 0 0 1 world av1 100 __name:=av1broadcaster
+```
+
+2. **例2**：roslaunch中可以设定某个节点的启用条件，rosrun因为是人为一条条输入就没必要
+
+```xml
+<launch>
+	<arg name = "static" default = "false" />
+    ...
+    <!--只在unless条件满足时才执行，这里默认false不执行，需要在命令行中手动输入static:=true-->
+	<!--roslaunch two_drones_pkg two_drones.launch static:=true-->
+    <node pkg="two_drones_pkg" type="frames_publisher_node" name="frames_publisher_node" unless="$(arg static)"/>
+    ...
+</launch>
+```
+
+3. **例3**:
+
+   roslaunch中运用find快速定位文件
+
+   ```xml
+   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find two_drones_pkg)/config/default.rviz"/>
+   ```
+
+   - 正常的agrs="$(find ..).."这里是没有参数-d的
+
+     `rosrun rviz rviz --help`解释：-d用于展示这个配置文件
+
+   rosrun中:
+
+   ```shell
+   rosrun rviz rviz -d ~/Desktop/as_ws/src/two_drones_pkg/config/default.rviz		
+   ```
+
+   
 
 ## #、话题topic
 
@@ -377,7 +469,7 @@ $ echo $ROS_PACKAGE_PATH
 
       `$ rosparam load params.yaml copy_turtle`
 
-## #、调试(rqt_console)和启动文件(roslaunch)
+## #、调试(rqt_console)
 
 - 使用`rqt_console`和`rqt_logger_level`   debug
 
@@ -407,47 +499,7 @@ $ echo $ROS_PACKAGE_PATH
   # 比如设置为Warn,则会得到Warn,Error,Fatal的消息
   ```
 
-- 使用roslaunch同时打开多个节点
-
-  用法：`$ roslaunch [package] [filename.launch]`
-
-  1. 回到工作空间`$ cd ~/catkin_ws`
-
-  2. 将当前环境导入ROS环境`$ cd ~/catkin_ws`
-
-  3. 寻找之前创建好的包`$ roscd ~/catkin_ws`
-
-  4. 创建一个launch文件夹`$ mkdir launch` 并`$ cd launch`
-
-  5. 创建一个启动文件turtlemimic.launch,输入如下代码
-
-     ```xml
-     切换行号显示
-     	 <!--launch tag说明这个文件是一个launch file-->
-        1 <launch>
-        2 
-            <!--这里开始2个命名空间为turtlesim1/2的group，都用名字为sim的turtlesim节点-->
-        3   <group ns="turtlesim1">
-        4     <node pkg="turtlesim" name="sim" type="turtlesim_node"/>
-        5   </group>
-        6 
-        7   <group ns="turtlesim2">
-        8     <node pkg="turtlesim" name="sim" type="turtlesim_node"/>
-        9   </group>
-       10   <!--这里开始一个叫mimic并有2个话题input/output的节点，这里会把节点顺序变为turtlesim1->mimic-> turtlesim2-->
-       11   <node pkg="turtlesim" name="mimic" type="mimic">
-       12     <remap from="input" to="turtlesim1/turtle1"/>
-       13     <remap from="output" to="turtlesim2/turtle1"/>
-       14   </node>
-       15 
-       16 </launch>
-     ```
-
-  6. 运行这个launch file:`$ roslaunch beginner_tutorials turtlemimic.launch`
-
-  7. 在新终端给他们提供命令：`$ rostopic pub /turtlesim1/turtle1/cmd_vel geometry_msgs/Twist -r 1 -- '[2.0, 0.0, 0.0]' '[0.0, 0.0, -1.8]'`
-
-  8. 使用`$ rqt_graph`查看节点关系.
+  
 
 ## #、编辑rosed
 
