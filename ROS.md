@@ -1292,7 +1292,7 @@ class FramesPublisherNode{
     tf::Transform AV1World(tf::Transform::getIdentity());
     tf::Transform AV2World(tf::Transform::getIdentity());
 
-    //3. 设置坐标原点，（0.1，0，0.2）为子坐标系激光坐标系base_laser在父坐标系小车base_link坐标系中的坐标，
+    //3. 设置坐标转换，（1.，2.，3.）为子坐标系av1在父坐标系world坐标系中的坐标，
     AV1World.setOrigin(tf::Vector3(std::cos(time), std::sin(time), 0));
     AV2World.setOrigin(tf::Vector3(std::sin(time), 0, std::cos(2*time)));
 	
@@ -1338,7 +1338,7 @@ int main(int argc, char** argv){
 
   - 每两个相邻frame之间靠节点发布它们之间的位姿关系，这种节点称为**broadcaster**。broadcaster就是一个发布器publisher,如果两个frame之间发生了相对运动，broadcaster就会发布相关消息。
 
-### 1. 用c++写一个tf broadcaster
+### 1. 用c++写一个tf broadcaster(subscriber)
 
 - 创建包
 
@@ -1440,9 +1440,241 @@ int main(int argc, char** argv){
 
       ` $ rosrun tf tf_echo /world /turtle1`
 
-### 2. 用c++写一个tf listener
+### 2. 用c++写一个tf listener(client)
 
+- 创建包：
 
+  ```shell
+   $ roscd learning_tf
+   $ cd src
+   $ touch turtle_tf_listener.cpp
+  ```
+
+- 复制[1.1](http://wiki.ros.org/tf/Tutorials/Writing%20a%20tf%20listener%20%28C%2B%2B%29)如下代码
+
+  ```c++
+  #include <ros/ros.h>
+  #include <tf/transform_listener.h>
+  #include <geometry_msgs/Twist.h>
+  #include <turtlesim/Spawn.h>
+  
+  int main(int argc, char** argv){
+    ros::init(argc, argv, "my_tf_listener");
+  
+    ros::NodeHandle node;
+    
+    //等待一个叫spawn的服务可用。
+    ros::service::waitForService("spawn");
+    //创建一个服务spawn的客户add_turtle
+    ros::ServiceClient add_turtle = node.serviceClient<turtlesim::Spawn>("spawn");
+    //实例化一个自动生成的服务类。参见创建ROS msg和srv。
+    turtlesim::Spawn srv;
+    //呼叫服务
+    add_turtle.call(srv);
+  	
+    //创建一个Publisher实例，将消息发送到给话题cmd_vel
+    ros::Publisher turtle_vel = node.advertise<geometry_msgs::Twist>("turtle2/cmd_vel", 10);
+    
+    //实例化一个TransformListener对象。一旦被建立，就会开始接收tf transformations
+    tf::TransformListener listener;
+  
+    ros::Rate rate(10.0);
+    while (node.ok()){
+      tf::StampedTransform transform;
+      try{
+        /*
+  	  向listener请求一个特定转换
+  	  1.想要从坐标/turtle1到/turtle2的转换
+  	  2.我们想什么时候进行转换。Time(0)最近一个可以进行转换的时刻。
+  	  3.transform储存产生的转换
+  	  
+  	  参照笔记 3.添加一个坐标frame
+  	  如果把/turtle1改为/carrot1，这时乌龟2号就开始追着坐标系carrot1跑，而不是追着乌龟1号跑了
+        */
+        listener.lookupTransform("/turtle2", "/turtle1",
+                                 ros::Time(0), transform);
+      }
+      catch (tf::TransformException &ex) {
+        ROS_ERROR("%s",ex.what());
+        ros::Duration(1.0).sleep();
+        continue;
+      }
+  	
+      //实例化一个消息类。参见创建ROS msg和srv
+      geometry_msgs::Twist vel_msg;
+      vel_msg.angular.z = 4.0 * atan2(transform.getOrigin().y(),
+                                      transform.getOrigin().x());
+      vel_msg.linear.x = 0.5 * sqrt(pow(transform.getOrigin().x(), 2) +
+                                    pow(transform.getOrigin().y(), 2));
+      turtle_vel.publish(vel_msg);
+  
+      rate.sleep();
+    }
+    return 0;
+  };
+  ```
+
+- 运行：
+
+  1. `rosed learning_ws CMakeLists.txt`
+
+     加到最后
+
+     ```
+     add_executable(turtle_tf_listener src/turtle_tf_listener.cpp)
+     target_link_libraries(turtle_tf_listener ${catkin_LIBRARIES})
+     ```
+
+  2. 编译`$ catkin_make`
+
+     这会在devel/lib/learning_tf文件夹生成一个二进制文件turtle_tf_listener.
+
+  3. 将这个二进制文件加入start_demo.launch
+
+     ```xml
+     <launch>
+     ...
+     <node pkg="learning_tf" type="turtle_tf_listener"
+           name="listener" />
+     </launch>
+     ```
+
+  4. 运行.launch文件
+
+     ```
+      $ roslaunch learning_tf start_demo.launch
+     ```
+
+### 3. 用c++添加一个坐标frame
+
+- 创建文件
+
+  ```shell
+  $ touch ~/Desktop/learn_ws/src/learning_tf/src frame_tf_broadcaster.cpp
+  ```
+  
+- 写入代码
+
+  ```c++
+  #include <ros/ros.h>
+  #include <tf/transform_broadcaster.h>
+  
+  int main(int argc, char** argv){
+    ros::init(argc, argv, "my_tf_broadcaster");
+    ros::NodeHandle node;
+  
+    tf::TransformBroadcaster br;
+    tf::Transform transform;
+  
+    ros::Rate rate(10.0);
+    while (node.ok()){
+      /*
+      设置坐标系位置转换.子坐标carrot1在父坐标turtle1的右边2单位
+      这时我们创建的子坐标相对父坐标的位置是不随时间变化的，如果想要让它随时间变化：
+      transform.setOrigin( tf::Vector3(2.0*sin(ros::Time::now().toSec()), 2.0*cos(ros::Time::now().toSec()), 0.0) );
+      */
+      transform.setOrigin( tf::Vector3(0.0, 2.0, 0.0) );
+      //设置坐标系角度转换。Quaternion四元数
+      transform.setRotation( tf::Quaternion(0, 0, 0, 1) );
+      //发送转换。从父坐标turtle1转到子坐标carrot1.
+      br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "turtle1", "carrot1"));
+      rate.sleep();
+    }
+    return 0;
+  };
+  ```
+  
+- 运行
+  
+  1. 加到`rosed learning_ws CMakeLists.txt`底部
+  
+     ```
+     add_executable(frame_tf_broadcaster src/frame_tf_broadcaster.cpp)
+     target_link_libraries(frame_tf_broadcaster ${catkin_LIBRARIES})
+     ```
+  
+  2. 编译`catkin_make`
+  
+  3. 加入`rosed learning_ws start_demo.launch`
+  
+     ```xml
+     <launch>
+         ...
+         <node pkg="learning_tf" type="frame_tf_broadcaster"
+               name="broadcaster_frame" />
+     </launch>
+     ```
+  
+  4. 运行` $ roslaunch learning_tf start_demo.launch`
+  
+
+### 4.tf和time
+
+- 问题：想要在特定时刻进行转移。
+
+  在笔记2.xx中客户**`src/turtle_tf_listener.cpp`**：
+  
+  ```c++
+  try{
+    listener.lookupTransform("/turtle2", "/turtle1",  
+	                           ros::Time(0), transform);
+  ```
+
+	这里用的Time(0)是最近一个可以进行转动的时刻，如果想在特定时刻，比如立刻马上：
+	
+	```c++
+	try{
+		listener.lookupTransform("/turtle2", "/turtle1",  
+	                         ros::Time::now(), transform);
+	```
+
+​		但这里会出现问题，因为每一个listener有一个buffer缓冲器用来存储来自所有tf broadcaster的坐标转换信息。但每一个broadcaster将信息发过来，都需要几毫秒的时间。所以这里用Time::now()立刻进行转移，就会发生在收到转换信息之前，从而出错。
+- 解决：使用waitForTransform
+
+  先wait然后look up是否有转换信息传过来。2个函数必须用同一个Time实例now，不然时间戳对不上。
+
+  ```c++
+  try{
+      ros::Time now = ros::Time::now();
+      listener.waitForTransform("/turtle2", "/turtle1",
+                                now, ros::Duration(3.0));
+      listener.lookupTransform("/turtle2", "/turtle1",
+                               now, transform);
+  ```
+  
+  - waitForTransform四个参数：
+  
+    1. 等待从这个frame: /turtle2
+    2. 转到这个frame:     /turtle1
+    3. 在这个时间点
+    4. 最大等待的时间
+### 5.用tf进行time travel
+
+- 问题：让乌龟2到乌龟1 五秒之前在的地方。
+
+  同样修改**`src/turtle_tf_listener.cpp`**：
+
+  ```c++
+    try{
+      ros::Time now = ros::Time::now();
+      ros::Time past = now - ros::Duration(5.0);
+      listener.waitForTransform("/turtle2", now,
+                                "/turtle1", past,
+                                "/world", ros::Duration(1.0));
+      listener.lookupTransform("/turtle2", now,
+                               "/turtle1", past,
+                               "/world", transform);
+  ```
+
+  - 此时的lookupTransform有6个参数
+    1. 本次转移从该坐标frame
+    2. 转移的时间
+    3. 要转移到的目标坐标frame
+    4. 什么时候的目标坐标位置
+    5. 一个不随时间变化的参考坐标
+    6. 存储所有的转换信息
+
+  
 
   
 
