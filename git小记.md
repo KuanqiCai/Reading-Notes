@@ -55,18 +55,29 @@ githubt官方文档：https://docs.github.com/cn
 - 其他地方更改了库，本地更新
 
    ```shell
-   git remote add origin [//your github url]
+   $ git remote add origin [//your github url]
    
    //pull those changes
    
-   git pull origin main 
+   $ git pull origin main 
    
    // or optionally, 'git pull origin master --allow-unrelated-histories' if you have initialized repo in github and also committed locally
    
    //now, push your work to your new repo
    
-   git push origin main
+   $ git push origin main
    ```
+
+   也可以：git pull = git fetch + git merge
+
+   ```shell
+   $ git remote add upstream https://github.com/yeasy/docker_practice
+   $ git fetch upstream
+   $ git rebase upstream/main 
+   或者$ git merge upstream
+   ```
+
+   [git merge和git fetch的区别](https://www.jianshu.com/p/f23f72251abc)
 
 - 退回某一个版本
    - 在git中，用HEAD表示当前版本也就是最新的commit id，上一个版本使HEAD^,上上个使HEAD^^,还可以用HEAD~100表示往上100个版本。HEAD指向的是分支，如master指向最新的提交，HEAD指向master就确定了当前分支的提交点。
