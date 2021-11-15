@@ -199,7 +199,222 @@ $ docker image rm [选项] <镜像1> [<镜像2> ...]
   $ sudo docker image rm $(docker image ls -q -f before=mongo:3.2)
   ```
 
-  
+
+### 4. 利用commit 理解镜像构造
+
+- 一个定制Web服务器的例子：
+
+  ```
+  $ docker run --name webserver -d -p 80:80 nginx
+  ```
+
+  - 这条命令会用 `nginx` 镜像启动一个容器，命名为 `webserver`，并且映射了 80 端口，这样我们可以用浏览器去访问这个 `nginx` 服务器。
+
+  - 如果是在本机运行的 Docker，那么可以直接访问：`http://localhost` ，如果是在虚拟机、云服务器上安装的 Docker，则需要将 `localhost` 换为虚拟机地址或者实际云服务器地址。
+
+  - 如果我们不喜欢这个欢迎页面，想要更改欢迎文字，可以使用`docker exec`进入容器
+
+    ```shell
+    $ docker exec -it webserver bash
+    root@f02d8e6d11a6:/# echo '<h1>Hello,Docker!</h1>' > /usr/share/nginx/html/index.html
+    root@f02d8e6d11a6:/# exit
+    exit
+    ```
+
+    - 用 `<h1>Hello, Docker!</h1>` 覆盖了 `/usr/share/nginx/html/index.html` 的内容。
+
+    - 可以用`$ docker diff webserver`来查看具体的改动
+
+- 使用docker commit
+
+  ```
+  docker commit [选项] <容器ID或容器名> [<仓库名>[:<标签>]]
+  ```
+
+  当我们运行一个容器的时候（如果不使用卷的话），我们做的任何文件修改都会被记录于容器存储层里。而 Docker 提供了一个 `docker commit` 命令，可以将容器的存储层保存下来成为镜像。
+
+  换句话说，就是在原有镜像的基础上，再叠加上容器的存储层，并构成新的镜像。以后我们运行这个新镜像的时候，就会拥有原有容器最后的文件变化。
+
+  所以`docker commit`命令，手动操作给旧的镜像添加了新的一层
+
+  - 将上面的例子保存为镜像
+
+    ```
+    $ docker commit --author "Yang" --message "修改默认网页" webserver nginx:v2
+    
+    sha256:ecb930469c1667a7d3bc2f225452441736bace2d79d0e1c326e8577cae3b3927
+    ```
+
+    - --author：指定修改的作者
+    - --message：记录本次修改的内容
+
+  - 可以用`docker image ls`看到这个新定制的镜像
+
+  - 还可以用`docker history nginx:v2`查看进行的修改
+
+  - 运行这个新的镜像
+
+    ```
+    docker run --name web2 -d -p 81:80 nginx:v2
+    ```
+
+    - 这里命名为新的服务web2,并映射到81端口
+    - 访问localhost:81的结果和修改过后的webserver是一致的
+
+- 缺点：
+
+  1. 如果使用 `docker commit` 制作镜像，以及后期修改的话，每一次修改都会让镜像更加臃肿一次，所删除的上一层的东西并不会丢失，会一直如影随形的跟着这个镜像，即使根本无法访问到。这会让镜像更加臃肿。
+  2. 使用 `docker commit` 意味着所有对镜像的操作都是黑箱操作，生成的镜像也被称为 **黑箱镜像**，换句话说，就是除了制作镜像的人知道执行过什么命令、怎么生成的镜像，别人根本无从得知。即使是这个制作镜像的人，过一段时间后也无法记清具体的操作。这种黑箱镜像的维护工作是非常痛苦的。
+
+### 5. 使用Dockerfile定制镜像
+
+Dockerfile 是一个文本文件，其内包含了一条条的 **指令(Instruction)**，**每一条指令构建一层**，因此每一条指令的内容，就是描述该层应当如何构建。
+
+- 用Dockerfile实现 4.commit中的那个例子
+
+  ```shell
+  # 创建一个文本文件，名字叫Dockerfile
+  $ mkdir mynginx
+  $ cd mynginx
+  $ touch Dockerfile
+  # 内容为
+  FROM nginx
+  RUN echo '<h1>Hello, Docker!</h1>' > /usr/share/nginx/html/index.html
+  ```
+
+- **FROM**指定基础镜像
+
+  所谓定制镜像，那一定是以一个镜像为基础，在其上进行定制。而 `FROM` 就是指定 **基础镜像**，因此一个 `Dockerfile` 中 `FROM` 是必备的指令，并且必须是第一条指令。
+
+  - 空白镜像`scratch`
+
+    ```
+    FROM scratch
+    ...
+    ```
+
+    如果以`scratch`为基础镜像，意味着不以任何镜像为基础，接下来所写的指令将作为镜像的第一层开始存在
+
+- **run**执行命令
+
+  - 两种格式
+
+    1. shell格式：`RUN <命令>`，就像直接在命令行中输入的命令一样
+
+       `RUN echo '<h1>Hello, Docker!</h1>' > /usr/share/nginx/html/index.html`
+
+    2. exec格式：`RUN ["可执行文件","参数1","参数2"]` 更像函数调用的格式
+
+  - 应该每个命令对应一个RUN?不应该
+
+    比如下面这样写会创造7层镜像，造成很多没意义的镜像，导致镜像臃肿
+
+  ```
+  FROM debian:stretch
+  RUN apt-get update
+  RUN apt-get install -y gcc libc6-dev make wget
+  RUN wget -O redis.tar.gz "http://download.redis.io/releases/redis-5.0.3.tar.gz"
+  RUN mkdir -p /usr/src/redis
+  RUN tar -xzf redis.tar.gz -C /usr/src/redis --strip-components=1
+  RUN make -C /usr/src/redis
+  RUN make -C /usr/src/redis install
+  ```
+
+  正确写法：
+
+  利用`&&`将各个需要的命令串联起来，将之前的7层简化为1层。
+
+  另外每层创建的东西会一直跟随镜像，所以要确保每一层只添加真正需要添加的东西，任何无关的东西都要删除，比如安装包、展开文件啊之类的
+
+  ```
+  FROM debian:stretch
+  RUN set -x; buildDeps='gcc libc6-dev make wget' \
+      && apt-get update \
+      && apt-get install -y $buildDeps \
+      && wget -O redis.tar.gz "http://download.redis.io/releases/redis-5.0.3.tar.gz" \
+      && mkdir -p /usr/src/redis \
+      && tar -xzf redis.tar.gz -C /usr/src/redis --strip-components=1 \
+      && make -C /usr/src/redis \
+      && make -C /usr/src/redis install \
+      && rm -rf /var/lib/apt/lists/* \
+      && rm redis.tar.gz \
+      && rm -r /usr/src/redis \
+      && apt-get purge -y --auto-remove $buildDeps
+  ```
+
+- **构建**镜像docker build
+
+  `docker build [选项] <上下文路径/URL/->`
+
+  在`Dockerfile`文件所在目录执行：
+
+  `$ docker build -t nginx:v3 .`   .  指的是上下文路径
+
+- 镜像构建**上下文**(Context)
+
+  Docker 在运行时分为 Docker 引擎（也就是服务端守护进程）和客户端工具。Docker 的引擎提供了一组 REST API，被称为 [Docker Remote API](https://docs.docker.com/develop/sdk/)，而如 `docker` 命令这样的客户端工具，则是通过这组 API 与 Docker 引擎交互，从而完成各种功能。
+
+  因此，虽然表面上我们好像是在本机执行各种 `docker` 功能，但实际上，一切都是使用的远程调用形式在服务端（Docker 引擎）完成。但经常会需要将一些本地文件复制进镜像，比如通过 `COPY` 指令、`ADD` 指令等。而 `docker build` 命令构建镜像，其实并非在本地构建，而是在服务端，也就是 Docker 引擎中构建的。那么在这种客户端/服务端的架构中，如何才能让服务端获得本地文件呢？
+
+  **通过上下文：**
+
+  这就引入了上下文的概念。当构建的时候，用户会指定构建镜像上下文的路径，`docker build` 命令得知这个路径后，会将路径下的所有内容打包，然后上传给 Docker 引擎。这样 Docker 引擎收到这个上下文包后，展开就会获得构建镜像所需的一切文件。所以`COPY` 这类指令中的源文件的路径都是*相对路径*。
+
+  一般来说，应该会将 `Dockerfile` 置于一个空目录下，或者项目根目录下。如果该目录下没有所需文件，那么应该把所需文件复制一份过来。如果目录下有些东西确实不希望构建时传给 Docker 引擎，那么可以用 `.gitignore` 一样的语法写一个 `.dockerignore`，该文件是用于剔除不需要作为上下文传递给 Docker 引擎的。
+
+  **个人理解**
+
+  Docker 构建上下文就是 Docker 客户端上传给服务端的 tar 文件解压后的内容，也即 `docker build` 命令行后面指定路径下的文件。
+
+  **`docker build`时注意：**
+
+  - 如果构建镜像时没有明确指定 Dockerfile，那么 Docker 客户端默认在构建镜像时指定的上下文路径下找名字为 Dockerfile 的构建文件
+  - Dockerfile 可以不在构建上下文路径下，此时需要构建时通过 `-f` 参数明确指定使用哪个构建文件，并且名称可以自己任意命名。
+
+- 不通过上下文路径来构建镜像
+
+  - 用Git repo来构建
+
+    ```
+    $ docker build -t hello-world https://github.com/docker-library/hello-world.git#master:amd64/hello-world
+    ```
+
+    - 制定了构建所需的Git repo,并选定为master分支，构建目录为/amd64/hello-world/
+    - 然后 Docker 就会自己去 `git clone` 这个项目、切换到指定分支、并进入到指定目录后开始构建
+
+  - 使用给定的tar压缩包构建
+
+    ```
+    $ docker build http://server/context.tar.gz
+    ```
+
+    - 如果所给出的 URL 不是个 Git repo，而是个 `tar` 压缩包，那么 Docker 引擎会下载这个包，并自动解压缩，以其作为上下文，开始构建。
+
+  - 从标准输入中读取 Dockerfile 进行构建
+
+    ```
+    docker build - < Dockerfile
+    或者
+    cat Dockerfile | docker build -
+    ```
+
+    - 如果标准输入传入的是文本文件，则将其视为 `Dockerfile`，并开始构建。这种形式由于直接从标准输入中读取 Dockerfile 的内容，它没有上下文，因此不可以像其他方法那样可以将本地文件 `COPY` 进镜像之类的事情。
+
+  - 从标准输入中读取上下文压缩包进行构建
+
+    ```
+    $ docker build - < context.tar.gz
+    ```
+
+    - 如果发现标准输入的文件格式是 `gzip`、`bzip2` 以及 `xz` 的话，将会使其为上下文压缩包，直接将其展开，将里面视为上下文，并开始构建。
+
+### 6.Dockerfile各指令
+
+#### WORKDIR指定工作目录
+
+格式为：`WORKDIR <工作目录路径>`
+
+使用 `WORKDIR` 指令可以来指定工作目录（或者称为当前目录），以后各层的当前目录就被改为指定的目录，如该目录不存在，`WORKDIR` 会帮你建立目录。
 
 ## 操作容器
 
@@ -401,4 +616,123 @@ magical_zhukovsky
 ## 访问仓库
 
 ### Docker Hub
+
+Docker 官方维护的一个公共仓库 [Docker Hub](https://hub.docker.com)，其中已经包括了数量超过 [2,650,000](https://hub.docker.com/search/?type=image) 的镜像。大部分需求都可以通过在 Docker Hub 中直接下载镜像来实现
+
+- 查找官方仓库中的镜像`docker search`
+
+  ```
+  $ docker search centos
+  NAME                               DESCRIPTION                                     STARS     OFFICIAL   AUTOMATED
+  centos                             The official build of CentOS.                   6449      [OK]
+  ansible/centos7-ansible            Ansible on Centos7                              132                  [OK]
+  consol/centos-xfce-vnc             Centos container with "headless" VNC session…   126                  [OK]
+  jdeathe/centos-ssh                 OpenSSH / Supervisor / EPEL/IUS/SCL Repos - …   117                  [OK]
+  centos/systemd                     systemd enabled base container.                 96                   [OK]
+  ```
+
+  - 可以看到返回了很多包含关键字的镜像，其中包括镜像名字、描述、收藏数（表示该镜像的受关注程度）、是否官方创建（`OFFICIAL`）、是否自动构建 （`AUTOMATED`）。
+
+  - 在查找的时候通过 `--filter=stars=N` 参数可以指定仅显示收藏数量为 `N` 以上的镜像。
+
+- 推送镜像
+
+  用户也可以在登录后通过 `docker push` 命令来将自己的镜像推送到 Docker Hub。
+
+  以下命令中的 `username` 请替换为你的 Docker 账号用户名。
+
+  ```shell
+  $ docker tag ubuntu:20.04 superyaaaang/ubuntu:20.04
+  $ docker image ls
+  REPOSITORY                 TAG       IMAGE ID       CREATED       SIZE
+  ubuntu                     20.04     ba6acccedd29   4 weeks ago   72.8MB
+  superyaaaang/ubuntu20.04   latest    ba6acccedd29   4 weeks ago   72.8MB
+  $ docker push superyaaaang/ubuntu:20.04
+  
+  $ docker search superyaaaang
+  ```
+
+### 私有仓库
+
+[`docker-registry`](https://docs.docker.com/registry/) 是官方提供的工具，可以用于构建私有的镜像仓库。
+
+- 安装运行docker-registry
+
+  创建仓库
+
+  ```shell
+  # 默认情况下，仓库会被创建在容器的 /var/lib/registry 目录下
+  # 启动一个Registry应用2.0版本的容器，并将5000端口绑定到本地宿主机
+  $ docker run -d -p 5000:5000 --name registry registry:2
+  
+  # 指令路径
+  $ docker run -d -p 5000:5000 -v ~/Desktop/registry:/var/lib/registry registry registry:2
+  $ docker run -d -p 5000:5000 -v E:/registry:/var/lib/registry registry:latest
+  ```
+
+  检查是否创建成功
+
+  ```
+  windows:
+  shell中输入：ipconfig。找到Ethernet adapter Ethernet下面的IPV4 Address,得到：
+  192.168.0.105
+  在浏览器中输入192.168.0.105:5000/v2/，得到{}就是对的。
+  
+  linux:
+  terminal中输入：ip address。找到enx..下的inet得到
+  192.168.0.106
+  在浏览器中输入192.168.0.106:5000/v2/，得到{}就是对的
+  ```
+
+  查看本机已有镜像
+
+  ```
+  $ docker image ls
+  REPOSITORY   TAG       IMAGE ID       CREATED        SIZE
+  registry     2         b8604a3fe854   31 hours ago   26.2MB
+  ubuntu       20.04     ba6acccedd29   4 weeks ago    72.8MB
+  ```
+
+  查看私有仓库地址
+
+  ```
+  $ docker info
+  得到一个Insecure Registries:
+  127.0.0.0/8
+  
+  但其实是127.0.0.1
+  ```
+
+  标记一个想要上传私有仓库的镜像.
+
+  格式为 `docker tag IMAGE[:TAG] [REGISTRY_HOST[:REGISTRY_PORT]/]REPOSITORY[:TAG]`。
+
+  ```
+  $ docker tag ubuntu:20.04 127.0.0.1:5000/ubuntu:latest
+  ```
+
+  使用`docker push `上传标记的镜像
+
+  ```
+  $ docker push 127.0.0.1:5000/ubuntu:latest
+  ```
+
+  用`curl`查看仓库中的镜像
+
+  ```
+  $ curl 127.0.0.1:5000/v2/_catalog
+  Content           : {"repositories":["ubuntu"]}
+  ```
+
+  先删除已有镜像，再尝试从私有仓库中下载这个镜像
+
+  ```
+  $ docker image rm 127.0.0.1:5000/ubuntu:latest
+  
+  $ docker pull 127.0.0.1:5000/ubuntu:latest
+  ```
+
+  
+
+
 
