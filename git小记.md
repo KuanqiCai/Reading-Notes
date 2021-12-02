@@ -59,6 +59,7 @@ githubt官方文档：https://docs.github.com/cn
    
    //pull those changes
    
+   //origin就是一个名字，它是在你clone一个托管在Github上代码库时，git为你默认创建的指向这个远程代码库的标签，
    $ git pull origin main 
    
    // or optionally, 'git pull origin master --allow-unrelated-histories' if you have initialized repo in github and also committed locally
