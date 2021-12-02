@@ -734,5 +734,64 @@ Docker 官方维护的一个公共仓库 [Docker Hub](https://hub.docker.com)，
 
   
 
+# Docker应用
+
+## #、使用SSH从GITHUB上下载代码
+
+注意，如果用的是id_e25519，需要将下面的id_rsa全部改成id_e25519
+
+- 在Dockerfile中
+
+  ```dockerfile
+  # 从shell中读取ssh值
+  ARG ssh_prv_key
+  
+  # Authorize SSH Host
+  RUN mkdir -p /root/.ssh && \
+      chmod 0700 /root/.ssh && \
+      ssh-keyscan gitlab.lrz.de > /root/.ssh/known_hosts
+  
+  # Add the keys and set permissions
+  RUN echo "$ssh_prv_key" > /root/.ssh/id_rsa && \
+      chmod 600 /root/.ssh/id_rsa
+      
+  # clone your git using SSH connection
+  WORKDIR /home
+  RUN git clone git@gitlab.lrz.de:ge23ged/autonomous-systems-2021-group-terminus.git
+  RUN cd autonomous-systems-2021-group-terminus/Lab4/src &&\
+      git submodule init &&\
+      git submodule update
+  
+  # Remove SSH keys from docker
+  RUN rm -rf /root/.ssh/
+  
+  ```
+
+- 在build Dockerfile时，shell中要加--build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+
+  ```shell
+  sudo docker build -t lab_4_controller_pkg_terminus . --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)" --no-cache 
+  ```
+
+  运行该镜像
+
+  ```shell
+  sudo docker run -it -d --network=host --name lab_4_controller_pkg_terminus lab_4_controller_pkg_terminus:latest bash
+  ```
+
+  打开容器
+
+  ```shell
+  sudo docker start lab_4_controller_pkg_terminus
+  ```
+
+  进入交互
+
+  ```shell
+  sudo docker exec -it lab_4_controller_pkg_terminus bash
+  ```
+
+  
+
 
 
