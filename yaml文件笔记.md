@@ -1,3 +1,5 @@
+[yaml官网](https://yaml.org/)
+
 # 基本语法：
 
 - 大小写铭感
@@ -18,7 +20,7 @@
 ```yaml
 # 1.用冒号结构表示，冒号后加一空格
 key: value
-# 2.
+# 2.映射的形式
 key:{key1: value1,key2: value2,..}
 # 3.
 key:

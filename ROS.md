@@ -1,5 +1,31 @@
 # ROS基础
 
+## #、catkin的一些操作
+
+```shell
+catkin build -DPYTHON_EXECUTABLE=/usr/bin/python3
+#会将工作空间里所有的包同时单独（isolated）编译，编译过程互不影响
+#首次build要加后面一行
+
+catkin init
+#可以初始化workspace，而且初始化后，在workspace下的任何一个子目录里使用catkin工具，都相当于在workspace文件夹下使用，它会自动感知workspace。
+
+catkin config
+#可以查看workspace的结构和参数。
+
+catkin config --merge-devel
+#可以使得每个包编译得到的devel产物都在同一个devel文件夹里，当然也可以用
+
+catkin config --isolate-devel
+#使得各个包的devel分开。
+
+catkin list
+#可以查看工作空间中有哪些ros包。
+
+catkin clean
+#相当于rm -r ${build} ${devel}，但是避免了rm -r这种危险的操作！
+```
+
 ## 一、创建工作空间Workspace
 
 ```shell
@@ -1676,11 +1702,103 @@ int main(int argc, char** argv){
 
   
 
-  
+## #、读取YAML文件
 
-  
+- **在包内创建一个YAML文件**
 
-  
+  包的结构
 
+  ```
+  /include          : Cpp headers
+  /src              : Cpp code
+  /scripts          : Python code
+  /config           : YAML files
+  /launch           : Launch files
+  CMakeLists.txt
+  package.xml
+  ```
+
+- **编写yaml文件**
+
+  ```yaml
+  text: "Hello"
+  number_int: 42 
+  number_float: 21.3
+  enable_boolean: true
+  list_of_elements:
+      - 1
+      - 2
+      - 3
+      - 4
+  dictionary: {
+      another_text: "World",
+      another_number: 12,
+  }
+  ```
+
+- **从yaml文件下载参数params到Parameter Server**
+
+  - 用命令行`rosparam load my_params.yaml`下载
+
+    可以用`rosparam list`查看parameter里已有的键(属性)
+
+    可以用`rosparam dump dump.yaml`将Parameter Server里的键值对反向下载到yaml文件里
+
+  - 用launchfile来下载
+
+    ```xml
+    <launch>
+        <rosparam file="$(find my_custom_package)/config/my_params.yaml" />
+    </launch>
+    
+    #最后结果类似
+     * /list_of_anything: [1, 2, 3, 4]
+     * /number_float: 21.3
+     * /number_int: 42
+    ```
+    
+    - 可以直接用find命令来找到相应包下的那个yaml文件
+    
+  - 如果想要给所有的参数增加一个prefix前缀
+    
+    ```xml
+    <launch>
+        <group ns="custom_prefix">
+            <rosparam file="$(find my_custom_package)/config/my_params.yaml" />
+        </group>
+    </launch>
+    
+    #最后结果类似
+     * /custom_prefix/list_of_anything: [1, 2, 3, 4]
+     * /custom_prefix/number_float: 21.3
+     * /custom_prefix/number_int: 42
+    ```
+  
+- **在代码中使用这些参数**
+  
+  比如要用上面例子中的`* /custom_prefix/number_float: 21.3`这一参数
+  
+  - python:
+  
+    `rospy.get_param("/custom_prefix/number_float")`
+  
+  - C++:
+  
+    ```
+    ros::NodeHandle nh;
+    double number_to_get;
+    nh.getParam("/custom_prefix/number_float", number_to_get);
+    ```
+  
+    
+  
+    
+  
+  
+  
+  
+  
+  
+  
   
 
