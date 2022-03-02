@@ -1,6 +1,9 @@
 githubt官方文档：https://docs.github.com/cn
 - 配置Git
-   - ~$ git config --global user.name "Yang"
+   
+   这里name和email不一致，会使得github小绿点不更新
+   
+   - ~$ git config --global user.name "Fernweh-yang"
    - ~$ git config --global user.email "512127058@qq.com"
    - ~$ git config --list   //查看配置信息
    
