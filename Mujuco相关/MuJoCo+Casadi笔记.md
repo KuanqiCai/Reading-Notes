@@ -182,7 +182,7 @@ XML主要由3部分组成
 
 - sim.step()来进行步进式仿真（执行一次，计算一次）
 
-  有三种[step()](https://mujoco.readthedocs.io/en/latest/APIreference.html?highlight=mj_step#mj-step)
+  有三种[step()](https://mujo co.readthedocs.io/en/latest/APIreference.html?highlight=mj_step#mj-step)
 
   ```python
   sim=muijoco_py.MjSim(model)
