@@ -1,16 +1,43 @@
 http://c.biancheng.net/view/7112.html
 
-# make
+# g++
+
+- g++是c++的一个编译器
+
+- 最简单的例子：
+
+  命令行输入：
+
+  ```
+  g++ helloSlam.cpp
+  ```
+
+  会生成一个a.out的可执行文件：
+
+  ```
+  # 命令行输入如下指令来运行
+  ./a.out 
+  ```
+
+- 任意一个c++程序都可以用g++来编译，但任意一个项目都可能含有十几个类，各类之间还存在复杂的依赖关系。这些类一部分要编译为可执行文件，一部分编译为库文件。
+
+  所以如果单用g++，整个编译过程会异常繁琐。
+
+  由此产生了方便的makefile以及更方便的cmake
+
+- - 
+
+# Makefile文件
+
+## make
 
 - 功能：读取Makefile,按里面所写的内容，将文件进行编译。
 - make命令本身不知道如何做出该文件，需要知道一系列规则
 - 编译compile：代码从高级语言 -> 汇编语言。 构建：编译的顺序安排(即上述的规则)
 - 这一系列规则写在Makefile文件里。
 - 使用：
-   - `make <>`编译
-   - `make clean`删除.o文件
-
-# Makefile文件
+  - `make <>`编译
+  - `make clean`删除.o文件
 
 ## Makefile概述
 - Makefile文件由一系列描述整个工程的编译和链接的规则所构成。   
@@ -215,5 +242,115 @@ test:$(OBJ)							#引用变量，$(OBJ)
 
 ```makefile
 .PHONY:clean
+```
+
+
+
+# cmake
+
+## 作用
+
+- 可以用cmake命令生成一个makefile文件。然后用make命令根据这个makefile文件的内容来编译整个工程。
+
+## 流程
+
+### 1. 编写代码 
+
+并不是所有的代码都会编译为可执行文件
+
+- 可执行程序：
+
+  只有带有main函数的文件才会生成可执行程序。
+
+  如：helloSlam.cpp
+
+  ```c++
+  #include "libHelloSlam.h"
+  
+  int main(int argc, char **argv){
+      printHello();
+      return 0;
+  }
+  ```
+
+- 库：
+
+  供其他程序调用用的代码。
+
+  如：libHelloSlam.cpp
+
+  ```c++
+  #include <iostream>
+  using namespace std;
+  
+  void printHello(){
+      cout << "Hello Slam" << endl;
+  }
+  ```
+
+  编译后会成为.a或.so文件。
+
+- 头文件：
+
+  库文件.a/.so是编译好的二进制文件，为了使用这个库，我们需要提供头文件。
+
+  对于库的使用者，只要拿到了头文件和库文件就可以调用这个库。
+
+  如：libHelloSlamh
+
+  ```c++
+  #ifndef LIBHELLOSLAM_H_
+  #define LIBHELLOSLAM_H_
+  //上面的宏定义是为了防止重复引用这个头文件而引起的重定义错误
+  
+  void printHello()
+  
+  #endif
+  ```
+
+### 2. 创建CMakeLists.txt
+
+```cmake
+# 声明已要求的cmake最低版本
+cmake_minimum_required(VERSION 2.8)
+
+# 声明一个cmake工程
+project(HelloSLAM)
+
+# 添加一个静态库
+# 后缀名为.a
+# 每次调用都会生成一个副本
+add_library(hello libHelloSlam.cpp)
+
+# 添加一个共享库
+# 后缀名为.so
+# 只有一个副本，更省空间
+add_library(hello_shared SHARED libHelloSlam.cpp)
+
+# 添加一个可执行程序
+# 语法：add_executable(程序名 源代码文件)
+add_executable(helloSlam helloSlam.cpp)
+
+# 令helloSlam程序可以使用hello_shared库中的代码
+target_link_libraries(helloSlam hello_shared)
+```
+
+- 我们对项目的编译管理工作，从输入一堆g++命令，转为了管理若干个比较直观的CMakeLists.txt文件。
+- 每增加一个可执行文件，只要多加一行add_executable()
+- cmake会帮我们自动解决代码的依赖关系
+
+### 3. 创建makefile并make
+
+在终端输入
+
+```
+# cmake命令会自动生成一堆中间文件
+# 创建一个build子文件夹用来放置这些中间文件
+# 这样要push代码的话，直接把build文件夹删了就行。
+mkdir build			
+cd build 
+# 进入buid文件夹后，要编译的内容在上面一个目录
+cmake ..
+make
 ```
 
