@@ -1,6 +1,6 @@
 # ROS基础
 
-## #、catkin的一些操作
+## *catkin的一些操作
 
 - 编译的抽象程度,高到低
   - catkin: workspace(Package)会在工作空间中单独的构建每个包
@@ -64,44 +64,6 @@ $ echo $ROS_PACKAGE_PATH
   # 然后在该文件中末尾加入：
   source ~/Destktop/as_ws/devel/setup.bash
   ```
-
-## #、ROS文件系统Filesystem Concepts
-
-- **Packages**: Packages are the software organization unit of ROS code. Each package can contain libraries, executables可执行文件, scripts脚本, or other artifacts代码生成物.
-
-- **Manifests**: A manifest is a description of a *package*. It serves to define dependencies between *packages* and to capture meta information about the *package* like version, maintainer, license, etc...
-
-### Filesystem Tools
-注意：所有的ros工具只会找到在[ROS_PACKAGE_PATH](http://wiki.ros.org/ROS/EnvironmentVariables#ROS_PACKAGE_PATH)中列出的ros包。可用`$ echo $ROS_PACKAGE_PATH`查看
-
-- **rospack**
-
-  用于找packages的信息。
-
-  用法：`$ rospack find [package_name]`
-
-  例子：`$ rospack find roscpp`
-
-- **roscd**
-
-  rosbash套件的一部分，用于前往packages的目录directory。
-
-    用法：`$ roscd <package>[/subdir]`
-
-    例子：`$ roscd roscpp`  前往roscpp包所在的目录，可用`pwd`查看当前工作目录。
-
-    ​			`$ roscd roscpp/cmake  `前往roscpp包所在的目录中cmake子目录。
-
-  - `roscd log`如果运行过ros程序后，可以查看日志文件
-
-- **rosls**
-
-  相当于ls，直接显式包里的内容
-
-  ​	用法：`$ rosls <package-or-stack>[/subdir]`
-
-  ​	例子：`rosls roscpp_tutorials`
-
 ## 二、创建包Package
 
 - 一个catkin package必须具备：
@@ -228,19 +190,58 @@ $ echo $ROS_PACKAGE_PATH
 
     例子：`$ catkin_make --source my_src`
 
-  
+  ## $$ROS文件系统Filesystem Concepts
 
- ## #、节点node
+- **Packages**: Packages are the software organization unit of ROS code. Each package can contain libraries, executables可执行文件, scripts脚本, or other artifacts代码生成物.
+
+- **Manifests**: A manifest is a description of a *package*. It serves to define dependencies between *packages* and to capture meta information about the *package* like version, maintainer, license, etc...
+
+### Filesystem Tools
+注意：所有的ros工具只会找到在[ROS_PACKAGE_PATH](http://wiki.ros.org/ROS/EnvironmentVariables#ROS_PACKAGE_PATH)中列出的ros包。可用`$ echo $ROS_PACKAGE_PATH`查看
+
+- **rospack**
+
+  用于找packages的信息。
+
+  用法：`$ rospack find [package_name]`
+
+  例子：`$ rospack find roscpp`
+
+- **roscd**
+
+  rosbash套件的一部分，用于前往packages的目录directory。
+
+    用法：`$ roscd <package>[/subdir]`
+
+    例子：`$ roscd roscpp`  前往roscpp包所在的目录，可用`pwd`查看当前工作目录。
+
+    			`$ roscd roscpp/cmake  `前往roscpp包所在的目录中cmake子目录。
+
+  - `roscd log`如果运行过ros程序后，可以查看日志文件
+
+- **rosls**
+
+  相当于ls，直接显式包里的内容
+
+  	用法：`$ rosls <package-or-stack>[/subdir]`
+  	
+  	例子：`rosls roscpp_tutorials`
+
+ ## $$节点node和节点管理器master
+
+一个包里可以有多个可执行文件，可执行文件在运行之后就成了一个进程process，这个进程在ROS中就叫做节点。
+
+通常一个node负责机器人的某一个单独的功能。
 
 - 一些概念
-  - [Nodes](http://wiki.ros.org/Nodes): A node is an executable that uses ROS to communicate with other nodes.
+  - [Nodes](http://wiki.ros.org/Nodes): A node is an executable process that uses ROS to communicate with other nodes.
   - [Messages](http://wiki.ros.org/Messages): ROS data type used when subscribing or publishing to a topic.
   - [Topics](http://wiki.ros.org/Topics): Nodes can *publish* messages to a topic as well as *subscribe* to a topic to receive messages.
   - [Master](http://wiki.ros.org/Master): Name service for ROS (i.e. helps nodes find each other)
   - [rosout](http://wiki.ros.org/rosout): ROS equivalent of stdout/stderr
   - [roscore](http://wiki.ros.org/roscore): Master(provides name service for ROS) + rosout + parameter server 
   
-- `roscore`启动节点管理器
+- `roscore`启动节点管理器**master**
   
   - 使用ROS第一步就是输入`roscore`
   - 用于节点管理，是ros节点运行的前提。
@@ -249,21 +250,37 @@ $ echo $ROS_PACKAGE_PATH
     - rosmaster(节点管理器)
     - rosout(log输出管理)
   
-- `rosnode`
+- `rosnode`命令详细列表
 
   - `rosnode list`查看当前运行着的节点
 
     这时候返回：`/rosout`
 
   - `rosnode info /rosout`返回特定节点的信息
+  
+  - `rosnode kill /rosout` 结束某个node
+  
+  - `rosnode ping`测试连接节点
+  
+  - `rosnode machine`列出在特定机器或列表机器上运行的节点
+  
+  - `rosnode cleanup`清除不可到达节点的注册信息
 
 ### 用`rosrun`启动单个节点
 
-  - `rosrun [package_name] [node_name]`直接运行某一个包下的某节点
+  - 命令：`rosrun [--prefix cmd] [--debug] package_name node_name [ARGS]`
 
-    - 例子：`$ rosrun turtlesim turtlesim_node`
+    会自动寻找package下的名为EXECUTABLE的可执行程序，并将可选参数ARGS传入。
 
-      ​			`$ rosrun turtlesim turtlesim_node __name:=my_turtle`给节点单独命名
+    - 例子：
+    
+      `$ rosrun turtlesim turtlesim_node`
+      
+      `$ rosrun turtlesim turtlesim_node __name:=my_turtle`给节点单独命名
+      
+    - 例子：在GDB(程序调试器)下运行ros程序
+    
+      `$ rosrun --prefix 'gdb -ex run --args' pkg_name node_name`
 
 ### 用roslaunch启动多个节点
 
@@ -306,6 +323,22 @@ $ echo $ROS_PACKAGE_PATH
 7. 在新终端给他们提供命令：`$ rostopic pub /turtlesim1/turtle1/cmd_vel geometry_msgs/Twist -r 1 -- '[2.0, 0.0, 0.0]' '[0.0, 0.0, -1.8]'`
 
 8. 使用`$ rqt_graph`查看节点关系.
+
+launch文件包含的标签
+
+```xml
+<launch>    	<!--根标签-->
+<node>    		<!--需要启动的node及其参数-->
+<include>    	<!--包含其他launch-->
+<machine>    	<!--指定运行的机器-->
+<env-loader>    <!--设置环境变量-->
+<param>    		<!--定义参数到参数服务器-->
+<rosparam>    	<!--启动yaml文件参数到参数服务器-->
+<arg>    		<!--定义变量-->
+<remap>    		<!--设定参数映射-->
+<group>   		<!--设定命名空间-->
+</launch>    	<!--根标签-->
+```
 
 ### 转换roslaunch和rosrun
 
@@ -356,7 +389,45 @@ rosrun tf static_transform_publisher 1 0 0 0 0 0 1 world av1 100 __name:=av1broa
 
    
 
-## #、话题topic
+## $$ROS通信框架
+
+### 0)不同通信框架的对比
+
+ROS的通信方式有以下四种：
+
+- Topic 主题
+- Service 服务
+- Parameter Service 参数服务器
+- Actionlib 动作库
+
+#### Topic vs Services
+
+|   名称   |              Topic               |              Service              |
+| :------: | :------------------------------: | :-------------------------------: |
+| 通信方式 |             异步通信             |             同步通信              |
+| 实现原理 |              TCP/IP              |              TCP/IP               |
+| 通信模型 |        Publish-Subscribe         |           Request-Reply           |
+| 映射关系 |    Publish-Subscribe(多对多)     |      Request-Reply（多对一）      |
+|   特点   | 接受者收到数据会回调（Callback） | 远程过程调用（RPC）服务器端的服务 |
+| 应用场景 |       连续、高频的数据发布       |     偶尔使用的功能/具体的任务     |
+|   举例   |     激光雷达、里程计发布数据     |    开关传感器、拍照、逆解计算     |
+
+### 1)话题Topic
+
+对于实时性、周期性的消息，使用topic来传输是最佳的选择。topic是一种点对点的单向通信方式，这里的“点”指的是node。
+
+topic要经历下面几步的初始化过程：
+
+1. publisher节点和subscriber节点都要到节点管理器master进行注册
+2. publisher会发布topic，subscriber在master的指挥下会订阅该topic
+
+回调callback：Subscriber接收消息会进行处理。即提前定义好了一个处理函数(代码中)
+
+如图所示整个过程都是单向的：node1、node2两者都是各司其责，不存在协同工作，我们称这样的通信方式是**异步**的。
+
+topic可以同时有多个subscribers，也可以有多个publishers。如/rosout,/tf等。
+
+​	![](https://sychaichangkun.gitbooks.io/ros-tutorial-icourse163/content/pics/topic-stru.jpg)
 
 - 小案例
 
@@ -364,7 +435,7 @@ rosrun tf static_transform_publisher 1 0 0 0 0 0 1 world av1 100 __name:=av1broa
   - 新终端运行节点`$ rosrun turtlesim turtlesim_node`
   - 新终端运行节点`$ rosrun turtlesim turtle_teleop_key`
 
-- 话题topics：
+- 话题topics的相关命令：
 
   上述案例中2个节点`turtlesim_node`和`turtle_teleop_key`就是通过话题topic来实施通信的：
 
@@ -382,17 +453,27 @@ rosrun tf static_transform_publisher 1 0 0 0 0 0 1 world av1 100 __name:=av1broa
 
     用于获取ros话题的消息。可用`$ rostopic -h`查看帮助文档
 
-    - `rostopic echo /topic`
+    - `rostopic echo topic_name`：显示某个topic的内容
 
       1.新终端输入`rostopic echo /turtle1/cmd_vel` 
 
       2.再返回`turtle_teleop_key`的终端进行控制。`rostopic`终端就会出现传输给话题的消息。
 
-    - `rostopic list /topic`
+    - `rostopic list `列出当前所有的topic
 
-      返回所有当前订阅和发布的话题的列表，可用`$ rostopic list -h`查看所需参数
+    - `rostopic info topic_name`显示某个topic的属性信息
+    
+    - `rostopic pub topic_name ` 向某个topic发布内容
+    
+    - `rostopic bw topic_name`查看某个topic的贷款
+    
+    - `rostopic hz topic_name`查看某个topic的频率
+    
+    - `rostopic find topic_type` 查看某个类型的topic
+    
+    - `rostopic type topic_name`查看某个topic的类型`msg` 
 
-- ROS Messages消息
+- ROS Messages消息，即下面的msg
 
   各节点通信发送的都是相同类型的message。一个话题的类型是由发布者Publisher的消息message类型决定的
 
@@ -426,88 +507,416 @@ rosrun tf static_transform_publisher 1 0 0 0 0 0 1 world av1 100 __name:=av1broa
 
     用于绘制发布在话题上的scrolling time plot滚动时间图。例`rosrun rqt_plot rqt_plot`
 
-## #、ROS Services和Parameters
+### **ROS msg和srv
 
-- Services:
+#### 1.msg,srv简介
 
-  服务是另一种节点通信方式，允许节点发送request请求和接收响应。
+- **msg**: 
 
-- `Rosservis`
+  topics有严格的格式要求，这种数据格式就是message(msg)。所以msg即topic内容的数据类型，也称之为topic的格式标准。
 
-  提供了很多命令，能被用于ROS 的 client/service 框架
+  msg files是描述the fields of a ROS message的简单文本文件。他们以不同的语言来生成messages的源代码。储存在msg directory目录。
 
-  ```
-  rosservice list         print information about active services
-  rosservice call         call the service with the provided args
-  rosservice type         print service type
-  rosservice find         find services by service type
-  rosservice uri          print service ROSRPC uri
-  ```
+  - msg由一行行field type字段类型和field name字段名称组成，可用的字段类型:
 
-  - `$ rosservice list`
+    ```
+    -int8, int16, int32, int64 (plus uint*)
+    -float32, float64
+    -string
+    -time, duration
+    -other msg files
+    -variable-length array[] and fixed-length array[C]
+    ```
 
-    列出节点所用的所有服务
+  - msg还有一个特殊的类型header:包含一个timestamp时间戳和coordinate frame information坐标系信息。
 
-  - `$ rosservice type [service]`
+  - 一个包含一个Header,一个string primitive,2个 other msg 文件
 
-    显式某一个服务的类型，比如一个/clear 服务：`$ rosservice type /spawn`
+    ```
+    string primitive  Header header
+    string child_frame_id
+    geometry_msgs/PoseWithCovariance pose
+    geometry_msgs/TwistWithCovariance twist
+    ```
 
-    - 得到turtlesim/Spawn后可用`rossrv show turtlesim/Spawn`可以查看改类型的具体定义
-
-      也可直接：`$ rosservice type /spawn | rossrv show`
-
-  - `$ rosservice call [service] [args]`
-
-    调用某个服务，比如调用/clear服务:`$ rosservice call /clear`
-
-    ​						   比如调用/spawn服务：`$ rosservice call /spawn 2 2 0.2 ""`
-
-- `Rosparam`
-
-  用于存储和manipulate操作Parameter Server参数服务器的数据。
-
-  ```
-  rosparam set            set parameter
-  rosparam get            get parameter
-  rosparam load           load parameters from file
-  rosparam dump           dump parameters to file
-  rosparam delete         delete parameter
-  rosparam list           list parameter names
-  ```
-
-  - `$ rosparam list`
-
-    查看所有节点所有的参数
     
-  - `rosparam set [param_name]`和`rosparam get [param_name]`
 
-    - 设置背景rgb中r的值为150.
+- **srv**:
 
-      `$ rosparam set /turtlesim/background_r 150`
+  区别于topic传输的数据格式由msg描述，service的数据格式由srv文件来描述。
 
-      使参数变化起效果
+  srv files描述了一个服务，包含2个部分：request 和 response。储存在srv directory。
+  
+  - src也由一行行field type 和 field name组成。request和response由"---"隔开。
+  
+    ```
+    int64 A
+    int64 B
+    ---
+    int64 Sum
+    ```
+  
+    A,B是request,Sum是response
 
-      `$ rosservice call /ckear`
+#### 2.使用msg
 
-    - 得到某一个参数的值，比如rgb中的g值
+- 一些[常见msg](https://sychaichangkun.gitbooks.io/ros-tutorial-icourse163/content/chapter3/3.5.html)
 
-      `$ rosparam get /turtlesim/background_g `
+- 相关命令：
 
-      得到参数服务器中所有参数的值
+  - `rosmsg list`: 列出系统上所有的msg
 
-      `$ rosparam get /`
+  - `rosmsg show msg_name`： 显示某个msg的内容
 
-  - `rosparam dump [file_name] [namespace]`和`rosparam load [file_name] [namespace]`
+    - 例子：`$ rosmsg show beginner_tutorials/Num `
 
-    - 将所有的参数存入params,yaml文件
+      如果忘了包名：`$ rosmsg show Num`
 
-      `$ rosparam dump params.yaml`
+- 创建msg的一个例子
+  
+  **1.创建一个msg文件**
+	
+	```
+	$ roscd beginner_tutorials
+	$ mkdir msg
+	$ echo "int64 num" > msg/Num.msg	#输出消息到一个新的文件
+  ```
+  
+   **2.还可以`$ rosed beginner_tutorials Num.msg`,然后在里面输入**
+  
+    ```
+    string first_name
+    string last_name
+    uint8 age
+    uint32 score
+    ```
+  
+  **3.确保能将msg文件转为c++，python或其他语言**
+  
+  **3.1**：用`rosed beginner_tutorials package.xml`打开配置文件package.xml，加入如下两行
+  
+  ```xml
+  <!--在build time我们需要message_generation-->
+  <build_depend>message_generation</build_depend>
+  <!--在run time我们需要message_runtime-->
+  <exec_depend>message_runtime</exec_depend>
+  ```
+  
+  **3.2**：用`rosed beginner_tutorials CMakeLists.txt`打开编译文件CMakeLists.tx,
+  	(1)将message_generation依赖加入find_package。
+  
+  ```
+  # Do not just add this to your CMakeLists.txt, modify the existing text to add message_generation before the closing parenthesis
+  find_package(catkin REQUIRED COMPONENTS
+     roscpp
+     rospy
+     std_msgs
+     message_generation
+  )
+  ```
+  
+  ​	(2)将message_runtime依赖加入catkin_package。
+  
+  ```
+  catkin_package(
+    ...
+    CATKIN_DEPENDS message_runtime ...
+    ...)
+  ```
+  
+  ​	(3)修改add_message_files为：
+  
+  ```
+  /*通过手动添加.msg文件，确保CMake在我们添加了其他.msg文件后会重新配置项目*/
+  add_message_files(
+    FILES
+    Num.msg
+  )
+  ```
+  
+  ​	(4)将generate_messages()函数投入使用，出去#
+  
+  ```
+  generate_messages(
+    DEPENDENCIES
+    std_msgs
+  )
+  ```
 
-    - 将参数导入一个新的命名空间`copy_turtle`
+#### 3.使用srv
 
-      `$ rosparam load params.yaml copy_turtle`
+一些[常见srv](https://sychaichangkun.gitbooks.io/ros-tutorial-icourse163/content/chapter4/4.5.html)
 
-## #、调试(rqt_console)
+- 相关的命令：
+
+  - `$ rossrv show <service type>`：显示某一个服务描述
+
+    - 例：`$ rossrv show beginner_tutorials/AddTwoInts````
+  - `rossrv list`：列出所有的服务
+  - `rossrv md5`：显示服务md5sum
+  - `rossrv package`：列出包中的服务
+  - `rossrv packages` ：列出包含服务的包
+
+- 创建一个srv文件
+
+  **1. 创建srv文件夹**
+
+  ```
+  $ roscd beginner_tutorials
+  $ mkdir srv
+  ```
+
+  **2. 用roscp从另一个包那复制一个srv文件来**
+
+  使用：`$ roscp [package_name] [file_to_copy_path] [copy_path]`
+
+  例子：从rospy_tutorials包那复制它的srv到当前文件夹
+
+  ```
+  $ roscp rospy_tutorials AddTwoInts.srv srv/AddTwoInts.srv
+  ```
+
+  **3. 确保srv文件能转为c++,python或其他语言**
+
+  ​	**3.1**: 编辑包内的package.xml,加入如下两行（当然在创建msg时已设置）
+
+  ```xml
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+  ```
+  
+  ​	**3.2**: 编辑包内的CMakeLists.txt（当然在创建msg时已设置）
+  ​		(1): 将message_generation依赖加入find_package。
+  
+  ```
+  # Do not just add this line to your CMakeLists.txt, modify the existing line
+  find_package(catkin REQUIRED COMPONENTS
+    roscpp
+    rospy
+    std_msgs
+    message_generation	#同时服务于msg,srv
+  )
+  ```
+  
+  ​		(2): 修改add_service_files
+  
+  ```
+  add_service_files(
+    FILES
+    AddTwoInts.srv
+  )
+  ```
+
+#### 4. 重新编译
+
+添加完msg和srv后需要重新编译
+
+```
+# 需要在工作空间里使用catkin_make
+$ roscd beginner_tutorials
+$ cd ../..
+$ catkin_make
+$ cd -
+```
+
+### 2)服务Services
+
+区别于Topic是一种单项的异步通信方式，Service通信是双向的，它不仅可以发送消息，同时还会有反馈。
+
+所以service包括两部分：1.请求方clinet。2.服务提供方Server
+
+通信机制：
+
+​	服务提供方NodeB提供一个服务接口叫/Service。请求方NodeA向服务方发送一个请求request，服务方NodeA处理后反馈给请求方一个reply。
+
+![](https://sychaichangkun.gitbooks.io/ros-tutorial-icourse163/content/pics/service_structure.png)
+
+- rosservice相关命令
+
+  - `rosservice list`：列出节点所用的所有服务
+
+  - `rosservice info`：打印服务信息
+
+  - `rosservice type [service]`：打印某一个服务的类型
+
+    比如一个/clear 服务：`$ rosservice type /spawn`。在得到turtlesim/Spawn后可用`rossrv show turtlesim/Spawn`可以查看改类型的具体定义。也可直接：`$ rosservice type /spawn | rossrv show`
+
+  - `rosservice call [service] [args]`：使用所提供的args调用服务
+
+    比如调用/clear服务:`$ rosservice call /clear`
+
+    比如调用/spawn服务：`$ rosservice call /spawn 2 2 0.2 ""`
+
+  - `rosservice args`：打印服务参数
+
+  - `rosservice find`：按服务类型查找服务
+
+  - `rosservice uri`：打印服务ROSPRC uri
+
+### 3)参数服务器parameter server
+
+参数服务器是节点存储参数的地方、用于配置参数，全局共享参数。参数服务器使用互联网传输，在节点管理器中运行，实现整个通信过程。
+
+相比于topic和service，参数服务器更加静态。它维护者一个数据字典，字典里存储着各种参数和配置。
+
+**有三种参数服务器维护方式：**
+
+1. 命令行维护
+
+   使用rosparam语句来进行操作各种命令
+
+   - `rosparam set param_key param_value`：设置参数
+
+     - 设置背景rgb中r的值为150.`$ rosparam set /turtlesim/background_r 150`
+
+   - `rosparam get param_key`：显示参数
+
+     - 比如rgb中的g值`$ rosparam get /turtlesim/background_g`
+     - 得到参数服务器中所有参数的值`$ rosparam get /`
+
+   - `rosparam load file_name`：从文件加载参数
+
+     - 将参数加载到一个新的命名空间`copy_turtle``$ rosparam load params.yaml copy_turtle`
+
+   - `rosparam dump file_name`：保存参数到文件
+
+     - 将所有的参数存入params,yaml文件`$ rosparam dump params.yaml`
+
+   - `rosparam delete`：删除参数
+
+   - `rosparam list`：列出所有参数名称
+
+   - 上面load,dump命令用到的文件是yaml文件：如
+
+     ```yaml
+     name:'Zhangsan'
+     age:20
+     gender:'M'
+     score{Chinese:80,Math:90}
+     score_history:[85,82,88,90]
+     ```
+
+2. launch文件内读写
+
+   launch文件中有很多标签，而与参数服务器相关的标签只有两个，一个是`<param>`，另一个是`<rosparam>`
+
+   - <param>： 一般只设置一个参数
+
+     ```xml
+     <param name="parking_x" type="double" value="100.0" />
+     ```
+
+     代码中需要：
+
+     ```c++
+     // launch中如果<param .../>在<node.../>中，那么这里的参数是私有参数
+     // c++代码这里，用~表示这个参数是私有参数。
+     // 从launch中读取私有参数~parking_x的值到parking_x。
+     ros::param::get("~parking_x",parking_x);
+     ```
+
+   - <rosparam>：读取一个yaml文件或多个参数
+
+     相当于用命令行维护：`rosparam load file_name`
+
+     ```xml
+     <!--Attributes:
+     *** command="load|dump|delete" (optional, default=load)
+     *** file="$(find pkg-name)/path/foo.yaml" (load or dump commands)
+     *** param="param-name"
+     *** ns="namespace" (optional)
+     -->
+     <rosparam command="load" file="$(find rosparam)/example.yaml" />
+     <rosparam command="delete" param="my/param" />
+     <rosparam param="a_list">  [1, 2, 3, 4]  </rosparam>
+     <rosparam>
+       a: 1
+       b: 2
+     </rosparam>
+     <!--Attributes:
+     *** subst_value=true|false (optional):
+     Allows use of substitution args in the YAML text.
+     下面这个标签会使用内置的$(find ...)来寻找yaml里的叫whitelist的string，并替换它的value为default
+     -->
+     <arg name="whitelist" default="[3, 2]"/>
+     <rosparam param="whitelist" subst_value="True">
+       $(arg whitelist)
+     </rosparam>
+     ```
+
+3. node源码:
+
+   利用api来对参数服务器进行操作
+
+### 4)动作库Action
+
+一些常见的[动作库](https://sychaichangkun.gitbooks.io/ros-tutorial-icourse163/content/chapter4/4.6.html)
+
+类似service通信机制，actionlib也是一种请求响应机制的通信方式，actionlib主要弥补了service通信的一个不足，就是当机器人执行一个长时间的任务时，假如利用service通信方式，那么publisher会很长时间接受不到反馈的reply，致使通信受阻。
+
+所以actionlib则可以比较适合实现长时间的通信过程，actionlib通信过程可以随时被查看过程进度，也可以终止请求，这样的一个特性，使得它在一些特别的机制中拥有很高的效率。
+
+**原理**：
+
+客户端会向服务器发送目标指令和取消动作指令,而服务器则可以给客户端发送实时的状态信息,结果信息,反馈信息等等,从而完成了service没法做到的部分.
+
+![](https://sychaichangkun.gitbooks.io/ros-tutorial-icourse163/content/pics/actionlib.png)
+
+![](https://sychaichangkun.gitbooks.io/ros-tutorial-icourse163/content/pics/action_interface.png)
+
+**Action规范**
+
+利用动作库进行请求响应，动作的内容格式应包含三个部分，目标、反馈、结果。
+
+- 目标
+
+  机器人执行一个动作，应该有明确的移动目标信息，包括一些参数的设定，方向、角度、速度等等。从而使机器人完成动作任务。
+
+- 反馈
+
+  在动作进行的过程中，应该有实时的状态信息反馈给服务器的实施者，告诉实施者动作完成的状态，可以使实施者作出准确的判断去修正命令。
+
+- 结果
+
+  当运动完成时，动作服务器把本次运动的结果数据发送给客户端，使客户端得到本次动作的全部信息，例如可能包含机器人的运动时长，最终姿势等等。
+
+- Action规范文件的后缀名是.action，内容格式如下：
+
+  ```
+  # Define the goal
+  uint32 dishwasher_id  # Specify which dishwasher we want to use
+  ---
+  # Define the result
+  uint32 total_dishes_cleaned
+  ---
+  # Define a feedback message
+  float32 percent_complete
+  ```
+
+**编译需要修改CmakeLists.txt和package.xml**
+
+- CmakeLists.txt:
+
+  ```cmake
+  find_package(catkin REQUIRED genmsg actionlib_msgs actionlib)
+  
+  add_action_files(DIRECTORY action FILES DoDishes.action) generate_messages(DEPENDENCIES actionlib_msgs)
+  
+  add_action_files(DIRECTORY action FILES Handling.action)
+  
+  generate_messages( DEPENDENCIES actionlib_msgs)
+  ```
+
+- package.xml
+
+  ```xml
+  <build_depend>actionlib </build_depend>
+  <build_depend>actionlib_msgs</build_depend>
+  <run_depend>actionlib</run_depend>
+  <run_depend>actionlib_msgs</run_depend>
+  ```
+
+## $$调试(rqt_console)
 
 - 使用`rqt_console`和`rqt_logger_level`   debug
 
@@ -543,7 +952,7 @@ rosrun tf static_transform_publisher 1 0 0 0 0 0 1 world av1 100 __name:=av1broa
 
   
 
-## #、编辑rosed
+## $$编辑rosed
 
 可以直接在一个包内直接用vim打开一个文件来编辑，而不需要具体的地址
 
@@ -555,211 +964,6 @@ rosrun tf static_transform_publisher 1 0 0 0 0 0 1 world av1 100 __name:=av1broa
 
 ​			如果不知道具体的文件名，可以按两下tab显式这个包下所有的文件名。
 
-## 四、创建ROS msg和srv
-
-### 1.msg,srv简介
-
-- **msg**: msg files是描述the fields of a ROS message的简单文本文件。他们以不同的语言来生成messages的源代码。储存在msg directory目录。
-
-  - msg由一行行field type字段类型和field name字段名称组成，可用的字段类型:
-
-    ```
-    -int8, int16, int32, int64 (plus uint*)
-    -float32, float64
-    -string
-    -time, duration
-    -other msg files
-    -variable-length array[] and fixed-length array[C]
-    ```
-
-  - msg还有一个特殊的类型header:包含一个timestamp时间戳和coordinate frame information坐标系信息。
-
-  - 一个包含一个Header,一个string primitive,2个 other msg 文件
-
-    ```
-    string primitive  Header header
-    string child_frame_id
-    geometry_msgs/PoseWithCovariance pose
-    geometry_msgs/TwistWithCovariance twist
-    ```
-
-    
-
-- **srv**: srv files描述了一个服务，包含2个部分：request 和 response。储存在srv directory。
-
-  - src也由一行行field type 和 field name组成。request和response由"---"隔开。
-
-    ```
-    int64 A
-    int64 B
-    ---
-    int64 Sum
-    ```
-
-    A,B是request,Sum是response
-
-### 2.使用msg
-
-- Creating a Msg 
-  
-  **1.创建一个msg文件**
-	
-	```
-	$ roscd beginner_tutorials
-	$ mkdir msg
-	$ echo "int64 num" > msg/Num.msg	#输出消息到一个新的文件
-  ```
-  
-  - `rosmsg`可以用来查看已有的msg:
-  
-    - 使用：`$ rosmsg show [message type]`
-  
-    - 例子：`$ rosmsg show beginner_tutorials/Num `
-  
-      如果忘了包名：`$ rosmsg show Num`
-
-   **2.还可以`$ rosed beginner_tutorials Num.msg`,然后在里面输入**
-  
-    ```
-    string first_name
-    string last_name
-    uint8 age
-    uint32 score
-    ```
-  
-  **3.确保能将msg文件转为c++，python或其他语言**
-  
-  ​	**3.1**：用`rosed beginner_tutorials package.xml`打开配置文件package.xml，加入如下两行
-  
-  ```xml
-  <!--在build time我们需要message_generation-->
-  <build_depend>message_generation</build_depend>
-  <!--在run time我们需要message_runtime-->
-  <exec_depend>message_runtime</exec_depend>
-  ```
-  
-  ​	**3.2**：用`rosed beginner_tutorials CMakeLists.txt`打开编译文件CMakeLists.tx,
-  
-  ​		(1)将message_generation依赖加入find_package。
-  
-  ```
-  # Do not just add this to your CMakeLists.txt, modify the existing text to add message_generation before the closing parenthesis
-  find_package(catkin REQUIRED COMPONENTS
-     roscpp
-     rospy
-     std_msgs
-     message_generation
-  )
-  ```
-  
-  ​		(2)将message_runtime依赖加入catkin_package。
-  
-  ```
-  catkin_package(
-    ...
-    CATKIN_DEPENDS message_runtime ...
-    ...)
-  ```
-  
-  ​		(3)修改add_message_files为：
-  
-  ```
-  /*通过手动添加.msg文件，确保CMake在我们添加了其他.msg文件后会重新配置项目*/
-  add_message_files(
-    FILES
-    Num.msg
-  )
-  ```
-  
-  ​		(4)将generate_messages()函数投入使用，出去#
-  
-  ```
-  generate_messages(
-    DEPENDENCIES
-    std_msgs
-  )
-  ```
-
-### 3.使用srv
-
-- Creating a srv
-
-  **1. 创建srv文件夹**
-
-  ```
-  $ roscd beginner_tutorials
-  $ mkdir srv
-  ```
-
-  **2. 用roscp从另一个包那复制一个srv文件来**
-
-  使用：`$ roscp [package_name] [file_to_copy_path] [copy_path]`
-
-  例子：从rospy_tutorials包那复制它的srv到当前文件夹
-
-  ```
-  $ roscp rospy_tutorials AddTwoInts.srv srv/AddTwoInts.srv
-  ```
-
-  - 使用`rossrv`来查看当前已有的srv文件
-
-    - 使用：`$ rossrv show <service type>`
-
-    - 例子:
-
-      ```
-      $ rossrv show beginner_tutorials/AddTwoInts
-      ```
-
-      不记得包名：
-
-      ```
-      $ rossrv show AddTwoInts
-      ```
-
-  **3. 确保srv文件能转为c++,python或其他语言**
-
-  ​	**3.1**: 编辑包内的package.xml,加入如下两行（当然在创建msg时已设置）
-
-  ```xml
-  <build_depend>message_generation</build_depend>
-  <exec_depend>message_runtime</exec_depend>
-  ```
-  
-  ​	**3.2**: 编辑包内的CMakeLists.txt（当然在创建msg时已设置）
-  
-  ​		(1): 将message_generation依赖加入find_package。
-  
-  ```
-  # Do not just add this line to your CMakeLists.txt, modify the existing line
-  find_package(catkin REQUIRED COMPONENTS
-    roscpp
-    rospy
-    std_msgs
-    message_generation	#同时服务于msg,srv
-  )
-  ```
-  
-  ​		(2): 修改add_service_files
-  
-  ```
-  add_service_files(
-    FILES
-    AddTwoInts.srv
-  )
-  ```
-
-### 4. 重新编译
-
-添加完msg和srv后需要重新编译
-
-```
-# 需要在工作空间里使用catkin_make
-$ roscd beginner_tutorials
-$ cd ../..
-$ catkin_make
-$ cd -
-```
 
 ## 五、写一个简单的Publisher 和 Subscriber
 
