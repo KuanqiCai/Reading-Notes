@@ -2,6 +2,12 @@
 
 ## #、catkin的一些操作
 
+- 编译的抽象程度,高到低
+  - catkin: workspace(Package)会在工作空间中单独的构建每个包
+  - cmake: CMakeLists.txt自己写编CMakeLists.txt来自动生成makefile
+  - make: makefile通过makefile来批量的执行g++编译命令
+  - gcc/g++: .cpp->.o->可执行文件
+
 ```shell
 catkin build -DPYTHON_EXECUTABLE=/usr/bin/python3
 #会将工作空间里所有的包同时单独（isolated）编译，编译过程互不影响
@@ -234,9 +240,15 @@ $ echo $ROS_PACKAGE_PATH
   - [rosout](http://wiki.ros.org/rosout): ROS equivalent of stdout/stderr
   - [roscore](http://wiki.ros.org/roscore): Master(provides name service for ROS) + rosout + parameter server 
   
-- `roscore`
+- `roscore`启动节点管理器
+  
   - 使用ROS第一步就是输入`roscore`
-
+  - 用于节点管理，是ros节点运行的前提。
+  - roscore命令会启动3个进程，可用`ps -ef|grep ros`查看进程
+    - roscore(父进程启动后面2个)
+    - rosmaster(节点管理器)
+    - rosout(log输出管理)
+  
 - `rosnode`
 
   - `rosnode list`查看当前运行着的节点
@@ -259,7 +271,7 @@ $ echo $ROS_PACKAGE_PATH
 
 1. 回到工作空间`$ cd ~/catkin_ws`
 
-2. 将当前环境导入ROS环境`$ cd ~/catkin_ws`
+2. 将当前环境导入ROS环境`source devel/setup.bash`
 
 3. 寻找之前创建好的包`$ roscd ~/catkin_ws`
 
@@ -511,6 +523,10 @@ rosrun tf static_transform_publisher 1 0 0 0 0 0 1 world av1 100 __name:=av1broa
   #新终端
   $ rosrun rqt_logger_level rqt_logger_level
   ```
+
+  然后会出现两个window来显示报错等信息。
+
+  最后再运行要debug的节点。
 
 - logger level
 
