@@ -562,6 +562,8 @@ topic可以同时有多个subscribers，也可以有多个publishers。如/rosou
 
 - 一些[常见msg](https://sychaichangkun.gitbooks.io/ros-tutorial-icourse163/content/chapter3/3.5.html)
 
+  [ROS Message Types](http://wiki.ros.org/geometry_msgs)
+
 - 相关命令：
 
   - `rosmsg list`: 列出系统上所有的msg
