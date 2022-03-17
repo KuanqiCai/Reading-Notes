@@ -14,7 +14,7 @@
 
 - Hypothesis假设h
 
-  <img src="https://d3c33hcgiwev3.cloudfront.net/imageAssetProxy.v1/H6qTdZmYEeaagxL7xdFKxA_2f0f671110e8f7446bb2b5b2f75a8874_Screenshot-2016-10-23-20.14.58.png?expiry=1647475200000&hmac=wddnrTefSyJC5CFCVXebNWgz00ra0Ssl-idq70TOXW8" style="zoom:90%;" />
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/supervised%20learning%20model.png?raw=true)
 
   :比如对于linear Regression线性规划: 
 
