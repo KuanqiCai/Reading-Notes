@@ -8,9 +8,9 @@
 
      Given a patient with a tumor, we have to predict whether the tumor is malignant or benign
 
-## 1.Linear Regression
+## 1. Regression
 
-### 1、一元线性规划
+### （1）一元线性规划
 
 - Hypothesis假设h
 
@@ -49,7 +49,7 @@ $$
     - 太小，就会导致收敛速度太慢
     - 太大，就可能会导致错过收敛点
 
-### 2、Multivariate Linear Regression多元线性规划
+### （2）Multivariate Linear Regression多元线性规划
 
 - Hypothesis假设h
   $$
@@ -94,7 +94,7 @@ $$
   $$
   
 
-### 3、Normal Equation
+### （3）Normal Equation
 
 另一种让cost function最小化的方法。
 
@@ -128,6 +128,40 @@ $$
 
   1. 删除一些features
   2. 或使用regularization
+
+## 2. Classification
+
+- To attempt classification, one method is to use linear regression and map all predictions greater than 0.5 as a 1 and all less than 0.5 as a 0. However, this method doesn't work well because classification is not actually a linear function.
+
+### （1）Logistic Regression
+
+- Hypothesis Representation
+
+	如上所说我们可以用线性规划的方法去尝试做分类问题，但这并不是一个好方法。因为当我们知道$y\in \{0,1\}$时，$h_\theta(x)$的值大于1或者小于0时是没有意义的。所以我们可以用另一种形式的假设：
+	
+	- Logistic Function ,也叫做Sigmoid Function
+	  $$
+	  \begin{cases}
+	  g(z)=\frac{1}{1+e^{-z}}\\
+	  z=\theta^Tx
+	  \end{cases}\quad\Rightarrow\quad
+	  h_\theta(x)=g(\theta^Tx) =\frac{1}{1+e^{-\theta^Tx}}
+	  $$
+	
+	- $h_\theta(x)$给了输出y=1的概率
+	  $$
+	  h_\theta(x)=P(y=1|x;\theta)=1-P(y=0|x;\theta)
+	  $$
+	  比如$h_\theta(x)$=0.7就是当前输入x有70%的概率得到输出y=1。
+	
+- Decision Boundary决策边界
+
+  - The **decision boundary** is the line that separates the area where y = 0 and where y = 1. It is created by our hypothesis function的$\theta^Tx$
+
+  - 决策边界可以不是线性的
+
+    即我们的sigmoid function g(z)不必是现行的。比如它可以是个圆$z=\theta_0+\theta_1x_1^2+\theta_2x_2^2$
+
 
 # 二. Unsupervised Learning无监督学习
 
