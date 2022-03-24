@@ -574,7 +574,7 @@ topic可以同时有多个subscribers，也可以有多个publishers。如/rosou
 
       如果忘了包名：`$ rosmsg show Num`
 
-- 创建msg的一个例子
+- 创建我们自己的msg
   
   **1.创建一个msg文件**
 	
@@ -593,9 +593,9 @@ topic可以同时有多个subscribers，也可以有多个publishers。如/rosou
     uint32 score
     ```
   
-  **3.确保能将msg文件转为c++，python或其他语言**
+  **3.编写package.xml和CMakeList**
   
-  **3.1**：用`rosed beginner_tutorials package.xml`打开配置文件package.xml，加入如下两行
+  **3.1**：package.xml加入
   
   ```xml
   <!--在build time我们需要message_generation-->
@@ -604,46 +604,64 @@ topic可以同时有多个subscribers，也可以有多个publishers。如/rosou
   <exec_depend>message_runtime</exec_depend>
   ```
   
-  **3.2**：用`rosed beginner_tutorials CMakeLists.txt`打开编译文件CMakeLists.tx,
-  	(1)将message_generation依赖加入find_package。
+  **3.2**：CMakeLists.txt
   
-  ```
-  # Do not just add this to your CMakeLists.txt, modify the existing text to add message_generation before the closing parenthesis
+  ```cmake
+  # 查找依赖的包
   find_package(catkin REQUIRED COMPONENTS
-     roscpp
-     rospy
-     std_msgs
-     message_generation
+     roscpp	//必备
+     rospy	//必备
+     message_generation	//必备
+     std_msgs	//我们自己写的msg中用到的其他msg
   )
-  ```
   
-  ​	(2)将message_runtime依赖加入catkin_package。
-  
-  ```
-  catkin_package(
-    ...
-    CATKIN_DEPENDS message_runtime ...
-    ...)
-  ```
-  
-  ​	(3)修改add_message_files为：
-  
-  ```
-  /*通过手动添加.msg文件，确保CMake在我们添加了其他.msg文件后会重新配置项目*/
+  # 指定我们的msg文件
   add_message_files(
     FILES
     Num.msg
   )
-  ```
   
-  ​	(4)将generate_messages()函数投入使用，出去#
-  
-  ```
+  # 指定我们的msg用到的依赖项
   generate_messages(
     DEPENDENCIES
     std_msgs
   )
+  
+  # 设置运行依赖
+  catkin_package(
+   ...
+    CATKIN_DEPENDS message_runtime ...
+   ...)
   ```
+  
+- 在a_package中引用b_package里自定义的my_message.msg
+
+  1. 首先在a_package的CMakeLists.txt文件中的find_package部分添加b_package:
+
+     ```cmake
+     find_package(catkin REQUIRED COMPONENTS
+       roscpp
+       rospy
+       std_msgs
+       b_package  #添加这一条
+     )
+     ```
+
+  2. 然后在package.xml文件中添加以下代码,注意需要根据实际情况按相应的格式配置:
+
+     ```xml
+     <build_depend>b_package</build_depend>
+     <build_export_depend>b_package</build_export_depend>
+     <exec_depend>b_package</exec_depend>
+     ```
+
+  3. c++代码中
+
+     ```c++
+     #include <ros/ros.h>
+     // b_packages::Test消息类型
+     #include <b_packages/Test.h>
+     ```
 
 #### 3.使用srv
 

@@ -388,7 +388,7 @@ Dockerfile 是一个文本文件，其内包含了一条条的 **指令(Instruct
     $ docker build http://server/context.tar.gz
     ```
 
-    - 如果所给出的 URL 不是个 Git repo，而是个 `tar` 压缩包，那么 Docker 引擎会下载这个包，并自动解压缩，以其作为上下文，开始构建。
+    - 如果所给出的 URL 不是个 Git repo，而是个 `tar` 压缩包，那么 Docker 引擎会下载这个包，并自动解压缩，以其作为上下文，开始构建。do
 
   - 从标准输入中读取 Dockerfile 进行构建
 
