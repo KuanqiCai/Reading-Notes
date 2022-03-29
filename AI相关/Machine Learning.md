@@ -24,6 +24,8 @@ $$
 
 - cost function:
 
+  解决如何确定$\theta$的问题。
+  
   We can measure the accuracy of our hypothesis function by using a **cost function**
   $$
   J(\theta_0,\theta_1)=\frac{1}{2m}\sum_{i=1}^m(\hat{y}_i-y_i)^2=\frac{1}{2m}\sum_{i=1}^m(h_\theta(x_i)-y_i)^2\tag{2}
@@ -160,7 +162,58 @@ $$
 
   - 决策边界可以不是线性的
 
-    即我们的sigmoid function g(z)不必是现行的。比如它可以是个圆$z=\theta_0+\theta_1x_1^2+\theta_2x_2^2$
+    即我们的sigmoid function g(z)不必是线性的。比如它可以是个圆$z=\theta_0+\theta_1x_1^2+\theta_2x_2^2$
+  
+- Cost function
+
+  我们不能使用和Linear regression一样的cost function，因为这会导致我们的cost function是non convex的，即函数的图像不是先单降后单升的凸型而是有很多局部最小的波浪形wavy。
+
+  Logistic Regression为了得到convex function需要用下面这样的cost function:
+  $$
+  \begin{aligned}
+  &J(\theta)=\frac{1}{m}\sum_{i=1}^mCost(h_\theta(x^{(i)}),y^{(i)})\\
+  &Cost(h_\theta(x),y)=-log(h_\theta(x))\quad \quad &if\ y=1\\
+  &Cost(h_\theta(x),y)=-log(1-h_\theta(x))\quad \quad &if\ y=0
+  \end{aligned}
+  $$
+  自己画一下$h_\theta \in[0,1]$的Cost图像可发现：
+
+  1. 如果正确解y=1，那么当$h_\theta$也为1时cost function将为0。当$h_\theta$接近0时cost function将趋于无穷大。
+  2. 如果正确解y=0，那么当$h_\theta$也为0时cost function将为0。当$h_\theta$接近1时cost function将趋于无穷大。
+
+  由此使得我们的cost function是convex function了(一个u型的函数)
+
+  - 上面的方程可以合并为
+    $$
+    \begin{aligned}
+    &Cost(h_\theta(x),y)=-ylog(h_\theta(x))-(1-y)log(1-h_\theta(x))\\
+    &J(\theta)=\frac{1}{m}\sum_{i=1}^m[y^{(i)}log(h_\theta(x^{(i)}))+(1-y^{(i)})log(1-h_\theta(x^{i}))]
+    \end{aligned}
+    $$
+    继续将其向量化：
+    $$
+    \begin{aligned}
+    &h=g(X\theta)\\
+    &J(\theta)=\frac{1}{m}(-y^Tlog(h)-(1-y)^Tlog(1-h))
+    \end{aligned}
+    $$
+
+- Gradien Descent
+
+  找到一组$\theta$使得cost function最小化
+  $$
+  \begin{aligned}
+  Repeat&\{\\
+  &\theta_j:=\theta_j-\alpha\frac{\partial}{\partial\theta_j}J(\theta)\\
+  &\theta_j:=\theta_j-\frac{\alpha}{m}\sum_{i=1}^m(h_\theta(x^{(i)})-y^{(i)})x_j^{(i)}\\
+  \}
+  \end{aligned}
+  $$
+  向量化：
+  $$
+  \theta:=\theta-\frac{\alpha}{m}X^T(g(X\theta)-\vec{y})
+  $$
+  
 
 
 # 二. Unsupervised Learning无监督学习

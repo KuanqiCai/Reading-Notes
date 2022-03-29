@@ -127,3 +127,92 @@ fclose(fp);
     ```
   
     
+
+# C++实践课
+
+1. **Was ist der Unterschied zwischen der dynamischen und statischen Speicherreservierung?**
+
+   | dynamischen                            | statischen                                |
+   | -------------------------------------- | ----------------------------------------- |
+   | zur Laufzeit Speicher reserviert       | Vor Laufzeit(Compile) Speicher reserviert |
+   | Die Speicher wird im Laufzeit befreit. | Die Speicher wird nach Laufzeit befreit.  |
+
+   C中用malloc()和free()
+
+   c++中用new和 delete，new 相比malloc更强因为他会同时构造对象
+
+   ```c++
+   // Dynamische Speicherreservierung für eine Variable vom Typ double
+   double* pdWidth = new double;
+   // Dynamische Speicherreservierung für ein Array der Dimension 80 vom Typ char 
+   char* pchName = new char[80];
+   // Freigeben einer dynamisch angelegten Variable
+   delete pdWidth; 
+   // Freigeben eines dynamisch angelegten Arrays 
+   delete[] pchName;
+   ```
+
+   
+
+2. **Wann benutzt man dynamische Speicherreservierung?**
+
+   Wenn es vor der Laufzeit eines Programms nicht bekannt ist, wie viel Speicher für die Programmausführung notwendig ist. 
+
+3. **Welche Gefahren gehen von Pointern aus?**
+
+   Pointer können auch noch existieren, wenn die referenzierte Variable gelöscht ist. Greift man dann auf den Pointer zu, dereferenziert man undefinierten Speicherbereich, was unweigerlich zu einem Fehler führt.
+
+   ```c++
+   // 指针的用法1：
+   // Zugreifen auf den ersten Buchstaben des Labels 
+   char chLetter = *pchLabel; 
+   chLetter = pchLabel[0]; 
+   chLetter = pchLabel[]; 
+   // Zugreifen auf den fünften Buchstaben 
+   chLetter = *(pchLabel+4); 
+   chLetter = pchLabel[4];
+   
+   // 指针的用法2：
+   // Signatur der Funktion, die den Pointer auf ein Array mit Nutzdaten 
+   // erhält, die den Mittelwert daraus berechnet 
+   void calculateMean(float* pfMean, int* piData, int iSize); 
+   。。。
+   int main() {
+       float fMean = 0.0; 
+       int piData[] = {1, 2, 3, 4, 58, 5, 6, 1, 98, 3}; 
+       // Aufruf der Funktion 
+       calculateMean(&fMean, piData, 10); 
+       return 0;
+   }
+   ```
+
+   
+
+4. **Welche Vorteile haben Referenzen引用 gegenüber Pointern?**
+
+   - Der Vorteil gegenüber Pointern besteht im Sicherheitsgewinn.
+
+   - Ein weiterer Vorteil gegenüber Pointern liegt in der vereinfachten Parameterübergabe beim Aufruf von Funktionen
+
+     ```c++
+     // 引用的用法1：
+     // Initialisierung einer Variablen
+     int iStudentID = 27002; 
+     // Initialisierung auf die Variable
+     int& riStudentID = iStudentID;
+     
+     // 引用的用法2：
+     // Definition einer Funktion die eine Referenz und eine Variable als  
+     // Uebergabeparameter erwartet 
+     void changeStudentID(int& riOldStudentID, int iNewStudentID){ 
+         riOldStudentID = iNewStudentID;
+     }
+     // Die Funktion wird wie folgt in der Main aufgerufen
+     int main(){
+         int iStudentIDDetlefCruse = 99933;
+         changeStudentID(iStudentIDDetlefCruse, 999773);
+         return 0;
+     }
+     ```
+
+     
