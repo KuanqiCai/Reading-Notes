@@ -10,7 +10,7 @@
 
 ## 1. Regression
 
-### （1）一元线性规划
+### (1)一元线性规划
 
 - Hypothesis假设h
 
@@ -51,7 +51,7 @@ $$
     - 太小，就会导致收敛速度太慢
     - 太大，就可能会导致错过收敛点
 
-### （2）Multivariate Linear Regression多元线性规划
+### (2)Multivariate Linear Regression多元线性规划
 
 - Hypothesis假设h
   $$
@@ -96,7 +96,7 @@ $$
   $$
   
 
-### （3）Normal Equation
+### (3)Normal Equation
 
 另一种让cost function最小化的方法。
 
@@ -131,11 +131,83 @@ $$
   1. 删除一些features
   2. 或使用regularization
 
+### (4)Overfitting Problem
+
+- 如果我们的hypothesis方程不正确会导致两类问题：
+
+  - **Underfitting**: the form of our hypothesis function h maps poorly to the trend of the data.
+    - It is usually caused by a function that is too simple or uses too few features
+
+  - **Overfitting**: a hypothesis function that fits the available data but does not generalize well to predict new data
+
+    -  It is usually caused by a complicated function that creates a lot of unnecessary curves and angles unrelated to the data.
+
+  - 解决方法：
+
+    Reduce the number of features:
+
+    - Manually select which features to keep.
+    - Use a model selection algorithm
+
+    Regularization正则化：
+
+    - Keep all the features, but reduce the magnitude of parameters $\theta_j$
+    - Regularization works well when we have a lot of slightly useful features.
+
+- Cost function
+
+  如果hypothesis function的参数过多，我们需要消去多余的参数$\theta$。不需要真的删除，只需要修改cost function让多余的参数$\theta$得到inflate膨胀。这样我们在用gradient descent 来求$\theta$使cost function最小化时，会自动的让那些参数趋近于0
+
+  - 比如：我们的 h(z)的z是：$\theta_0+\theta_1x+\theta_2x^2+\theta_3x^3+\theta_4x^4$，然后想要让他的3次，4次参数失效。
+
+    ​			只需修改cost function为: $min_\theta\frac{1}{2m}\sum_{i=1}^{m}(h_\theta(x^{(i)})-y^{(i)})^2+1000\theta_3^2+1000\theta_4^2$
+
+  - 一个总结性的公式：
+
+  $$
+  min_\theta\frac{1}{2m}\sum_{i=1}^{m}(h_\theta(x^{(i)})-y^{(i)})^2+\lambda\sum_{j=1}^{n}\theta_j^2
+  $$
+
+  - 上式的$\lambda$叫做regularization parameter。
+    - 如果太小没效果
+    - 如果太大，会使得hypothesis function太过smooth,从而导致underfitting。
+
+- Regularized Linear Regression
+
+  - Gradient Descent:
+
+    我们不希望惩罚penalize $\theta_0$所以单独列出来。
+
+    下面的$\frac{\lambda}{m}\theta_j$代表了我们的正则化
+
+    $$
+    \begin{aligned}
+      Repeat\{\\
+      &\theta_0:= \theta_0-\alpha\frac{1}{m}\sum_{i=1}^{m}(h_\theta(x^{(i)})-y^{(i)})x_0^{(i)}\\
+      &\theta_j:= \theta_j-\alpha[(\frac{1}{m}\sum_{i=1}^{m}(h_\theta(x^{(i)})-y^{(i)})x_j^{(i)})+\frac{\lambda}{m}\theta_j]\quad j\in\{1,2..n\}\\ 
+      \}
+      \end{aligned}
+    $$
+
+  - Normal Equation:
+    
+    $\lambda L$项代表了我们的正则化
+    $$
+    \theta=(X^TX+\lambda L)^{-1}X^Ty\\
+    其中L= \begin{bmatrix}
+       0 &  &  &\\
+        & 1 &  &\\
+        &  & \ddots &\\
+        &  & &1
+      \end{bmatrix}
+    $$
+    
+
 ## 2. Classification
 
 - To attempt classification, one method is to use linear regression and map all predictions greater than 0.5 as a 1 and all less than 0.5 as a 0. However, this method doesn't work well because classification is not actually a linear function.
 
-### （1）Logistic Regression
+### (1)Logistic Regression逻辑回归
 
 - Hypothesis Representation
 
@@ -155,13 +227,19 @@ $$
 	  h_\theta(x)=P(y=1|x;\theta)=1-P(y=0|x;\theta)
 	  $$
 	  比如$h_\theta(x)$=0.7就是当前输入x有70%的概率得到输出y=1。
+	  
+	- 求出某个类别的概率h(x)后，如果它大于等于0.5则分类为1，如果小于0.5则分类为0。
 	
 - Decision Boundary决策边界
 
   - The **decision boundary** is the line that separates the area where y = 0 and where y = 1. It is created by our hypothesis function的$\theta^Tx$
 
-  - 决策边界可以不是线性的
+  - 由上可知h大于等于0.5则分类为1。此时z应该>0。
 
+  - 由上可知h小于0.5则分类为0。此时z应该<0。
+  
+  - 决策边界可以不是线性的
+  
     即我们的sigmoid function g(z)不必是线性的。比如它可以是个圆$z=\theta_0+\theta_1x_1^2+\theta_2x_2^2$
   
 - Cost function
@@ -198,7 +276,7 @@ $$
     \end{aligned}
     $$
 
-- Gradien Descent
+- Gradient Descent
 
   找到一组$\theta$使得cost function最小化
   $$
@@ -214,7 +292,48 @@ $$
   \theta:=\theta-\frac{\alpha}{m}X^T(g(X\theta)-\vec{y})
   $$
   
+- Advanced Optimization
 
+  除了Gradient Descent还有"Conjugate gradient", "BFGS", and "L-BFGS" 也可以用来找$\theta$。但他们更加的sophisticated复杂也更加的快速。
+
+  有很多现成的库可以实现这些算法。
+
+### (2)Multiclass classification
+
+- One vs all
+
+  - 上面的logistic regression的分类只有2个y={1,2}。现在有更多的种类y={0,1,...n}。
+
+  - 所以我们就依次的把某一类和其他类作为两个类 y={1,rest}, 来不停的求1的logistic regression.最后predict新的数据集x时，选择能最大化Hypothesis那一组类。预测的种类y即它。
+    $$
+    y\in\{0,1...,n\}\\
+    h_\theta^{(0)}(x)=P(y=o|x;\theta)\\
+    h_\theta^{(1)}(x)=P(y=1|x;\theta)\\
+    ...\\
+    h_\theta^{(n)}(x)=P(y=n|x;\theta)\\
+    prediction=max(h_\theta^{(i)}(x))
+    $$
+    
+
+### (3)Overfitting Problem
+
+- Cost function
+
+  在我们的Regularized Logistic原有cost function后加上$\frac{\lambda}{2m}\sum_{j=1}^n\theta_j^2$。代表忽视某一个参数
+  $$
+  J(\theta)=\frac{1}{m}\sum_{i=1}^m[y^{(i)}log(h_\theta(x^{(i)}))+(1-y^{(i)})log(1-h_\theta(x^{i}))]+\frac{\lambda}{2m}\sum_{j=1}^n\theta_j^2
+  $$
+
+- Gradient descent
+  $$
+  \begin{aligned}
+  Repeat&\{\\
+  &\theta_0:=\theta_0-\frac{\alpha}{m}\sum_{i=1}^m(h_\theta(x^{(i)})-y^{(i)})x_0^{(i)}\\
+  &\theta_j:=\theta_j-\alpha[\frac{1}{m}\sum_{i=1}^m(h_\theta(x^{(i)})-y^{(i)})x_j^{(i)}+\frac{\lambda}{m}\theta_j]\\
+  \}
+  \end{aligned}
+  $$
+  
 
 # 二. Unsupervised Learning无监督学习
 
