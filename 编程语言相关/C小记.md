@@ -389,9 +389,18 @@ p40
 
 28. **Worin liegt der Unterschied zwischen Schnittstellen接口 und abstrakten Klassen抽象类?** 
 
-    - 带有纯虚函数的类称为抽象类，不能被实例化。
+    - 带有纯虚函数的类称为抽象类，不能被实例化。纯虚函数是在基类中声明的虚函数，它在基类中没有定义，但要求任何派生类都要定义自己的实现方法。在基类中实现纯虚函数的方法是在函数原型后加“=0”
     - 接口是一个概念。它在C++中用抽象类来实现。一个类一次可以实现若干个接口，但是只能扩展一个父类 
     - 类是对对象的抽象，可以把抽象类理解为把类当作对象，抽象成的类叫做抽象类.而接口只是一个行为的规范或规定。抽象类更多的是定义在一系列紧密相关的类间，而接口大多数是关系疏松但都实现某一功能的类中.
+
+    - ！！！！
+      - 定义一个函数为虚函数，不代表函数为不被实现的函数。
+
+      - 定义他为虚函数是为了允许用基类的指针来调用子类的这个函数。
+
+      - 定义一个函数为纯虚函数，才代表函数没有被实现。
+
+      - 定义纯虚函数是为了实现一个接口，起到一个规范的作用，规范继承这个类的程序员必须实现这个函数。
 
     - Eine Schnittstelle in C++ ist eine Klasse, von der sich keine Objekte bilden lassen, weil keine ihrer Methoden definiert ist. Die Methoden sind nur in der Headerdatei deklariert. Aus diesem Grund benötigt die Schnittstelle keinen Konstruktor und Destruktor.接口不能实例化；
     - Rein abstrakte Klassen sind Klassen, die nur rein virtuelle Methoden beinhalten und somit immer Elternklassen sind. Ihre Kinder müssen alle (rein virtuellen) Methoden überschreiben, damit man von ihnen Objekte bilden kann.

@@ -335,6 +335,57 @@ $$
   $$
   
 
+## 3. Neural Networks
+
+### (1) Model Representation
+
+- 神经网络模型 类似于 动物的神经，有
+
+  - 输入(dendrites树突)：对应于我们方程的input features特征x1....xn
+  - 输出(axonss轴突)：对应于我们的输出hypothesis function$h(\theta)$
+  - x0：被叫做bias unit,且永远等于1
+  - 在classification中同样使用logistic function$\frac{1}{1+e^{-\theta Tx}}$。
+    - 但他在神经网络中叫做sigmoid(logistic) **activation** function
+    - 而$\theta$也叫做weights.
+
+- layer:
+
+  - input layer: input nodes(layer1)
+  - output layer: 最后输出hypothesis function的层
+  - hidden layers: 在input 和 output layer之间的所有的层
+  
+- $a_i^{(j)}$：activation of unit单元 i in layer j
+  
+- $\theta^{(j)}$：matrix of weights controlling function mapping from layer *j* to layer *j*+1
+  
+- 如果我们有one hidden layer:
+  $$
+  \begin{aligned}\\
+  layer 1:&[x_0x_1x_2x_3]\rightarrow[a_1^{(2)}a_2^{(2)}a_3^{(2)}]\rightarrow h_\theta(x)\\
+  \\
+  layer2:&a_1^{(2)}=g(\theta_{10}^{(1)}x_0+\theta_{11}^{(1)}x_1+\theta_{12}^{(1)}x_2+\theta_{13}^{(1)}x_3)\\
+  &a_2^{(2)}=g(\theta_{20}^{(1)}x_0+\theta_{21}^{(1)}x_1+\theta_{22}^{(1)}x_2+\theta_{23}^{(1)}x_3)\\
+  &a_3^{(2)}=g(\theta_{30}^{(1)}x_0+\theta_{31}^{(1)}x_1+\theta_{32}^{(1)}x_2+\theta_{33}^{(1)}x_3)\\
+  \\
+  layer3:&h_\theta(x)=a_1^{(3)}=g(\theta_{10}^{(2)}a_0^{(2)}+\theta_{11}^{(2)}a_1^{(2)}+\theta_{12}^{(2)}a_2^{(2)}+\theta_{13}^{(2)}a_3^{(2)})
+  \end{aligned}
+  $$
+  
+  - 可看到我们用了一个3X4矩阵的参数来计算我们的activation node 'a'。
+  - 每一层都有自己的weights$\theta^{(j)}$
+  
+- 权重维度的确认
+
+  - **如果i层有$s_i$个units，i+1层有$s_{i+1}$个units。那么$\theta^{(j)}$的维度是$s_{j+1}$x$(s_j+1)$**
+
+    - 比如上面的例子，初始层有3个unit:x1,x2,x3,中间层有3个unit:a1,a2,a3，所以中间层的weights有3X4个
+    - 输出层只有1个unit:$h_\theta(x)$所以输出层的weights有1X4个
+
+  - 这里的+1是因为bias nodes: $x_0$和$\theta_0^{(j)}$。即ouput nodes不包含bias nodes但输入包含。
+
+    
+
+
 # 二. Unsupervised Learning无监督学习
 
 - 两个例子
