@@ -361,7 +361,9 @@ $$
 - 如果我们有one hidden layer:
   $$
   \begin{aligned}\\
-  layer 1:&[x_0x_1x_2x_3]\rightarrow[a_1^{(2)}a_2^{(2)}a_3^{(2)}]\rightarrow h_\theta(x)\\
+  &[x_0x_1x_2x_3]\rightarrow[a_1^{(2)}a_2^{(2)}a_3^{(2)}]\rightarrow h_\theta(x)\\
+  \\
+  layer 1:&[x_0x_1x_2x_3]\\
   \\
   layer2:&a_1^{(2)}=g(\theta_{10}^{(1)}x_0+\theta_{11}^{(1)}x_1+\theta_{12}^{(1)}x_2+\theta_{13}^{(1)}x_3)\\
   &a_2^{(2)}=g(\theta_{20}^{(1)}x_0+\theta_{21}^{(1)}x_1+\theta_{22}^{(1)}x_2+\theta_{23}^{(1)}x_3)\\
@@ -374,6 +376,23 @@ $$
   - 可看到我们用了一个3X4矩阵的参数来计算我们的activation node 'a'。
   - 每一层都有自己的weights$\theta^{(j)}$
   
+- 向量化：
+  $$
+  \begin{aligned}
+  1.计算当前j层&的hypothesis的参数z\\
+  &For \ layer\ j\ and \ node \ k设置我们的变量z为：
+  z_k^{(j)}=\theta_{k0}^{(j-1)}x_0+\theta_{k1}^{(j-1)}x_1+\theta_{k2}^{(j-1)}x_2+\dots+\theta_{kn}^{(j-1)}x_n\\
+  &并设置:x=a^{(j-1)}\\
+  &则Z可写成：z^{(j)}=\theta^{(j-1)}a^{(j-1)}\\
+  2.计算当前j层&的activation\ node\ 'a'\\
+  &a^{(j)}=g(z^{(j)})\\
+  &比如上面的layer2也可写成：a_1^{(2)}=g(z_1^{(2)})...\\
+  3.如果j+1层&是最后一层了\\
+  &h_\theta(x)=a^{(j+1)}=g(z^{(j+1)})\\
+  \end{aligned}\\
+  $$
+  
+  
 - 权重维度的确认
 
   - **如果i层有$s_i$个units，i+1层有$s_{i+1}$个units。那么$\theta^{(j)}$的维度是$s_{j+1}$x$(s_j+1)$**
@@ -383,7 +402,46 @@ $$
 
   - 这里的+1是因为bias nodes: $x_0$和$\theta_0^{(j)}$。即ouput nodes不包含bias nodes但输入包含。
 
-    
+### (2)Multiclass Classification
+
+- 在处理将数据分类到多个类class 里面去的这类问题：只需要让我们的hypothesis function 返回一组数组值
+  $$
+  \left[
+  \begin{matrix}
+  x_0\\
+  x_1\\
+  x_2\\
+  \dots\\
+  x_n
+  \end{matrix}
+  \right]\rightarrow
+  \left[
+  \begin{matrix}
+  a_0^{(2)}\\
+  a_1^{(2)}\\
+  a_2^{(2)}\\
+  \dots\\
+  \end{matrix}
+  \right]\rightarrow
+  \left[
+  \begin{matrix}
+  a_0^{(3)}\\
+  a_1^{(3)}\\
+  a_2^{(3)}\\
+  \dots\\
+  \end{matrix}
+  \right]\rightarrow
+  \dots\rightarrow
+  \left[
+  \begin{matrix}
+  h_\theta(x)_1\\
+  h_\theta(x)_2\\
+  h_\theta(x)_3\\
+  h_\theta(x)_4\\
+  \end{matrix}
+  \right]
+  $$
+  然后比如如果得到[1000]代表是车，如果得到[0100]就是火车。
 
 
 # 二. Unsupervised Learning无监督学习

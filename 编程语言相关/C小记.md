@@ -130,7 +130,7 @@ fclose(fp);
 
 # C++实践课
 
-## Tag 1
+## Tag1
 
 1. **Was ist der Unterschied zwischen der dynamischen und statischen Speicherreservierung?**
 
@@ -465,4 +465,12 @@ p40
 
     - 同一操作作用于不同的类的实例，将产生不同的执行结果，即不同类的对象收到相同的消息时，得到不同的结果。
 
-       
+## Tag3
+
+1. **Was versteht man unter Rekursion递归?*** **Worin liegt der Unterschied zu Iteration迭代?**
+
+   - Die Funktion ruft sich bei einer Rekursion immer wieder selbst auf, bis ein bestimmtes Abbruchkriterium erreicht wird.
+   - Da die aufrufende Funktion warten muss, bis die aufgerufene Funktion das Ergebnis zurückliefert, wächst der call stack stetig an.
+   - Erst wenn die aufgerufenen Funktionen ihren Wert zurückliefern, werden die Funktionen und ihre Daten vom Stack entfernt.
+
+   
