@@ -392,7 +392,6 @@ $$
   \end{aligned}\\
   $$
   
-  
 - 权重维度的确认
 
   - **如果i层有$s_i$个units，i+1层有$s_{i+1}$个units。那么$\theta^{(j)}$的维度是$s_{j+1}$x$(s_j+1)$**
@@ -442,6 +441,85 @@ $$
   \right]
   $$
   然后比如如果得到[1000]代表是车，如果得到[0100]就是火车。
+
+### (3)Train Neural Networks
+
+- 一些变量
+  - $L$ : total number of layers in the network
+  - $S_l$ :number of units (not counting bias unit) in layer l
+  - $K$: number of output units/classes
+  - $h_\theta(x)_k$: a hypothesis that results in the $k^{th}$ output
+
+- Cost Function
+  $$
+  J(\theta)=-\frac{1}{m}\sum_{i=1}^{m}\sum_{k=1}^{K}[y_k^{(i)}log(h_\theta(x^{(i)})_k)+(1-y_k^{(i)})log(1-h_\theta(x^{(i)})_k)]+\frac{\lambda}{2m}\sum_{l=1}^{L-1}\sum_{i=1}^{s_l}\sum_{j=1}^{s_{l+1}}(\theta_{j,i}^{(l)})^2
+  $$
+
+  - the double sum simply adds up the logistic regression costs calculated for each cell in the output layer
+
+  - the triple sum simply adds up the squares of all the individual Θs in the entire network.
+
+  - the i in the triple sum does **not** refer to training example i
+
+  - 作为对比，可以看用regularized logistic regression的cost Function 2(3):
+    $$
+    J(\theta)=\frac{1}{m}\sum_{i=1}^m[y^{(i)}log(h_\theta(x^{(i)}))+(1-y^{(i)})log(1-h_\theta(x^{i}))]+\frac{\lambda}{2m}\sum_{j=1}^n\theta_j^2
+    $$
+    可以发现对于neural networks 来说方程更加的复杂
+
+#### Backpropagation Algorithm
+
+- "Backpropagation反向传播" is neural-network terminology术语 for minimizing our cost function $J(\theta)$
+
+  - 是一种与最优化方法(比如梯度下降法)结合使用来训练人工神经网络的方法。
+  - 该方法对网络中所有权重计算损失函数的梯度。这个梯度会回馈给最佳化方法，用来更新权值以最小化损失函数。
+  - 反向传播要求有对每个输入值想得到的已知输出，来计算损失函数梯度。因此是监督学习
+
+- 由两个阶段组成
+
+  1. 激励传播：
+
+     每次迭代中的传播环节包含两步：
+
+     - （前向传播阶段）将训练输入送入网络以获得激励响应；
+     - （反向传播阶段）将激励响应同训练输入对应的目标输出求差，从而获得输出层和隐藏层的响应误差。
+
+  2. 权重更新
+
+     对于每个突触上的权重，按照以下步骤进行更新：
+
+     - 将输入激励和响应误差相乘，从而获得权重的梯度；
+     - 将这个梯度乘上一个**比例**并取反后加到权重上
+
+     注意：1.这个比例（百分比）将会影响到训练过程的速度和效果，因此成为“训练因子”
+
+     			2. 梯度的方向指明了误差扩大的方向，因此在更新权重的时候需要对其取反，从而减小权重引起的误差
+
+- 具体算法：
+  $$
+  \begin{aligned}
+  &Training\ set:\{(x^{(1)},y^{(1)}),....,(x^{(m)},y^{(m)})  \}\\
+  &Set\ \triangle_{ij}^{(l)} = 0 \ (for\ all\ l,i,j)\\
+  &For\ i=1\ to\ m:\\
+  &\qquad Set\ a^{(1)}=x^{(i)}\\
+  &\qquad Perform\ forward\ propagation\ to \ compute\ a^{(l)}\ for\ l=2,3,...,L\\
+  &\qquad Using\ y^{(i)},compute\ \delta^{(L)}=a^{(L)}-y^{(i)}\\
+  &\qquad Compute\ \delta^{(L-1)},\delta^{(L-2)},...,\delta^{(2)}using\ \delta^{(l)}=((\theta^{(l)})^T\delta^{(l+1)})*a^{(l)}*(1-a^{(l)})    \\
+  &\qquad \triangle_{ij}^{(l)}:=\triangle_{ij}^{(l)}+a_j^{(l)}\delta_i^{(l+1)}\\
+  &D_{ij}^{(l)}:=\frac{1}{m}\triangle_{ij}^{{(l)}}+\lambda\theta_{ij}^{(l)}\quad if\ j\neq 0\\
+  &D_{ij}^{(l)}:=\frac{1}{m}\triangle_{ij}^{{(l)}}\qquad \qquad \ if\ j=0\\
+  &\frac{\partial}{\partial\theta_{ij}^{(l)}}J(\theta)=D_{ij}^{(l)}
+  \end{aligned}
+  $$
+
+  - $a^{(l)}$是每一层所有的node节点。共L层
+  - $\delta_j^{(l)}$是节点 j 在 l 层的error错误。在计算出最后一层的误差$\delta^{(L)}$后，往回递推各层的误差
+  - $\triangle_{ij}^{(l)}$是误差，当作是accumulator蓄电池一样用来加误差，最后用来计算偏导D
+  - $D_{ij}^{(l)}$是我们要求的Cost function J 的偏导，
+  - 下标 i 是当前节点所连接下一层的各个节点的索引。
+  - 下标 j 是当前节点的索引。j = 0即+1项。
+
+
 
 
 # 二. Unsupervised Learning无监督学习
