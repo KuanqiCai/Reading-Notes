@@ -447,7 +447,7 @@ $$
 - 一些变量
   - $L$ : total number of layers in the network
   - $S_l$ :number of units (not counting bias unit) in layer l
-  - $K$: number of output units/classes
+  - $K$: number of output units/classes即标签
   - $h_\theta(x)_k$: a hypothesis that results in the $k^{th}$ output
 
 - Cost Function
@@ -493,7 +493,7 @@ $$
 
      注意：1.这个比例（百分比）将会影响到训练过程的速度和效果，因此成为“训练因子”
 
-     			2. 梯度的方向指明了误差扩大的方向，因此在更新权重的时候需要对其取反，从而减小权重引起的误差
+     2. 梯度的方向指明了误差扩大的方向，因此在更新权重的时候需要对其取反，从而减小权重引起的误差
 
 - 具体算法：
   $$
@@ -519,8 +519,162 @@ $$
   - 下标 i 是当前节点所连接下一层的各个节点的索引。
   - 下标 j 是当前节点的索引。j = 0即+1项。
 
+#### Backpropagation in Practice
 
+- First, pick a network architecture; choose the layout of your neural network, including how many hidden units in each layer and how many layers in total you want to have.
+  - Number of input units = dimension of features $x^{(i)}$
+  - Number of output units = number of classes
+  - Number of hidden units per layer = usually more the better (must balance with cost of computation as it increases with more hidden units)
+  - Defaults: 1 hidden layer. If you have more than 1 hidden layer, then it is recommended that you have the same number of units in every hidden layer.
+  
+- **Training a Neural Network**
+  1. Randomly initialize the weights
+  
+     Initialize each $\theta_{ij}^{(l)}$ to a random value in $[-\epsilon,\epsilon]$
+  
+  2. implement forward propagation to get $h_\theta(x^{(i)})$for any $x^{(i)}$(循环)
+  
+  3. Implement the cost function
+  
+  4. Implement backpropagation to compute partial derivatives(循环)
+  
+  5. Use gradient checking to confirm that your backpropagation works. Then disable gradient checking.
+     $$
+     \frac{\partial}{\partial \theta_j}J(\theta) \approx \frac{J(\theta_1,...,\theta_j+\epsilon,...,\theta_n)-J(\theta_1,...,\theta_j-\epsilon,...,\theta_n)}{2\epsilon}
+     $$
+  
+     - 梯度检验作用是确保反向传播的正确实施
+  
+     - 不要在训练中使用梯度检验，它只用于调试。因为梯度检验的过程会很慢。
+  
+  6. Use gradient descent or a built-in optimization function to minimize the cost function with the weights in theta.
+  
+- Ideally, you want $h_\Theta(x^{(i)}) \approx y^{(i)}$. This will minimize our cost function. However, keep in mind that $J(\Theta)$ is not convex and thus we can end up in a local minimum instead. 
 
+## 4.Evaluating a Learning Algorithm
+
+- 一些Trouble Shooting排错 for erros in our predictions:
+
+  - Getting more training examples
+
+  - Trying smaller sets of features
+
+  - Trying additional features
+
+  - Trying polynomial features
+
+  - Increasing or decreasing λ
+
+- 当做完上述操作后，可以进行evaluate our new hypothesis
+
+  为了验证模型我们需要把数据集分为：
+
+  1. traing set(70%):  Learn $\theta$ and minimize $J_{train}(\theta)$
+  2. test set(30%):      Compute the test set error$J_{test}(\theta)$
+
+### 各种检测误差，选择模型和参数方法：
+
+- Test set error
+
+  - For linear regression: $J_{test}(\theta)=\frac{1}{2m_{test}}\sum_{i=1}^{m_{test}}(h_\theta(x_{test}^{(i)})-y_{test}^{(i)})^2$
+
+  - For classification: Misclassification error:
+    $$
+    \begin{aligned}
+    & Test\ Error= \frac{1}{m_{test}}\sum_{i=1}^{m_{test}}err(h_{\theta}(x_{test}^{(i)}),y_{test}^{(i)})\\
+    & err(h_\theta(x),y)=
+    \begin{cases}
+    &1 &\text{if}\ h_\theta(x) \geq0.5\ and\ y=0\ or\ h_\theta(x)<0.5,and\ y=1 \\
+    &0 & otherwise
+    \end{cases}
+    \end{aligned}
+    $$
+
+- Model Selection and Train/Validation/Test Sets
+
+  某一个数据集很准确也不能说明我们的hypothesis是对的，因为他可能在其他数据集上有很大的误差。
+
+  那如何确定我们的model应该用怎么样的polynomial degree(比如:$h_\theta(x)=\theta_0+\theta_1x$)那他的degree d就是1
+
+  - 首先划分数据集
+
+    1. Training set: 60%
+    2. Cross validation set: 20%
+    3. Test set: 20%
+
+  - 用如下步骤对三个数据集，计算三个separate error：
+
+    1. Optimize the parameters in $\theta$ using the training set for each polynomial degree.
+    2. Find the polynomial degree d with the least error using the cross validation set.
+    3. Estimate the generalization error using the test set with $J_{test}(\theta^{(d)})$. (d = theta from polynomial with lower error)
+
+  - Bias vs Variance
+  
+    用上面数据集计算各自的误差 J 后可按下分类：
+  
+    - High Bias(underfitting): Both $J_{train}(\theta)$ and $J_{CV}(\theta)$will be high.
+    - High variance(overfitting): $J_{train}(\theta)$ will be low and $J_{CV}(\theta)$ will be much greater than $J_{train}(\theta)$ 
+    - 所以要选个2个之间差距最小的那个模型。
+  
+- Regularization and Bias/Variance
+
+  正则化参数$\lambda$的选择也很重要，太大会导致各个参数/权重$\theta$不起作用导致underfit，太小又会导致某些参数/权重影响过大导致overfit。
+
+  如下步骤选择正则化参数：
+
+  1. Create a list of lambdas (i.e. λ∈{0,0.01,0.02,0.04,0.08,0.16,0.32,0.64,1.28,2.56,5.12,10.24});
+  2. Create a set of models with different degrees or any other variants
+  3. Iterate through the$\lambda$s and for each $\lambda$ go through all the models to learn some $\Theta$.
+  4. Compute the cross validation error using the learned $\theta$(computed with $\lambda$) on the $J_{cv}(\theta)$without regularization or $\lambda = 0$
+  5. Select the best combo组合物 that produces the lowest error on the cross validation set.
+  6. Using the best combo $\theta$ and $\lambda$, apply it on $J_{test}(\theta)$to see if it has a good generalization of the problem.
+
+- Training set size
+
+  数据集的大小也会对检测误差产生影响
+
+  - **Experiencing high bias:**
+
+    - **Low training set size**: causes $J_{train}(\theta)$to be low and  $J_{CV}(\theta)$to be high.
+    - **Large training set size**: causes both$J_{train}(\theta)$and $J_{CV}(\theta)$ to be high.
+
+    结合前面的Bias vs Variance可知：If a learning algorithm is suffering from **high bias**, getting more training data will **not** **(by itself)** help much.
+
+  - **Experiencing high variance:**
+
+    - **Low training set size**: causes $J_{train}(\theta)$to be low and  $J_{CV}(\theta)$to be high.
+    - **Large training set size**: $J_{train}(\theta)$ 会增加and $J_{CV}(\theta)$ 会减小，但他们之间的差值始终remains significant相当数量
+
+    所以：If a learning algorithm is suffering from **high variance**, getting more training data is likely to help。
+
+  - **Model Complexity Effects:**
+
+    - Lower-order polynomials (low model complexity) have high bias and low variance. In this case, the model fits poorly consistently.
+    - Higher-order polynomials (high model complexity) fit the training data extremely well and the test data extremely poorly. These have low bias on the training data, but very high variance.
+    - In reality, we would want to choose a model somewhere in between, that can generalize well but also fits the data reasonably well.
+
+### 总结：如何做我们的模型修改决策
+
+- Our decision process can be broken down as follows:
+
+  - **Getting more training examples:** Fixes high variance
+
+  - **Trying smaller sets of features:** Fixes high variance
+
+  - **Adding features:** Fixes high bias
+
+  - **Adding polynomial features:** Fixes high bias
+
+  - **Decreasing λ:** Fixes high bias
+
+  - **Increasing λ:** Fixes high variance.
+
+- 对于神经网络
+
+  - A neural network with fewer parameters is **prone to underfitting**. It is also **computationally cheaper**.
+  - A large neural network with more parameters is **prone to overfitting**. It is also **computationally expensive**. In this case you can use regularization (increase λ) to address the overfitting.
+
+  Using a single hidden layer is a good starting default. You can train your neural network on a number of hidden layers using your cross validation set. You can then select the one that performs best. 
 
 # 二. Unsupervised Learning无监督学习
 
