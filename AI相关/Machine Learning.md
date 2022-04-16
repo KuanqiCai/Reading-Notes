@@ -44,7 +44,7 @@ $$
   \theta_j:=\theta_j-\alpha\frac{\partial}{\partial\theta_j}J(\theta_0,\theta_1), \quad for\: j=0\: and\:  j=1\tag{3}\\
   $$
   
-   		这里$\alpha$是learning rate
+  ​	这里 $\alpha$ 是learning rate 
   
   - Subtlety微妙之处：Simultaneous同时发生的。这里两个参数的新值都是基于旧值计算的，两个都算完了再同时代入下一个迭代。
   - learning rate如果
@@ -574,6 +574,8 @@ $$
 
 ### 各种检测误差，选择模型和参数方法：
 
+下面的 参数degree，正则lambda，数据集size的选择都可以画一个learning curves图来直观的显示哪个值更好
+
 - Test set error
 
   - For linear regression: $J_{test}(\theta)=\frac{1}{2m_{test}}\sum_{i=1}^{m_{test}}(h_\theta(x_{test}^{(i)})-y_{test}^{(i)})^2$
@@ -675,6 +677,60 @@ $$
   - A large neural network with more parameters is **prone to overfitting**. It is also **computationally expensive**. In this case you can use regularization (increase λ) to address the overfitting.
 
   Using a single hidden layer is a good starting default. You can train your neural network on a number of hidden layers using your cross validation set. You can then select the one that performs best. 
+
+## 5.如何更好的设计一个机器学习系统
+
+- 比如Building a spam垃圾邮件 classifier
+
+   how could you spend your time to improve the accuracy of this classifier:
+
+  - Collect lots of data (for example "honeypot" project but doesn't always work)
+  - Develop sophisticated复杂的 features (for example: using email header data in spam emails)
+  - Develop algorithms to process your input in different ways (recognizing misspellings in spam).
+
+- 如何解决机器学习的问题？
+
+  - Start with a simple algorithm, implement it quickly, and test it early on your cross validation data.
+  - Plot learning curves to decide if more data, more features, etc. are likely to help.
+  - Manually examine the errors on examples in the cross validation set and try to spot a trend where most of the errors were made.
+
+- 并量化我们的错误率。来查看不同措施下，我们算法的优越性。
+
+   | Predicted class   \   Actual class | 1                | 0                |
+   | ---------------------------------- | ---------------- | ---------------- |
+   | 1                                  | True & Positive  | False & Positive |
+   | 0                                  | False & Negative | True & Negative  |
+
+   - $精准度precision=\frac{True\ Positive}{True\ Positive+False\ Positive}$
+      - Precision从预测结果角度出发，描述了二分类器预测出来的正例结果中有多少是真实正例，即该二分类器预测的正例有多少是准确的
+
+   - $召回率Recall = \frac{True\ Positive}{True\ Positive+False\ Negative}$
+      - Recall从真实结果角度出发，描述了测试集中的真实正例有多少被二分类器挑选了出来，即真实的正例有多少被该二分类器召回。
+
+   - $准确性Accuracy=\frac{true positives + true negatives}{total examples}$
+
+      On **skewed datasets**(e.g., when there are more positive examples than negative examples), accuracy is not a good measure of performance and you should instead use F1 score
+
+   - $F_1\ Score=\frac{2 * precision * recall}{precision + recall}$
+
+    A good classifier should have both a high precision and high recall on the cross validation
+
+- 当满足以下2个条件时，Training on a lot of data is likely to give good performance 
+
+   - 假设特征X有足够的信息用来predict y accurately。
+
+      也可以说：Given the input x, can a human expert condifently predict y
+
+   -  We train a learning algorithm with a large number of parameters
+
+     也可以说：Our learning algorithm is able to represent fairly complex functions
+     
+     因为数据集一大，模型太简单不可能完美预测
+     
+   
+   Using a **very large** training set makes it unlikely for model to overfit the training data.
+   
+
 
 # 二. Unsupervised Learning无监督学习
 
