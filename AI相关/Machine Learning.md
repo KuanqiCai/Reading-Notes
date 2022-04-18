@@ -241,6 +241,8 @@ $$
   - 决策边界可以不是线性的
   
     即我们的sigmoid function g(z)不必是线性的。比如它可以是个圆$z=\theta_0+\theta_1x_1^2+\theta_2x_2^2$
+    
+  - 决策边界这条线和参数theta向量是垂直的。
   
 - Cost function
 
@@ -729,7 +731,118 @@ $$
      
    
    Using a **very large** training set makes it unlikely for model to overfit the training data.
-   
+
+
+
+
+
+## 6.Support Vector Machine
+
+SVM也被称作large Margin Classifier
+
+### (1)Large Margin边缘 Classification
+
+- Optimization Objective优化目标
+
+  - 相比于Logistic regression逻辑回归的优化目标
+    $$
+    最小化 J(\theta)=\frac{1}{m}\sum_{i=1}^m[y^{(i)}log(h_\theta(x^{(i)}))+(1-y^{(i)})log(1-h_\theta(x^{i}))]+\frac{\lambda}{2m}\sum_{j=1}^n\theta_j^2
+    $$
+
+  - SVM的优化目标是
+    $$
+    最小化\ C\sum_{i=1}^m[y^{(i)}cost_1(\theta^Tx^{(i)})+(1-y^{(i)})cost_0(\theta^Tx^{(i)})]+\frac{1}{2}\sum_{i=1}^n\theta_j^2
+    $$
+
+    - 相比于logistic regression，样本数m没必要乘，C=1/lambda
+
+      - C大相当于$\lambda$小，导致Lower bias,high variance
+      - C小相当于$\lambda$大，导致Higher bias,low variance
+      - 所以如果underfit了就要增加C，反之overfit了就要减小C。
+    
+    - Hypothesis:后面的条件是根据，如果y=1是我们的优化目标
+      $$
+      h_\theta(x)=
+      \begin{cases}
+      &1 \quad if\ \theta^Tx \geq0\\
+      &0 \quad otherwise
+      \end{cases}
+      $$
+    
+    
+    - 参数C 控制着对误分类的训练样本的惩罚，当我们将参数 C 设置的较大时，优化过程会努力使所有训练数据被正确分类，这会导致仅仅因为一个异常点决策边界就能从黑色线变成粉色线，这是不明智的。
+    - SVM可以通过将参数 C 设置得不太大而忽略掉一些异常的影响
+
+- 
+
+## (2)Kernels核
+
+- SVM利用核函数可以构造出复杂的非线性分类器，如下图
+
+  - ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Kernel.png?raw=true)
+
+  - 这里定义Hypothesis为
+    $$
+    h_\theta(x)=
+    \begin{cases}
+    &1, \quad \theta_0+\theta_1x_1+\theta_2x_2+\theta_3x_1x_2+\theta_4x_1^2+...\geq0\\
+    &0, \quad \theta_0+\theta_1x_1+\theta_2x_2+\theta_3x_1x_2+\theta_4x_1^2+...<0\\
+    \end{cases}
+    $$
+
+    - 定义特征变量features$f_1=x^1,f_2=x^2,f_3=x_1x_2,f_4=x_1^2,...$
+
+- 高斯核函数
+
+  给定 x，我们可以提前手动选取一些标记点，然后根据与这些标记点的接近程度来计算新的特征项。比如有3个标记点l(1),l(2),l(3)。
+
+  核函数有不同种类，其中一种是高斯核函数：
+  $$
+  f_1=similarity(x,l^{(1)})=exp(-\frac{||x-l^{(1)}||^2}{2\sigma^2})\\
+  f_2=similarity(x,l^{(2)})=exp(-\frac{||x-l^{(2)}||^2}{2\sigma^2})\\
+  f_3=similarity(x,l^{(3)})=exp(-\frac{||x-l^{(3)}||^2}{2\sigma^2})
+  $$
+
+  - 从上可知当x接近l, f趋于1。当x远离l，f趋于0.
+  - 所以f的值在0到1之间，体现了新的特征X与标记点l的接近程度。
+  - $\sigma^2$大，features f vary more smoothly. 导致higher bias,lower variance
+  - $\sigma^2$小，features f vary less smoothly. 导致lower bias,higher variance
+  - 所以如果underfit了就要减小$\sigma$,反之overfit了就要增加
+
+- 如何选择核函数的标记点？
+
+  如果有m个训练样本$(x^{(1)},y^{(1)}),..(x^{(m)},y^{(m)})$。可选择$l^{(1)}=x^{(1)},..,l^{(m)}=x^{(m)}$，即与样本重合的位置为标记点。
+
+- SVM结合核函数，最终我们的优化目标也变为
+  $$
+  最小化\ C\sum_{i=1}^m[y^{(i)}cost_1(\theta^Tf^{(i)})+(1-y^{(i)})cost_0(\theta^Tf^{(i)})]+\frac{1}{2}\sum_{i=1}^m\theta_j^2
+  $$
+
+  - 与上面SVM的优化目标相比,x变成了f, n变成了m。
+  - 最后一项编程时用$\theta^TM\theta$而非$\theta^T\theta$来计算，会提高计算效率。其中M是一个矩阵取决于核数
+
+- 其他off the shelf现成的的核函数：
+
+  - Polynomial Kernel多项式核函数
+  - String Kernel字符串核函数
+  - Chi-square Kernel卡方核函数
+  - Histogram intersection kernel直方图交叉核
+
+- Multi-class classificaton
+
+  许多现成的SVM软件包自带了多类分类函数。
+
+  当然也可以用one vs all的方法：Train K SVMs, one to distinguish y=i from the rest.然后对任意一特征X选择$(\theta^{(i)})^Tx$最大的那组参数。
+
+- SVM与Logistic regression的选择
+
+  n: number of features(x). m: number of training examples
+
+  - if n is large(relative to m): Use logistic regression or SVM without a kernel("linear kernel")
+  - If n is small, m is intermediate中等的: Use SVM with Gaussian kernel
+  - if n is small,m is large: Create/add more features,then use logistic regression or SVM without a kernel
+
+  对上面三种情况神经网络都适用，但可能要花费很多时间去学习。
 
 
 # 二. Unsupervised Learning无监督学习
