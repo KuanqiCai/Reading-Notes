@@ -770,12 +770,10 @@ SVM也被称作large Margin Classifier
       $$
     
     
-    - 参数C 控制着对误分类的训练样本的惩罚，当我们将参数 C 设置的较大时，优化过程会努力使所有训练数据被正确分类，这会导致仅仅因为一个异常点决策边界就能从黑色线变成粉色线，这是不明智的。
+    - 参数C 控制着对误分类的训练样本的惩罚，当我们将参数 C 设置的较大时，优化过程会努力使所有训练数据被正确分类，这会导致仅仅因为一个异常点决策边界就会改变，这是不明智的。
     - SVM可以通过将参数 C 设置得不太大而忽略掉一些异常的影响
 
-- 
-
-## (2)Kernels核
+### (2)Kernels核
 
 - SVM利用核函数可以构造出复杂的非线性分类器，如下图
 
@@ -856,3 +854,44 @@ SVM也被称作large Margin Classifier
   2. Non-Clustering:
 
      The "Cocktail Party Algorithm", allows you to find structure in a chaotic environment. (i.e. identifying individual voices and music
+
+## 1.Cluster
+
+- k-means clustering algorithm
+
+  是一种迭代求解的聚类分析算法，其步骤是，预将数据分为K组，则随机选取K个对象作为初始的聚类中心，然后计算每个对象与各个种子聚类中心之间的距离，把每个对象分配给距离它最近的聚类中心。
+
+  - Input:
+
+    1. K(number of cluster)
+    2. Training set{x1,x2,...,xm}
+
+  - algorithm
+    $$
+    \begin{aligned}
+    Repeat&\{\\
+    for&\ i =1\ to\ m\\
+    &c^{(i)}:=index\ (from\ 1 \ to \ K)of\ cluster\ centroid\ closest\ to\ x^{(i)}\\
+    for&\ k=1\ to\ K\\
+    &\mu_k:=\text{average (mean) of points assigned to cluster k}\\
+    
+    \}
+    \end{aligned}
+    $$
+
+    - 第一个循环用来cluster assignment，保持$\mu$不变来最小化成本函数
+    - 第二循环用来move cluster centroid$\mu_k$，保持$C^{(i)}$不变来最小化成本函数
+
+- K-means optimization objective
+  $$
+  min\ J(c^{(1)},...,c^{(m)},\mu_1,...\mu_k)=\frac{1}{m}\sum_{i=1}^{m}||x^{(i)}-\mu_{c^{(i)}}||^2
+  $$
+
+  - $c^{(i)}$: index of cluster(1,2..,K) to which example $x^{(i)}$ is currently assigned
+  - $\mu_k$: cluster centroid k ($\mu_k\in R^n$)
+  - $\mu_{c^{(i)}}$: cluster centroid of cluster to which example $x^{(i)}$ has been assigned.
+    - 比如$x^{(i)}$被聚为5，那么$c^{(i)}=5$， $\mu_{c^{(i)}}=\mu_5$
+
+- 如何选择K？
+  - Use the elbow method
+  - 一个个试，找到 J 最小的那个
