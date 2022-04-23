@@ -879,9 +879,17 @@ SVM也被称作large Margin Classifier
     \end{aligned}
     $$
 
-    - 第一个循环用来cluster assignment，保持$\mu$不变来最小化成本函数
-    - 第二循环用来move cluster centroid$\mu_k$，保持$C^{(i)}$不变来最小化成本函数
-
+    - 第一个循环用来cluster assignment找最近的聚类中心，保持$\mu$不变来最小化成本函数
+      $$
+      c^{(i)}:=j\ that \ minimizes\ ||x^{(i)}-\mu_j||^2
+      $$
+      
+    - 第二循环用来move cluster centroid$\mu_k$更新聚类中心，保持$C^{(i)}$不变来最小化成本函数
+      $$
+      \mu_k:=\frac{1}{|C_k|}\sum_{i\in C_k}x^{(i)}
+      $$
+      
+  
 - K-means optimization objective
   $$
   min\ J(c^{(1)},...,c^{(m)},\mu_1,...\mu_k)=\frac{1}{m}\sum_{i=1}^{m}||x^{(i)}-\mu_{c^{(i)}}||^2
@@ -895,3 +903,131 @@ SVM也被称作large Margin Classifier
 - 如何选择K？
   - Use the elbow method
   - 一个个试，找到 J 最小的那个
+  
+- 代码：
+
+  ```matlab
+  % 第一部分：寻找最近的聚类中心
+  for i=1:size(X,1)
+      for j=1:K
+          value(j)=sum((X(i,:)-centroids(j,:)).^2);
+      end
+      [val,index] = min(value);
+      idx(i)=index;
+  end
+  % 第二部分：计算新的聚类中心
+  for i=1:K
+      temp = find(idx==i); 
+      centroids(i,:)=sum(X(temp,:))/size(temp,1);
+  end
+  
+  ```
+
+## 2.Principal Component Analysis
+
+- 一些基本认知
+
+  - PCA主成分分析是一种统计方法，通过正交变换将一组可能存在相关性的变量转换为一组线性不相关的变量，转换后的这组变量叫主成分。
+
+  - PCA是最重要的降维方法之一。它会找出数据里最主要的方面，用数据里最主要的方面来代替原始数据
+
+  - 基本思想
+
+    - 2维->1维：找到一个方向(向量)使得数据映射到上面的距离(误差)最小。
+    - n维->k维：找到k个方向(向量)使得数据映射到上面的距离(误差)最小。
+    - 这些向量都过圆心
+
+  - 有如下2个性质，使得一个超平面能对所有样本进行恰当的表达
+
+    - 最近重构性：样本点到这个超平面的距离足够近
+    - 最大可分性：样本点在这个超平面上的投影能尽可能的分开
+      - 比如2维降1维，数据成长条形分布在2维面上，那长的那条代表的方向应该是我们要找的方向。
+    
+  - 优化目标（推导）：
+  
+    - 根据最大可分性可知：要通过方差Variance来找到这个能让投影尽可能分散的方向，方差越大数据越分散。
+    - 但在n维降k维时，我们要避免k个方向重合在一起，即避免这k个维度之间代表的含义有相关性。于是要用到协方差covariance。并尽力优化使协方差为0，这时表示两个维度之间完全独立
+    - 使用协方差矩阵covariance matrix来将方差和协方差包含起来。其中对角线是各个维度的方差，其他元素则是各个维度之间的协方差。
+    - 而我们要使协方差变为0，相当于让协方差矩阵对角化。假如协方差矩阵为C，则优化目标就是找一个P来使PCP‘是一个对角矩阵。
+    - 结合我们希望方差最大化$PP^T=I$,最终要求$CP^T=(-\lambda)P^T$。所以只需让协方差矩阵C进行特征分解。
+  
+- PCA算法流程
+  
+  - 输入：n维样本集 $X=(x_1,x_2,...,x_m)$，要降维到k维。
+  - 输出：降维后的样本集Y
+  
+  1. 数据预处理：对所有样本进行中心化(feature scalind/mean normalization)
+  
+     - 目的是让不同单位的数据之间有相近的数量级。
+  
+     - 公式：$x_i=x_i-\frac{1}{m}\sum_{j=1}^{m}x_j$
+  
+   2. 计算样本的协方差矩阵:$C=\frac{1}{m}XX^T$
+  
+      - 比如$x_i=(a_i.b_i)$
+      - 那么$X=\left(\begin{matrix} a_1 &a_2 &... &a_m\\b_1 &b_2&...&b_m \end{matrix} \right)$
+      - 以及$C=\left(\begin{matrix} \frac{1}{m}\sum_{i=1}^ma_i^2 &\frac{1}{m}\sum_{i=1}^ma_ib_i\\\frac{1}{m}\sum_{i=1}^ma_ib_i &\frac{1}{m}\sum_{i=1}^mb_i^2 \end{matrix} \right)$
+  
+  
+  3. 求出协方差矩阵的特征值及对应的特征向量
+  4. 将特征向量按对应特征值大小从上到下按行排列成矩阵$\lambda_1\geq\lambda_2..\geq\lambda_n$，取前k行组成矩阵$P=[\lambda_1,\lambda_2,...,\lambda_k]$
+  5. Y=PX即为降维到k维后的数据
+  6. 如果想要复原那就$X_{approx}=YP^T$
+  
+- 如何选择K？
+
+  取决于我们希望多少的variance retained保留，即一个阈值$t\in(0,1]$。
+
+  假如有n个特征值$\lambda_1\geq\lambda_2..\geq\lambda_n$，找到最小的k满足下式：
+  $$
+  \frac{\sum_{i=1}^k\lambda_i}{\sum_{i=1}^n\lambda_i}\geq t
+  $$
+  这个式子等价于：
+  $$
+  \frac{\frac{1}{m}\sum_{i=1}^{m}||x^{(i)}-x_{approx}^{(i)}||^2}{\frac{1}{m}\sum_{i=1}^{m}||x^{(i)}||^2}\leq(1-t)
+  $$
+
+  - 分子是Average squared projection error
+  - 分母是Total variation in the data
+
+- 在AI中，一定要先学习原始数据X，如果实在达不到自己想要的效果，再使用PCA来降维数据并学习它。
+
+# 三、Anomaly Detection异常检测
+
+## 1.Density Estimation密度估计
+
+- 不是所有的数据都是可信的！
+
+  通过一个概率模型P(x)来判断它是否异常
+  $$
+  p(x)=
+  \begin{cases}
+  <\epsilon\ anomaly\\
+  \geq \epsilon\ normal
+  \end{cases}
+  $$
+
+- Gaussian Distribution高斯分布
+
+  通常数据集X应该符合高斯分布$x\in N(\mu,\sigma^2)$。
+
+  其概率密度函数为：$p(x,\mu,\sigma^2)=\frac{1}{\sqrt{2\pi}\sigma}exp(-\frac{(x-\mu)^2}{2\sigma^2})$
+
+  平均值mean：$\mu=\frac{1}{m}\sum_{i=1}^mx^{(i)}$
+
+  方差variance：$\sigma^2=\frac{1}{m}\sum_{i=1}^m(x^{(i)}-\mu)^2$
+
+- Anomaly detection algorithm异常检测算法
+
+  1. 对我们认为无异常的数据集计算每一个特征的的平均值和方差
+     $$
+     \mu_j=\frac{1}{m}\sum_{i=1}^mx_j^{(i)}\\
+     \sigma^2_j=\frac{1}{m}\sum_{i=1}^m(x_j^{(i)}-\mu_j)^2
+     $$
+     一个数据x有n个特征，j是其中一个
+
+  2. 对于新的数据x,计算p(x)：
+     $$
+     p(x)=\prod_{j=1}^np(x_j;\mu_j,\sigma^2_j)=\prod_{j=1}^n\frac{1}{\sqrt{2\pi}\sigma_j}exp(-\frac{(x_j-\mu_j)^2}{2\sigma_j^2})
+     $$
+     
