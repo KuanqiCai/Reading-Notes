@@ -1030,4 +1030,153 @@ SVM也被称作large Margin Classifier
      $$
      p(x)=\prod_{j=1}^np(x_j;\mu_j,\sigma^2_j)=\prod_{j=1}^n\frac{1}{\sqrt{2\pi}\sigma_j}exp(-\frac{(x_j-\mu_j)^2}{2\sigma_j^2})
      $$
+
+## 2.Developing and Evaluating an Anomaly Detection System
+
+上面的异常检测算法是无监督学习算法，所以无法根据结果变量y的值来告诉我们数据是否真的是异常的。
+
+所以我们在开发一个异常检测系统时，要从带标记的（异常/正常）的数据着手，将他们划分为Training Set,Cross Validation Set交叉检验集，Test Set。
+
+- Algorithm Evaluation
+
+  - Fit Model p(x) on training set
+  - 对交叉检验集和测试集计算他们的y=1是anomaly,y=0是normal。
+  - Possible evaluation metrics(如何选择$\epsilon$)
+    - 根据Precision/Recall
+    - 或者根据F1-score
+
+- 异常检测与监督学习的对比
+
+  | Anomaly detection                                            | Supervised Learning                                          |
+  | ------------------------------------------------------------ | ------------------------------------------------------------ |
+  | Very small number of positive examples(y=1),but large number of negative(y=0)examples. | Large number of positive and negative examples               |
+  | Many different types of anomalies。难以学习异常应该是怎么样的，之后遇到的异常也可能和之前遇到的完全不同。 | 有足够多的positive examples 用于学习，未来的positive example也很可能和之前遇到的相似 |
+  | 可用于Fraud欺诈 detection，Manufacturing(比如航空发动机)，Monitoring machines in a data center | 可用于Email spam垃圾邮件 classification，weather prediction，cancer classification |
+
+- Choosing what features to use
+
+  - 我们希望特征符合高斯分布，如果不是高斯分布可以通过x=log(x+c),c为非负常数；或者$x=x^c$ c为0-1之间的一个值，来将特征转为高斯分布。
+  - 我们还可以新添加一些特征来更好的进行异常检测。
+
+## 3. Multivariate Gaussian Distribution多元高斯分布
+
+- 如果我们有2个相关的特征，而这两个特征的值域范围比较宽，这时一般的高斯分布无法正确的识别异常，因为一般的高斯分布模型尝试的是去同时抓住两个特征的偏差，因此创造出一个比较大的判定边界。
+
+- 在一般的高斯分布模型中，我们计算p(x)的方法是： 通过分别计算每个特征对应的几率然后将其累乘起来，在多元高斯分布模型中，我们将构建特征的协方差矩阵，用所有的特征一起来计算p(x):
+
+  1. 计算所有特征的平均值：$\mu_j=\frac{1}{m}\sum_{i=1}^mx_j^{(i)}$
+     - $\mu$是一个向量，其每一个单元都是原特征矩阵中一行数据的均值
+
+  2. 计算协方差矩阵：$\Sigma=\frac{1}{m}\sum_{i=1}^m(x^{(i)}-\mu)(x^{(i)}-\mu)^T=\frac{1}{m}(X-\mu)^T(X-\mu)$
+
+  3. 计算多元高斯分布：$p(x)=\frac{1}{(2\pi)^{\frac{n}{2}}|\Sigma|^{\frac{1}{2}}}exp(-0.5(x-\mu)^T\Sigma^{-1}(x-\mu))$
+     - $|\Sigma|$是行列式Determinant
+
+- 原高斯分布模型和多元高斯分布模型的比较：
+
+  | 原高斯分布模型                                               | 多元高斯分布模型                                             |
+  | ------------------------------------------------------------ | ------------------------------------------------------------ |
+  | 不能捕捉特征之间的相关性 但可以通过将特征进行组合的方法来解决 | 自动捕捉特征之间的相关性                                     |
+  | 计算代价低，能适应大规模的特征                               | 计算代价较高 训练集较小时也同样适用                          |
+  |                                                              | 必须要有m>n ，不然的话协方差矩阵 不可逆的，通常需要  m>10n。另外特征冗余也会导致协方差矩阵不可逆 |
+
+  - 如果训练集不是太大，并且没有太多的特征，我们可以使用多元高斯分布模型。
+  - 原高斯分布模型仍然被广泛使用着，如果特征之间在某种程度上存在相互关联的情况，我们可以通过构造新新特征的方法来捕捉这些相关性。
+
+# 四.Recommender Systems推荐系统
+
+- 假使我们是一个电影供应商，我们有 5 部电影和 4 个用户，我们要求用户为电影打分。标记如下
+
+  - $n_u$代表用户的数量
+  - $n_m$代表电影的数量
+  - $r(i,j)$如果用户j给电影i评过分那么r(i,j)=1
+  - $y^{(i,j)}$代表用户j给电影i的评分
+  - $m_j$代表用户j评过分的电影的总数
+
+- Content Based Recommendations 基于内容的推荐系统
+
+  假设每部电影都有两个特征，如x1代表电影的浪漫程度，x2代表电影的动作程度。
+
+  $x^{(i)}$:每部电影有一个特征向量feature vector比如第一部电影：$x^{(1)}=[0.9,0]$。
+
+  $\theta^{(j)}$:用户j的参数向量parameter vector。
+
+  那么用户j对电影i的评分，就可以预测为$(\theta^{(j)})^Tx^{(i)}$
+
+  - Optimization objective
+
+    学习所有用户的parameter vector:
+    $$
+    min_{\theta^{(1)},..,\theta^{(n_u)}} \ \frac{1}{2}\sum^{n_u}_{j=1}\sum_{i:r(i,j)=1}((\theta^{(j)})^Tx^{(i)}-y^{(i,j)})^2+\frac{\lambda}{2}\sum^{n_u}_{j=1}\sum^n_{k=1}(\theta_k^{(j)})^2
+    $$
+
+    - i:r(i,j)=1表示了支队用户j评过分的电影进行计算
+
+  - Gradient descent update:
+    $$
+    \theta_k^{(j)}:=\theta_k^{(j)}-\alpha(\sum_{i:r(i,j)=1}((\theta^{(j)})^Tx^{(i)}-y^{(i,j)})x_k^{(i)}+\lambda\theta_k^{(j)})
+    $$
+
+    - 注意不对$\theta_0$进行正则化处理
+    
+  - 相似的如果我们掌握的是用户特征，我们也可以算出电影的特征x
+    $$
+    min_{x^{(1)},..,x^{(n_m)}} \ \frac{1}{2}\sum^{n_m}_{i=1}\sum_{j:r(i,j)=1}((\theta^{(j)})^Tx^{(i)}-y^{(i,j)})^2+\frac{\lambda}{2}\sum^{n_m}_{i=1}\sum^n_{k=1}(x_k^{(i)})^2\\
+    x_k^{(i)}:=x_k^{(i)}-\alpha(\sum_{j:r(i,j)=1}((\theta^{(j)})^Tx^{(i)}-y^{(i,j)})\theta_k^{(j)}+\lambda x_k^{(i)})
+    $$
+    
+  
+
+- Collaborative filtering协同过滤
+
+  如果我们即没有用户参数也米有电影参数，那我们的优化目标就要改为同时对$x和\theta$进行。
+
+  1. 初始化$x^{(1)},...x^{(n_m)},\theta^{(1)},...,\theta^{(n_u)}$为一些随机小数
+
+  2. 使用梯度下降算法最小化代价函数
+     $$
+     \theta_k^{(j)}:=\theta_k^{(j)}-\alpha(\sum_{i:r(i,j)=1}((\theta^{(j)})^Tx^{(i)}-y^{(i,j)})x_k^{(i)}+\lambda\theta_k^{(j)})\\
+     x_k^{(i)}:=x_k^{(i)}-\alpha(\sum_{j:r(i,j)=1}((\theta^{(j)})^Tx^{(i)}-y^{(i,j)})\theta_k^{(j)}+\lambda x_k^{(i)})
+     $$
      
+
+  3. 训练完算法后，预测$(\theta^{(j)})^Tx^{(i)}$
+
+- 向量化：Low Rank Matrix Factorization低秩矩阵分解
+
+  将上面的算法进行向量化。
+
+  假设有4位用户给5部电影评分：
+  $$
+  Y=
+   \left[
+   \begin{matrix}
+     5 & 5 & 0 & 0 \\
+     5 & ? & ? & 0 \\
+     ? & 4 & 0 & ? \\
+     0 & 0 & 5 & 4 \\
+     0 & 0 & 5 & 0
+    \end{matrix}
+    \right]
+  $$
+  预测结果为：
+  $$
+  \left[
+   \begin{matrix}
+     (\theta^{(1)})^Tx^{(1)} & (\theta^{(2)})^Tx^{(1)} & ... & (\theta^{(n_u)})^Tx^{(1)} \\
+     ... & ... & ... & ... \\
+     (\theta^{(1)})^Tx^{(n_m)} & (\theta^{(2)})^Tx^{(n_m)} & ... & (\theta^{(n_u)})^Tx^{(n_m)}
+    \end{matrix}
+    \right] 
+  $$
+  
+
+  - 当用户在看某部电影 i 的时候，如果你想找5部与电影非常相似的电影，为了能给用户推荐5部新电影，你需要做的是找出电影 j，在这些不同的电影中与我们要找的电影 i 的距离最小，这样你就能给你的用户推荐几部不同的电影了。
+
+- Mean Normalization均值归一化‘
+
+  如果我们新增一个用户 **Eve**，并且 **Eve** 没有为任何电影评分，那么我们以什么为依据为**Eve**推荐电影呢？
+
+  我们首先需要对结果Y矩阵进行均值归一化处理，将每一个用户对某一部电影的评分减去所有用户对该电影评分的平均值：
+
+  然后我们利用这个新的 矩阵来训练算法。 如果我们要用新训练出的算法来预测评分，则需要将平均值重新加回去，预测$(\theta^{(j)})^Tx^{(i)}+\mu_i$，对于**Eve**，我们的新模型会认为她给每部电影的评分都是该电影的平均分。
