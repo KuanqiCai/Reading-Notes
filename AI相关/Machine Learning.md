@@ -1126,7 +1126,6 @@ SVM也被称作large Margin Classifier
     $$
     
   
-
 - Collaborative filtering协同过滤
 
   如果我们即没有用户参数也米有电影参数，那我们的优化目标就要改为同时对$x和\theta$进行。
@@ -1139,9 +1138,8 @@ SVM也被称作large Margin Classifier
      x_k^{(i)}:=x_k^{(i)}-\alpha(\sum_{j:r(i,j)=1}((\theta^{(j)})^Tx^{(i)}-y^{(i,j)})\theta_k^{(j)}+\lambda x_k^{(i)})
      $$
      
-
   3. 训练完算法后，预测$(\theta^{(j)})^Tx^{(i)}$
-
+  
 - 向量化：Low Rank Matrix Factorization低秩矩阵分解
 
   将上面的算法进行向量化。
@@ -1180,3 +1178,73 @@ SVM也被称作large Margin Classifier
   我们首先需要对结果Y矩阵进行均值归一化处理，将每一个用户对某一部电影的评分减去所有用户对该电影评分的平均值：
 
   然后我们利用这个新的 矩阵来训练算法。 如果我们要用新训练出的算法来预测评分，则需要将平均值重新加回去，预测$(\theta^{(j)})^Tx^{(i)}+\mu_i$，对于**Eve**，我们的新模型会认为她给每部电影的评分都是该电影的平均分。
+
+# 五、Large Scale Machine Learning
+
+对于一个大规模的数量级比如100万个数据，首先要考虑是否有必要训练这么多数据。可能1000个数据就很有效了。
+
+## 1. Stochastic Gradient Descent随机梯度下降
+
+如果一定需要一个大规模的训练集，可以尝试使用随机梯度下降法来替代批量梯度下降法batch gradient descent
+
+- 第一步：Randomly shuffle(reorder) training examples
+
+- 第二部：Repeat
+  $$
+  \begin{aligned}
+  for\ &i:=1,..,m \{ \\
+  &\theta:=\theta_j-\alpha(h_\theta(x^{(i)})-y^{(i)})x_j^{(i)}\ \ \ for\ j=0:n\\
+  \}
+  \end{aligned}
+  $$
+
+  - 随机梯度下降算法在每一次计算之后便更新参数$\theta$ ，而不需要首先将所有的训练集求和，在梯度下降算法还没有完成一次迭代时，随机梯度下降算法便已经走出了很远。
+  - 缺点：不是每一步都是朝着”正确”的方向迈出的。因此算法虽然会逐渐走向全局最小值的位置，但是可能无法站到那个最小值的那一点，而是在最小值点附近徘徊。
+  - 优点：相比于批量梯度，更快，更快收敛
+
+- 检测是否收敛（小批量梯度下降同理）
+
+  每次更新$\theta$前计算cost function.每1000个（自行决定）样本，计算下他们的平均值。然后画图。最后观察是否收敛。
+
+## 2.Mini-Batch Gradient Descent小批量梯度下降
+
+Repeat
+$$
+\begin{aligned}
+for\ &i:=1,..,m \{ \\
+&\theta:=\theta_j-\alpha\frac{1}{b}\sum_{k=i}^{i+b-1}(h_\theta(x^{(k)})-y^{(k)})x_j^{(k)}\ \ \ for\ j=0:n\\
+&i+=10;\\
+\}
+\end{aligned}
+$$
+
+- 小批量梯度下降算法是介于批量梯度下降算法和随机梯度下降算法之间的算法，每计算常数b次训练实例，便更新一次参数 $\theta$
+
+- 他用了一些小样本来近似全部的，其本质就是我1个指不定不太准，那我用个30个50个样本那比随机的要准不少了吧，而且批量的话还是非常可以反映样本的一个分布情况的。
+
+## 3.Online learning
+
+Online Learning并不是一种模型，而是一种模型的训练方法，Online Learning能够根据线上反馈数据，实时快速地进行模型调整，使得模型及时反映线上的变化，提高线上预测的准确率。Online Learning的流程包括：将模型的预测结果展现给用户，然后收集用户的反馈数据，再用来训练模型，形成闭环的系统.
+
+Online Learning有点像自动控制系统，但又不尽相同，二者的区别是：Online Learning的优化目标是整体的损失函数最小化，而自动控制系统要求最终结果与期望值的偏差最小。
+
+快速求出目标函数的最优解的2中方式
+
+1. Bayesian Online Learning
+
+   给定参数先验，根据反馈计算后验，将其作为下一次预测的先验，然后再根据反馈计算后验，如此进行下去，就是一个Online Learning的过程
+
+2. Follow The Regularized Leader
+
+   FTL（Follow The Leader）算法，FTL思想就是每次找到让之前所有损失函数之和最小的参数。FTRL算法就是在FTL的优化目标的基础上，加入了正规化，防止过拟合
+
+## 4.Map Reduce and Data Parallelism 映射化简和数据并行
+
+如果我们用批量梯度下降算法来求解大规模数据集的最优解，我们需要对整个训练集进行循环，计算偏导数和代价，再求和，计算代价非常大。如果我们能够将我们的数据集分配给不多台计算机，让每一台计算机处理数据集的一个子集，然后我们将计所的结果汇总在求和。这样的方法叫做映射简化。
+
+即加入并行计算。
+
+比如可以用于：
+
+1. Logistic regression trained using batch gradient descent. 
+2. Computing the average of all the features in your training set $\mu = \frac{1}{m} \sum_{i=1}^m x^{(i)}$
