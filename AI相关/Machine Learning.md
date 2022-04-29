@@ -267,14 +267,14 @@ $$
     $$
     \begin{aligned}
     &Cost(h_\theta(x),y)=-ylog(h_\theta(x))-(1-y)log(1-h_\theta(x))\\
-    &J(\theta)=\frac{1}{m}\sum_{i=1}^m[y^{(i)}log(h_\theta(x^{(i)}))+(1-y^{(i)})log(1-h_\theta(x^{i}))]
+    &J(\theta)=-\frac{1}{m}\sum_{i=1}^m[y^{(i)}log(h_\theta(x^{(i)}))+(1-y^{(i)})log(1-h_\theta(x^{i}))]
     \end{aligned}
     $$
     继续将其向量化：
     $$
     \begin{aligned}
     &h=g(X\theta)\\
-    &J(\theta)=\frac{1}{m}(-y^Tlog(h)-(1-y)^Tlog(1-h))
+    &J(\theta)=\frac{1}{m}(-y^Tlog(h)+(1-y)^Tlog(1-h))
     \end{aligned}
     $$
 
