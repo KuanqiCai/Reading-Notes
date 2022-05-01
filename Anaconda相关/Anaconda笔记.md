@@ -7,15 +7,25 @@ Anaconda是一个环境管理软件，解决不同代码需要不同的环境时
 - 查看版本号
   - `conda --version`
   - `conda -V`
+  
+- 更新Anaconda
+
+  - 先更新conda:`conda update conda`
+  - 在更新Anaconda: ``
+
 - 查看当前系统下有什么conda环境
   - `conda env list`
   - `conda info --envs`
+  
 - 新建conda环境
   - `conda create -n [环境名]`
+  
 - 激活某一个环境
   - `conda activate environment`
+  
 - 退出该环境
   - `conda deactivate`
+  
 - 查看环境中所装的包
   - `conda list`
 
@@ -36,17 +46,15 @@ Anaconda是一个环境管理软件，解决不同代码需要不同的环境时
 - 克隆一个环境
 
   - `conda create -n new_env --clone old_env`
-
 - 删除环境
 
   - `conda remove -n environment --all`
-
 - 导出环境
 
   - `conda env export > environment.yml`
-
 - 根据yml文件快速创建环境
 
   - `conda env create -f environment.yml`
 
-  
+- 用txt一键安装我们所需要的环境
+  - 在激活某一环境后：`pip install -r requirements.txt`
