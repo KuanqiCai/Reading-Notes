@@ -131,21 +131,41 @@ image gradient 是一个用于determine确定local intensity changes的重要工
     \end{aligned}
     $$
 
-  - Sobel-Filter索伯算子
+  - Sobel-Filter索伯滤波器
+
+    索贝尔算子（Sobeloperator）主要用作边缘检测，在技术上，它是一离散性差分算子，用来运算图像亮度函数的灰度之近似值。在图像的任何一点使用此算子，将会产生对应的灰度矢量或是其法矢量。
 
     Sobel Filter是integer整数approximations of the double gradient.
 
+    -  该算子由2个3X3矩阵g[x],g[y]组成，分别代表横向和纵向。比如：
+
+      | g[x] |      |      |      | g[y] |      |      |      |
+      | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+      |      | -1   | 0    | 1    |      | 1    | 2    | 1    |
+      |      | -2   | 0    | 2    |      | 0    | 0    | 0    |
+      |      | -1   | 0    | 1    |      | -1   | -2   | -1   |
+    
+      如果I代表原始图像，那么Gx,Gy就分别代表经横向及纵向边缘检测的图像灰度值
+    
+      $G_x=g[x]*I$; $G_y=g[y]*I$      这里*是卷积的意思
+    
+      该点的灰度大小为：$G=\sqrt{G_x^2+G_y^2}$
+    
     - Approxiamtion von $S\{\frac{d}{dx}I(x,y)\}=I[x,y]*g^{\prime}[x]*g[y]=\sum_{k=-\infty}^\infty \sum_{l=-\infty}^\infty I[x-k,y-l]g^{\prime}[k]g[l]$
-
+    
       durch endliche Summe$\sum_{k=-1,0,1}\sum_{l=-1,0,1}I[x-k,y-l]g^{\prime}[k]g[l]$
-
+    
     - Normierungsfaktor$C=\frac{1}{1+2e^{-\frac{1}{2\sigma^2}}}$
-
+    
       
 
 ## 3.Merkmalspunkte-Ecken und Kanten
 
 特征点Feature points – 角Corners and 边缘Edges
+
+哈里斯角点检测的基本思想：
+
+算法基本思想是使用一个固定窗口在图像上进行任意方向上的滑动，比较滑动前与滑动后两种情况，窗口中的像素灰度变化程度，如果存在任意方向上的滑动，都有着较大灰度变化，那么我们可以认为该窗口中存在角点。
 
 - Harris Corner and Edge Detector
   - Corner: shifts移动 in all directions cause a change
@@ -160,9 +180,13 @@ image gradient 是一个用于determine确定local intensity changes的重要工
 
     - Shift移动 according to vector u
 
-  - Change in the image segment段
+  - Change in the image segment段：当窗口发生u移动时，那么滑动前与滑动后对应的窗口中的像素点灰度变化描述如下：
 
     $S(u)=\displaystyle\int_W(I(x+u)-I(x))^2dx$
+
+    也可写成：$S(u_1,u_2)=\displaystyle\sum_{x_1,x_2}w(x_1,x_2)[I(x_1+u_1,x_2+u_2)-I(x_1,x_2)]^2$。这里的W是window function窗口函数，也即我们选中的segment。
+
+    后面3步是在化简该式
 
   - Differentiability可微性 of $I$:
     $$
@@ -186,7 +210,12 @@ image gradient 是一个用于determine确定local intensity changes的重要工
       \end{matrix}
       \right]
     $$
-    由此可改写Image segment为：$S(u)\approx u^TG(x)u$
+    由此可改写Image segment为：$S(u)\approx u^TG(x)u=[u_1\ u_2](\sum \left[
+     \begin{matrix}
+       I_{x_1}^2 & I_{x_1}I_{x_2} \\
+       I_{x_1}I_{x_2} & I_{x_2}^2  \\
+      \end{matrix}
+      \right])\left[\begin{matrix}u_1\\u_2\end{matrix}\right]$
 
 - Excursus附记: Linear Algebra
 
@@ -211,7 +240,7 @@ image gradient 是一个用于determine确定local intensity changes的重要工
     - $det\ G=\displaystyle\prod_{i=1}^{n}\lambda_i$ (determinant行列式  is the product of the eigenvalues)
     - $tr\ G=\displaystyle\sum_{i=1}^n\lambda_i$(The trace迹(spur) is the sum of the eigenvalues )
 
-- Eigenvalue decomposition
+- Eigenvalue decomposition：
 
   - Eigenvalue decomposition分解 of Harris matrix
     $$
@@ -274,7 +303,7 @@ image gradient 是一个用于determine确定local intensity changes的重要工
 
     - Homogeneous surface: H small. $\tau_-<H<\tau_+$
 
-## 4. Korrespondenzschätzung für Merkmalspunkte
+## 4.Korrespondenzschätzung für Merkmalspunkte
 
 Correspondence Estimation of Feature Points特征点的对应估计
 
@@ -376,3 +405,103 @@ Correspondence Estimation of Feature Points特征点的对应估计
     - 两个normalized image section是相似的,如果
       1. SSD small (few differences)
       2. NCC close to =1 (high correlation)
+
+
+
+# *、 TUM CV课作业代码
+
+## 第一次作业
+
+### 1.1Color Image conversion
+
+```matlab
+function gray_image = rgb_to_gray(input_image)
+    % This function is supposed to convert a RGB-image to a grayscale image.
+    % If the image is already a grayscale image directly return it.
+    
+    if(size(input_image,3)~=3)
+        gray_image = input_image;
+        return
+    end
+    
+    input_image = double(input_image)
+    gray_image = 0.299*input_image(:,:,1) + 0.587*input_image(:,:,2) + 0.114*input_image(:,:,3);
+    gray_image = uint8(gray_image);
+end
+```
+
+### 1.2Image Gradient(索伯算子)
+
+```matlab
+function [Fx, Fy] = sobel_xy(input_image)
+    % In this function you have to implement a Sobel filter 
+    % that calculates the image gradient in x- and y- direction of a grayscale image.
+    gx = [-1,0,1;-2,0,2;-1,0,1];
+    gy = gx';
+    
+    Fx = filter2(gx,input_image,'same');
+    Fy = filter2(gy,input_image,'same');
+    
+end
+```
+
+### 1.3 Harris Detector
+
+- Input Parameters
+
+    用于检测输入进来的参数是否符合要求。
+    
+    使用 `inputParser` 对象，用户可以通过创建输入解析器模式来管理函数的输入。要检查输入项，您可以为所需参数、可选参数和名称-值对组参数定义验证函数。还可以通过设置属性来调整解析行为，例如如何处理大小写、结构体数组输入以及不在输入解析器模式中的输入。
+    
+    ```matlab
+    function [segment_length, k, tau, do_plot] = harris_detector(input_image, varargin)
+        % In this function you are going to implement a Harris detector that extracts features
+        % from the input_image.
+    
+        % *************** Input parser ***************
+        % 创建具有默认属性值的输入解析器对象
+        P = inputParser;
+        
+        % addOptional:将可选的位置参数添加到输入解析器模式中
+        P.addOptional('segment_length', 15, @isnumeric);
+        P.addOptional('k', 0.05, @isnumeric);
+        P.addOptional('tau', 1e6, @isnumeric);
+        P.addOptional('do_plot', false, @islogical);
+    	
+    	% 解析函数输入
+        P.parse(varargin{:});
+    	
+    	% results:指定为有效输入参数的名称和对应的值，以结构体的形式存储。有效输入参数是指名称与输入解析器模式中定义的参数匹配的输入参数。Results 结构体的每个字段对应于输入解析器模式中一个参数的名称。parse 函数会填充 Results 属性
+        segment_length  = P.Results.segment_length;
+        k               = P.Results.k;
+        tau             = P.Results.tau;
+        do_plot         = P.Results.do_plot;
+        
+        % *************** Preparation for feature extraction ***************
+        % Check if it is a grayscale image，处理过的灰度照片是1维的，所以检测图片的维度
+        if(size(input_image,3)==3)
+            error("Image format has to be NxMx1");
+        end
+        
+        % Approximation of the image gradient
+        input_image = double(input_image);	% matlab读入图像的数据是uint8，而matlab中数值一般采用double型（64位）存储和运算
+        [Ix,Iy] = sobel_xy(input_image);	% 由1.2的函数得到横向及纵向边缘检测的图像灰度值
+        
+        % Weighting
+        % fspecial()创建一个高斯低通滤波来提高我们选取的窗口segment中间像素的影响力
+        % 第一个参数指明用的是高斯滤波器。高斯滤波器是一种线性滤波器，能够有效的抑制噪声，平滑图像。
+        % 第二个参数是这个滤波器的尺寸，和我们的窗口尺寸保持一致。
+        % 第三个参数是sigma标准差。调整σ实际是在调整周围像素对当前像素的影响程度，调大σ即提高了远处像素对中心像素的影响程度，滤波结果也就越平滑。这里设置为segment_length/5
+        w = fspecial('gaussian',[segment_length,1],segment_length/5);
+        
+        % Harris Matrix G
+        % conv2(u,v,A,shape)先算矩阵A每列和u的卷积，再算矩阵A每列和v的卷积。same表示返回卷积中大小与A相同的部分，还有full（默认，全部）和valid（没有补零边缘的卷积部分）2个shape选项。
+        % 这里是在计算图像中每一个点的哈里斯矩阵。
+        G11 = double(conv2(w,w,Ix.^2,'same'));
+        G22 = double(conv2(w,w,Iy.^2,'same'));
+        G12 = double(conv2(w,w,Ix.*Iy,'same'));
+    end
+    ```
+
+
+
