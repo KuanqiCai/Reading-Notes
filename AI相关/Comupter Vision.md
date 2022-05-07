@@ -447,19 +447,18 @@ end
 
 ### 1.3 Harris Detector
 
-- Input Parameters
+- 基础方法：
 
-    用于检测输入进来的参数是否符合要求。
-    
-    使用 `inputParser` 对象，用户可以通过创建输入解析器模式来管理函数的输入。要检查输入项，您可以为所需参数、可选参数和名称-值对组参数定义验证函数。还可以通过设置属性来调整解析行为，例如如何处理大小写、结构体数组输入以及不在输入解析器模式中的输入。
-    
     ```matlab
-    function [segment_length, k, tau, do_plot] = harris_detector(input_image, varargin)
+    function features = harris_detector(input_image, varargin)
         % In this function you are going to implement a Harris detector that extracts features
         % from the input_image.
     
+    
+    
         % *************** Input parser ***************
-        % 创建具有默认属性值的输入解析器对象
+        % 创建具有默认属性值的输入解析器对象，用于检测输入进来的参数是否符合要求。
+        %使用 `inputParser` 对象，用户可以通过创建输入解析器模式来管理函数的输入。要检查输入项，您可以为所需参数、可选参数和名称-值对组参数定义验证函数。还可以通过设置属性来调整解析行为，例如如何处理大小写、结构体数组输入以及不在输入解析器模式中的输入。
         P = inputParser;
         
         % addOptional:将可选的位置参数添加到输入解析器模式中
@@ -476,6 +475,8 @@ end
         k               = P.Results.k;
         tau             = P.Results.tau;
         do_plot         = P.Results.do_plot;
+        
+        
         
         % *************** Preparation for feature extraction ***************
         % Check if it is a grayscale image，处理过的灰度照片是1维的，所以检测图片的维度
@@ -500,8 +501,129 @@ end
         G11 = double(conv2(w,w,Ix.^2,'same'));
         G22 = double(conv2(w,w,Iy.^2,'same'));
         G12 = double(conv2(w,w,Ix.*Iy,'same'));
+        
+        
+        
+        % *************** Feature extraction with the Harris measurement ***************
+        % 首先根据公式H=det(G) - k*tr(G)*tr(G)计算 H
+        H = ((G11.*G22 - G12.^2) - k*(G11 + G22).^2);
+        % ceil(X)将 X 的每个元素四舍五入到大于或等于该元素的最接近整数
+        % H是一个长方形矩阵，肯定会把边缘点包含进来。我们要消除边缘点，于是从长方形四边往里取一个segment_length/2边界。这个边界里的就是我们要取特征的部分，令mask为1。边界外的就令mask=0，乘上H后就自动消除边缘了。
+        mask=zeros(size(H));
+        mask((ceil(segment_length/2)+1):(size(H,1)-ceil(segment_length/2)),(ceil(segment_length/2)+1):(size(H,2)-ceil(segment_length/2)))=1;
+        R = H.*mask;
+    	% harris detector是用于找角点的，只要大于一定阈值的才是角点，所以小于阈值的令为0
+        R(R<tau)=0;
+        % find会返回R中非0的坐标
+        [row,col] = find(R); 
+        corners = R;
+        % 注意matlab中图像用矩阵表示所以原点在左上方，而我们平时说的坐标原点在左下方，所以这里的col和row是颠倒的。
+        features = [col,row]'; 
+        
+        
+        % *************** Plot ***************
+        % 将找到的特征滑倒图片里去
+        if P.Results.do_plot == true
+            figure
+            imshow(input_image);
+            hold on
+            plot(features(1,:),features(2,:),'*');
+        end
     end
     ```
 
+- 进阶方法：
 
+  前面普通方法用了一个全局的阈值threshold：tau。但以一张图片的特征分布变化是很大的，用一个全局的阈值就会导致特征过多，所以先用一个小阈值来消除一些弱特征来消除噪声是很有必要的。
+
+  - 一个辅助函数
+
+    产生一个矩阵，离这个矩阵中心点的距离如果小于min_dist那就是0，如果大于就是1.
+
+    ```matlab
+    function Cake = cake(min_dist)
+        % The cake function creates a "cake matrix" that contains a circular set-up of zeros
+        % and fills the rest of the matrix with ones. 
+        % This function can be used to eliminate all potential features around a stronger feature
+        % that don't meet the minimal distance to this respective feature.
+        %[X,Y] = meshgrid(x,y) 基于向量 x 和 y 中包含的坐标返回二维网格坐标。X 是一个矩阵，每一行是 x 的一个副本；Y 也是一个矩阵，每一列是 y 的一个副本。
+        [X,Y]=meshgrid(-min_dist:min_dist,-min_dist:min_dist);
+        % 这样sqrt(X.^2+Y.^2)就相当于每个点到矩阵中心的距离
+        Cake=sqrt(X.^2+Y.^2)>min_dist;
+        
+    end
+    ```
+
+  - 
+
+  ```matlab
+  function [min_dist, tile_size, N] = harris_detector(input_image, varargin)
+      % In this function you are going to implement a Harris detector that extracts features
+      % from the input_image.
+      
+      % *************** Input parser ***************
+      % 相比普通方法增加如下变量
+      % 1. min_dist:两个特征之间的最小距离，单位是pixel
+      % 2. tile_size:定义了一个局部区域的大小
+      % 3. N:一个局部区域里最多可以有的特征数量
+      P = inputParser;
+      P.addOptional('segment_length', 15, @isnumeric);
+      P.addOptional('k', 0.05, @isnumeric);
+      P.addOptional('tau', 1e6, @isnumeric);
+      P.addOptional('do_plot', false, @islogical);
+      P.addOptional('min_dist', 20, @isnumeric);
+      P.addOptional('tile_size', [200,200], @isnumeric);
+      P.addOptional('N', 5, @isnumeric);
+      P.parse(varargin{:});
+      segment_length  = P.Results.segment_length;
+      k               = P.Results.k;
+      tau             = P.Results.tau;
+      tile_size       = P.Results.tile_size;
+      N               = P.Results.N;
+      min_dist        = P.Results.min_dist;
+      do_plot         = P.Results.do_plot;
+      
+      if size(tile_size) == 1
+          tile_size   = [tile_size,tile_size];
+      end
+      % *************** Preparation for feature extraction ***************
+      % 与普通方法一致
+      if(size(input_image,3)==3)
+          error("Image format has to be NxMx1");
+      end
+      input_image = double(input_image);	
+      [Ix,Iy] = sobel_xy(input_image);	
+      w = fspecial('gaussian',[segment_length,1],segment_length/5);
+      G11 = double(conv2(w,w,Ix.^2,'same'));
+      G22 = double(conv2(w,w,Iy.^2,'same'));
+      G12 = double(conv2(w,w,Ix.*Iy,'same'));
+      
+      
+      
+      % *************** Feature extraction with the Harris measurement ***************
+      % 与普通方法一致
+      H = ((G11.*G22 - G12.^2) - k*(G11 + G22).^2);
+      mask=zeros(size(H));
+      mask((ceil(segment_length/2)+1):(size(H,1)-ceil(segment_length/2)),(ceil(segment_length/2)+1):(size(H,2)-ceil(segment_length/2)))=1;
+      R = H.*mask;
+      R(R<tau)=0;
+      [row,col] = find(R); 
+      corners = R;
+      
+      % *************** Feature preparation ***************
+      % 扩展我们的角点矩阵：在corners角点矩阵周围扩展一圈宽度为min_dist的0
+      % 具体做法是，先建那么大的矩阵，然后中间corners部分赋值进去。
+      expand = zeros(size(corners)+2*min_dist);
+      expand(min_dist+1:min_dist+size(corners,1),min_dist+1:min_dist+size(corners,2)) = corners;
+      corners = expand;  
+      % [B,I] = sort(A,direction)按照direction(ascend/descend)来对矩阵A的每一列进行排序.
+      % B是排列完的矩阵，I是排序完的B在A中的索引，即B==A(I)
+      [sorted, sorted_index] = sort(corners(:),'descend');
+      % 排除角点矩阵范围内那些为0的点，因为他们不是特征点
+      sorted_index(sorted==0)=[];
+      
+  end
+  ```
+
+  
 
