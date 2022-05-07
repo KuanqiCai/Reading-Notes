@@ -617,13 +617,70 @@ end
       expand(min_dist+1:min_dist+size(corners,1),min_dist+1:min_dist+size(corners,2)) = corners;
       corners = expand;  
       % [B,I] = sort(A,direction)按照direction(ascend/descend)来对矩阵A的每一列进行排序.
-      % B是排列完的矩阵，I是排序完的B在A中的索引，即B==A(I)
+      % B是排列完的矩阵(mxn,1)维的，I是排序完的B在A中的索引，即B==A(I)
       [sorted, sorted_index] = sort(corners(:),'descend');
       % 排除角点矩阵范围内那些为0的点，因为他们不是特征点
       sorted_index(sorted==0)=[];
       
+      % *************** Accumulator array ***************
+  	% 创建一个矩阵acc_array用于储存每个小部分teil里的参数。所以共有size(image)/tile_size个小tile.
+      acc_array = zeros(ceil(size(input_image,1)/tile_size(1)),ceil(size(input_image,2)/tile_size(2)));
+      % 上面排序后我们得到sorted_index个特征。此外每个teil最多有N个特征。这两个共同影响了我们最后特征应该有多少个。
+      features = zeros(2,min(numel(acc_array)*N,numel(sorted_index)));
+      
+      % *************** Feature detection with minimal distance and maximal number of features per tile ***************
+      % 首先创建一个矩阵，大于矩阵中心距离min_dist的元素设置为1，即中间的各个元素都是0
+      % 这样一个特征点周围的矩阵 点乘上 这个cake矩阵后，就保证了这个特征点最小距离内没有其他特征点。
+      Cake = cake(min_dist);
+      count = 1;
+      for i = 1:numel(sorted_index)
+      	% 前面排列时根据特征强度降序排列，所以我们先处理特征最强的。因为由于我们设置的最大特征数，导致一些特征丢失，那肯定丢失那些特征弱的。
+      	% sort返回的是(mxn,1)维矩阵，index也指的是第几个，所以下面还要手动转化为x,y
+          current = sorted_index(i);
+          % 如果=0说明不是特征点（角点）
+          if corners(current) == 0
+              continue;
+          else 
+          	% Y = floor(X) 将 X 的每个元素四舍五入到小于或等于该元素的最接近整数。相反于ceil()		
+          	% 因为index是1维的，所以要手动转化为x,y,注意这里原点在左上角，所以x表示列数
+              % 对索引除以行数后，就得到除尽了几列，那再加一列就是元素矩阵中的列数x.
+              x_corners = floor(current/size(corners,1));
+              % 索引-除尽的列数*行数=元素在下一列的第几行
+              y_corners = current-x_corners*size(corners,1);
+              x_corners = x_corners+1;
+          end
+          	% 求得我们当前的特征点，是图像中的第几个小teil区域。同样注意这里原点在左上角，所以x表示列数
+          	% 原本corners是覆盖了整个范围，然后我们扩展了一圈min_dist以方便清空特征点周围的特征。
+          	% 所以现在corner的范围是原先corner+min_dist那一圈。
+          	% min_dist那一圈都是0,我们在画小teil的时候不需要考虑这些min_dist。
+          	% 所以要减掉min_dist坐标，以得到特征在原先corner下的坐标。
+              x_acc = ceil((x_corners-min_dist)/tile_size(2));
+              y_acc = ceil((y_corners-min_dist)/tile_size(1));
+  			
+  			% 这样一个特征点周围的矩阵 点乘上 这个cake矩阵后，就保证了这个特征点最小距离内没有其他特征点。
+              corners(y_corners-min_dist:y_corners+min_dist,x_corners-min_dist:x_corners+min_dist) = corners(y_corners-min_dist:y_corners+min_dist,x_corners-min_dist:x_corners+min_dist).*Cake;
+             
+          % 如果小teil中的特征数没有超过一个teil的最大特征数N,那么就将特征加入进去   
+          if acc_array(y_acc,x_acc) < N
+              acc_array(y_acc,x_acc) = acc_array(y_acc,x_acc)+1;
+              % 我们要得到原始图像下的坐标，而现在corner矩阵为了方便计算扩充了一圈，所以现在记录特征点要减去这一圈对应的坐标。
+              features(:,count) = [x_corners-min_dist;y_corners-min_dist];
+              count = count+1;
+          end
+      end
+      % all(_,1)检测每一列并返回一个行矩阵，这里如果一列都是0元素，那行矩阵的该元素为1.
+      % 消除所有的0列。
+      features(:,all(features==0,1)) = []; 
+      
+      % *************** Plot ***************
+      if P.Results.do_plot == true
+          figure
+          imshow(input_image);
+          hold on
+          plot(features(1,:),features(2,:),'*');
+      end
   end
   ```
-
+  
   
 
