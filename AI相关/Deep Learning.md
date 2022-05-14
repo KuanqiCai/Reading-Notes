@@ -1005,7 +1005,6 @@ print ("y = " + str(train_y[0,index]) + ". It's a " + classes[train_y[0,index]].
 m_train = train_x_orig.shape[0]
 num_px = train_x_orig.shape[1]
 m_test = test_x_orig.shape[0]
-
 print ("Number of training examples: " + str(m_train))
 print ("Number of testing examples: " + str(m_test))
 print ("Each image is of size: (" + str(num_px) + ", " + str(num_px) + ", 3)")
@@ -1013,9 +1012,66 @@ print ("train_x_orig shape: " + str(train_x_orig.shape))
 print ("train_y shape: " + str(train_y.shape))
 print ("test_x_orig shape: " + str(test_x_orig.shape))
 print ("test_y shape: " + str(test_y.shape))
+
+# Reshape the training and test examples 
+train_x_flatten = train_x_orig.reshape(train_x_orig.shape[0], -1).T   # The "-1" makes reshape flatten the remaining dimensions
+test_x_flatten = test_x_orig.reshape(test_x_orig.shape[0], -1).T
+
+# Standardize data to have feature values between 0 and 1.
+train_x = train_x_flatten/255.
+test_x = test_x_flatten/255.
+
+print ("train_x's shape: " + str(train_x.shape))
+print ("test_x's shape: " + str(test_x.shape))
 ```
 
+### 3) Two_Layer Neural Network
 
+#### * Model Architecture
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/2_layer_Architecture.png?raw=true)
+
+- The input is a (64,64,3) image which is flattened to a vector of size $(12288,1)$. 
+- The corresponding vector: $[x_0,x_1,...,x_{12287}]^T$ is then multiplied by the weight matrix $W^{[1]}$ of size $(n^{[1]}, 12288)$.
+- Then, add a bias term and take its relu to get the following vector: $[a_0^{[1]}, a_1^{[1]},..., a_{n^{[1]}-1}^{[1]}]^T$.
+- Repeat the same process.
+- Multiply the resulting vector by $W^{[2]}$ and add the intercept (bias). 
+- Finally, take the sigmoid of the result. If it's greater than 0.5, classify it as a cat.
+
+#### * 2-Layer Model
+
+借助**4.一个多隐藏层神经网络**中创建的函数来实现模型
+
+```python
+def initialize_parameters(n_x, n_h, n_y):
+    ...
+    return parameters 
+def linear_activation_forward(A_prev, W, b, activation):
+    ...
+    return A, cache
+def compute_cost(AL, Y):
+    ...
+    return cost
+def linear_activation_backward(dA, cache, activation):
+    ...
+    return dA_prev, dW, db
+def update_parameters(parameters, grads, learning_rate):
+    ...
+    return parameters
+```
+
+- 模型实现：
+
+  ```python
+  ### CONSTANTS DEFINING THE MODEL ####
+  n_x = 12288     # num_px * num_px * 3
+  n_h = 7
+  n_y = 1
+  layers_dims = (n_x, n_h, n_y)
+  learning_rate = 0.0075
+  ```
+
+  
 
 # 二、Improving Deep Neural Networks
 
