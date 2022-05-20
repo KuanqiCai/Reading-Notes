@@ -406,7 +406,235 @@ Correspondence Estimation of Feature Points特征点的对应估计
       1. SSD small (few differences)
       2. NCC close to =1 (high correlation)
 
+# 二、Bildentstehung
 
+## 1.Bildentstehung
+
+Image Formation成像
+
+- The Pinhole Camera Model(Lochkameramodell)
+
+  对于lens透镜：
+  $$
+  |\frac{b}{B}|=\frac{z-f}{f}\\
+  |\frac{z}{Z}|=|\frac{b}{B}|\\
+  \frac{1}{|Z|}+\frac{1}{z}=\frac{1}{f}
+  $$
+  其中：
+
+  - $f$:焦距，焦点到凸透镜中心的距离。
+    - 焦点：平行于主光轴的光，经透镜折射后与主光轴相交的点
+    - 弥散圆circle of confusion:在焦点前后，光线会扩散为一个圆，成像变得模糊
+    - 焦深：离焦点一定范围内的弥散圆还是让人清晰可见的，这段离焦点的距离称之为景深。显然景深包含焦点的左右两侧，靠近透镜那一侧称之为前景深，远离透镜那一侧称之为后景深
+    - 景深：焦深对应于像，而景深对应于物体。
+  - $z$:像距，成像平面到凸透镜的距离。f<=z<=2f
+    - 像距受物距、焦距而影响
+  - $Z$:物距，物体到凸透镜的距离
+  - $b$:像的大小。$B$:物的大小
+
+- Projection of a point in Space onto the Focal Plane焦平面
+
+  - 小孔成像实际就是将**相机坐标系**中的三维点变换到成像平面中的**图形坐标系**
+  
+    - 相机坐标系(三维)
+  
+      相机的中心被称为焦点或者广信，以焦点O为原点和坐标X,Y,Z组成了相机坐标系。
+  
+    - 图像坐标系(二维)
+  
+      焦平面focal plane中，以焦平面的中心O'为原点和坐标轴x',y'组成了图像坐标系
+  
+      - 注意不是像平面，虽然实际中光线经过透镜后并不会完美的都交于焦点，而会形成弥散圆。
+      - [相机成像究竟是成在像平面还是成在焦平面？底片相当于像平面还是焦平面？](https://www.zhihu.com/question/33793912/answer/57646234)
+  
+  - 如果空间点P在相机坐标系中的坐标是$P_c=[X,Y,Z]^T$ ，其像点在图像坐标系中的坐标是$p=[x,y]^T$,因为光轴和成像平面垂直，所以像点p在相机坐标系中的坐标是$p=[x,y,z]^T$，z=f(相机焦距)
+  
+    根据三角形相似关系可得：
+    $$
+    \begin{cases}
+    x=f\frac{X}{Z}\\
+    y=f\frac{Y}{Z}\\
+    z=f
+    \end{cases}\tag{1}
+    $$
+    可以记作从3d->2d坐标转换时,坐标都乘了$\frac{f}{Z}$
+
+## 2.Homogene Koordinaten
+
+Homogeneous Coordinates齐次坐标
+
+上面的1式描述了3D空间到2D平面的映射，但该映射对于坐标Z来说是非线性的(因为Z是分母！=0)。所以为了方便的同意处理X,Y,Z三个坐标轴的数据，就需要引入新的坐标（扩展坐标的维度）将Z线性化：
+$$
+\begin{bmatrix}
+x\\y
+\end{bmatrix}
+\Leftarrow\Rightarrow
+\begin{bmatrix}
+\hat{x}\\
+\hat{y}\\
+\hat{z}
+\end{bmatrix}=
+\begin{bmatrix}
+f &0&0&0\\
+0&f&0&0\\
+0&0&1&0
+\end{bmatrix}
+\begin{bmatrix}
+X\\
+Y\\
+Z\\
+1
+\end{bmatrix}
+$$
+坐标$(\hat{x},\hat{y},\hat{z})$就是像点$p=(x,y)$的齐次坐标,其中
+$$
+\begin{cases}
+x=\frac{\hat{x}}{\hat{z}}\\
+y=\frac{\hat{y}}{\hat{z}}\\
+\hat{z}\neq0
+\end{cases}
+$$
+可见通过扩展坐标维度构建其次坐标的步骤就是：
+
+1. 将x,y同时除以一个不为0的$\hat{z}$
+2. 并将$\hat{z}$作为其添加维度的坐标
+
+通常选择$\hat{z}=1$
+
+## 3.Perspektivische Projektion mit kalibrierter Kamera
+
+Perspective Projection透视投影（射影变换） with a Calibrated标定的 Camera
+
+### 3.1内参数
+
+- 相机的内参数由2部分组成：
+
+  1. 射影变换本身的参数，相机的焦点到成像平面的距离，也就是焦距f
+
+  2. 从焦平面坐标系到**像素坐标系**的转换。
+
+     - 像素坐标系的原点在左上角
+       - ->原点的平移
+
+     - 像素是一个矩形块: 假设其在水平和竖直方向上的长度为$\alpha和\beta$
+       - ->坐标的缩放
+
+- 若像素坐标系的水平轴为u，竖轴为v；原点平移了$(c_x,c_y)$，那么焦平面点(x,y)在像素坐标系下的坐标为：
+  $$
+  u=\alpha\cdot x+c_x\\
+  v=\beta\cdot y+c_y\tag{2}
+  $$
+  将1.Bildentstehung中的1式代入这里的2式可得：
+  $$
+  \begin{cases}
+  u=\alpha\cdot f\frac{X}{Z}+c_x\\
+  v=\beta\cdot f\frac{Y}{Z}+c_y
+  \end{cases}\Rightarrow
+  \begin{cases}
+  u=f_x\frac{X}{Z}+c_x\\
+  v=f_y\frac{Y}{Z}+c_y
+  \end{cases}\tag{3}
+  $$
+  将3式其改写成齐次坐标：
+  $$
+  \begin{bmatrix}
+  u\\
+  v\\
+  1
+  \end{bmatrix}=\frac{1}{Z}
+  \begin{bmatrix}
+  f_x & 0 &c_x\\
+  0 & f_y & c_y\\
+  0 & 0 & 1
+  \end{bmatrix}
+  \begin{bmatrix}
+  X\\
+  Y\\
+  Z
+  \end{bmatrix}\tag{4}
+  $$
+  由此得到**内参数矩阵(Camera Intrinsics) K**:
+  $$
+  K=
+  \begin{bmatrix}
+  f_x & 0 &c_x\\
+  0 & f_y & c_y\\
+  0 & 0 & 1
+  \end{bmatrix} \tag{5}
+  $$
+
+- 由4式可知K由4个相机构造相关的参数有关
+
+  - $f_x,f_y$：和相机的焦距,像素的大小有关
+
+    $f_x=\alpha\cdot f;f_y=\beta\cdot f$
+
+  - $c_x,c_y$：是平移的距离，和相机焦平面的大小有关
+
+  求解相机内参数的过程称为**标定**
+
+### 3.2外参数
+
+- 由3.1的4式可得：$p=KP$
+
+  - p：是焦平面中像点在像素坐标下的坐标
+  - K：是内参数矩阵
+  - P：是相机坐标系下的空间点P的坐标。（P的像点是p）
+
+  但相机坐标系是会随相机移动而动的，不够稳定，为了稳定需要引入**世界坐标系**。
+
+  SLAM中的视觉里程计就是在求解相机在世界坐标系下的运动轨迹。
+
+- 相机坐标系$P_c$转为世界坐标系$P_w$ :$P_c=RP_w+t$
+
+  - R：是旋转矩阵
+  - t：是平移矩阵
+
+  $$
+  P_c=
+  \begin{bmatrix}
+  R & t\\
+  0^T &1
+  \end{bmatrix}P_w
+  $$
+
+  由此可得**外参数(Camera Extrinsics)T **:
+  $$
+  T=\begin{bmatrix}
+  R & t\\
+  0^T &1
+  \end{bmatrix}
+  $$
+
+### 3.3 相机矩阵
+
+将内外参数组合到一起称之为**相机矩阵**，用于将真实场景中的三维点投影到二维的成像平面。
+$$
+\begin{bmatrix}
+u\\
+v\\
+1
+\end{bmatrix}=\frac{1}{Z}
+\begin{bmatrix}
+f_x & 0 &c_x &0\\
+0 & f_y & c_y & 0 \\
+0 & 0 & 1 &0
+\end{bmatrix}
+\begin{bmatrix}
+R & t\\
+0^T &1
+\end{bmatrix}
+\begin{bmatrix}
+X_W\\
+Y_W\\
+Z_W\\
+1
+\end{bmatrix}\tag{4}
+$$
+
+## 4. Bild,Urbild und Cobild
+
+Image,Preimage原相 and Coimage余相
 
 # *、 TUM CV课作业代码
 
