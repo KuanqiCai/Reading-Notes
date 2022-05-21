@@ -432,7 +432,7 @@ Image Formation成像
   - $Z$:物距，物体到凸透镜的距离
   - $b$:像的大小。$B$:物的大小
 
-- Projection of a point in Space onto the Focal Plane焦平面
+- Projection of a point in Space onto the Focal Plane成像平面
 
   - 小孔成像实际就是将**相机坐标系**中的三维点变换到成像平面中的**图形坐标系**
   
@@ -442,7 +442,7 @@ Image Formation成像
   
     - 图像坐标系(二维)
   
-      焦平面focal plane中，以焦平面的中心O'为原点和坐标轴x',y'组成了图像坐标系
+      成像平面focal plane中，以成像平面的中心O'为原点和坐标轴x',y'组成了图像坐标系
   
       - 注意不是像平面，虽然实际中光线经过透镜后并不会完美的都交于焦点，而会形成弥散圆。
       - [相机成像究竟是成在像平面还是成在焦平面？底片相当于像平面还是焦平面？](https://www.zhihu.com/question/33793912/answer/57646234)
@@ -503,7 +503,7 @@ $$
 
 ## 3.Perspektivische Projektion mit kalibrierter Kamera
 
-Perspective Projection透视投影（射影变换） with a Calibrated标定的 Camera
+Perspective Projection透视投影 with a Calibrated标定的 Camera
 
 ### 3.1内参数
 
@@ -511,7 +511,7 @@ Perspective Projection透视投影（射影变换） with a Calibrated标定的 
 
   1. 射影变换本身的参数，相机的焦点到成像平面的距离，也就是焦距f
 
-  2. 从焦平面坐标系到**像素坐标系**的转换。
+  2. 从成像平面坐标系到**像素坐标系**的转换。
 
      - 像素坐标系的原点在左上角
        - ->原点的平移
@@ -519,7 +519,7 @@ Perspective Projection透视投影（射影变换） with a Calibrated标定的 
      - 像素是一个矩形块: 假设其在水平和竖直方向上的长度为$\alpha和\beta$
        - ->坐标的缩放
 
-- 若像素坐标系的水平轴为u，竖轴为v；原点平移了$(c_x,c_y)$，那么焦平面点(x,y)在像素坐标系下的坐标为：
+- 若像素坐标系的水平轴为u，竖轴为v；原点平移了$(c_x,c_y)$，那么成像平面点(x,y)在像素坐标系下的坐标为：
   $$
   u=\alpha\cdot x+c_x\\
   v=\beta\cdot y+c_y\tag{2}
@@ -543,7 +543,23 @@ Perspective Projection透视投影（射影变换） with a Calibrated标定的 
   1
   \end{bmatrix}=\frac{1}{Z}
   \begin{bmatrix}
-  f_x & 0 &c_x\\
+  \alpha & \theta & c_x\\
+  0 & \beta & c_y \\
+  0 & 0 &1
+  \end{bmatrix}
+  \begin{bmatrix}
+  f & 0 &0\\
+  0 & f & 0\\
+  0 & 0 & 1
+  \end{bmatrix}
+  \begin{bmatrix}
+  X\\
+  Y\\
+  Z
+  \end{bmatrix}
+  =\frac{1}{Z}
+  \begin{bmatrix}
+  f_x & f_\theta &c_x\\
   0 & f_y & c_y\\
   0 & 0 & 1
   \end{bmatrix}
@@ -554,22 +570,49 @@ Perspective Projection透视投影（射影变换） with a Calibrated标定的 
   \end{bmatrix}\tag{4}
   $$
   由此得到**内参数矩阵(Camera Intrinsics) K**:
+  
+  也叫Calibration Matrix标定矩阵
   $$
-  K=
+  K=K_sK_f
+  =
   \begin{bmatrix}
-  f_x & 0 &c_x\\
+  f_x & f_\theta &c_x\\
   0 & f_y & c_y\\
   0 & 0 & 1
   \end{bmatrix} \tag{5}
   $$
-
-- 由4式可知K由4个相机构造相关的参数有关
+  
+  - 这里的$\theta$是：像素形状不是矩形而是平行四边形时倾斜的角度。通常像素形状都是矩阵=0。
+  
+  转为非齐次：
+  $$
+  K\Pi_0=\begin{bmatrix}
+  f_x & f_\theta &c_x\\
+  0 & f_y & c_y\\
+  0 & 0 & 1
+  \end{bmatrix}
+  \begin{bmatrix}
+  1 & 0 & 0&0\\
+  0&1&0&0\\
+  0&0&1&0
+  \end{bmatrix}=\begin{bmatrix}
+  f_x & f_\theta &c_x &0\\
+  0 & f_y & c_y & 0 \\
+  0 & 0 & 1 &0
+  \end{bmatrix}
+  $$
+  
+  - $K_f$：Focal Length Matrix。世界坐标系->成像平面坐标系
+  - $\Pi_0$：Generic Projection Matrix。将齐次转换为非齐次矩阵
+  - $K_s$：Pixel Matrix。成像平面坐标系->像素平面坐标系
+  
+- 由5式可知K由4个相机构造相关的参数有关
 
   - $f_x,f_y$：和相机的焦距,像素的大小有关
 
     $f_x=\alpha\cdot f;f_y=\beta\cdot f$
 
-  - $c_x,c_y$：是平移的距离，和相机焦平面的大小有关
+  - $c_x,c_y$：是平移的距离，和相机成像平面的大小有关
 
   求解相机内参数的过程称为**标定**
 
@@ -577,7 +620,7 @@ Perspective Projection透视投影（射影变换） with a Calibrated标定的 
 
 - 由3.1的4式可得：$p=KP$
 
-  - p：是焦平面中像点在像素坐标下的坐标
+  - p：是成像平面中像点在像素坐标下的坐标
   - K：是内参数矩阵
   - P：是相机坐标系下的空间点P的坐标。（P的像点是p）
 
@@ -614,9 +657,11 @@ $$
 u\\
 v\\
 1
-\end{bmatrix}=\frac{1}{Z}
+\end{bmatrix}
+=\frac{1}{Z}K_sK_f\Pi_0P_c
+=\frac{1}{Z}
 \begin{bmatrix}
-f_x & 0 &c_x &0\\
+f_x & f_\theta &c_x &0\\
 0 & f_y & c_y & 0 \\
 0 & 0 & 1 &0
 \end{bmatrix}
@@ -632,9 +677,50 @@ Z_W\\
 \end{bmatrix}\tag{4}
 $$
 
+
+
 ## 4. Bild,Urbild und Cobild
 
-Image,Preimage原相 and Coimage余相
+Image,Preimage原相and Coimage余相
+
+### 4.1 直线在空间的表示
+
+齐次坐标系下: 以方向V经过点$P_0$的一条直线。
+$$
+L^{(hom)}=\{P_0^{(hom)}+\lambda[v_1,v_2,v_3,0]^T\ |\ \lambda\in R   \}
+$$
+
+### 4.2 图像,原相和余相
+
+- The image of a point and of a line,respectively分别的，is their perspective projection透视投影:$\Pi_oP^{(hom)}$和$\Pi_0L^{(hom)}$
+
+- Preimage原相：
+
+  - The Preimage of a point P is all the points in space which project onto a single image point in the image plane
+    - 所以点的原相是经过原点的一条直线
+  - The Preimage of a line L is all the points which project onto a single line in the image plane
+    - 所以线的原相是经过原点的一个平面
+
+- Coimage余相：
+
+  - The Coimage of points or lines is the orthogonal complement正交补 of the preimage.
+    - 点的余相是一个平面上所有的向量，这个平面与点的原相（直线）垂直。
+    - 线的余相是一个向量，与线的原相（平面）垂直
+  
+
+### 4.3 一些有用的性质
+
+- 成像平面上的一条直线L一般使用余相Coimage来表示：
+  - 余相向量：$l\in R^3$, 直线的点$x$ 显然也在直线的原相上，因为余相垂直于原相，所以：
+  - $x^Tl=l^Tx=0$
+- 共线性Collinearity:
+  - 图像上的点$x_1,x_2...x_n$是共线的
+    - 如果$Rang([x_1,..,x_n])\leq 2$
+    - 如果对任意$w_i都>0$时， $M=\sum_{i=1}^n\omega_ix_ix_i^T$最小的特征值等于0
+  - 三个图像上的点是共线的，如果$det[x_1,x_2,x_3]=0$
+  - 但实际中由于Discretization离散化、Noise噪音。上面=0的条件是不可能达到的。需要利用thresholds阈值。
+
+
 
 # *、 TUM CV课作业代码
 
