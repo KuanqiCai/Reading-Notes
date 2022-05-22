@@ -996,5 +996,67 @@ end
   end
   ```
   
-  
+
+## 第二次作业
+
+### 2.1 Point_Correspondence
+
+计算2个图片之间的对应点：
+
+```matlab
+% 输入：I1,I2是2个灰度的图片
+% Ftp1,Ftp2分别是2张图片所有的特征的坐标（x,y）
+% varargin是可选的参数
+function [window_length, min_corr, do_plot, Im1, Im2] = point_correspondence(I1, I2, Ftp1, Ftp2, varargin)
+    % In this function you are going to compare the extracted features of a stereo recording
+    % with NCC to determine corresponding image points.
+    
+    % *************** Input parser ***************
+    % 检验可选参数的输入是否符合要求
+    p = inputParser;
+    addOptional(p,'window_length',25,@(x) isnumeric(x) && (mod(x,2)==1) &&(x>1));
+    addOptional(p,'min_corr',0.95,@(x) isnumeric(x) &&(x>0) && (x<1));
+    addOptional(p,'do_plot',false, @islogical);
+    
+    p.parse(varargin{:});
+    
+    window_length = p.Results.window_length;
+    min_corr = p.Results.min_corr;
+    do_plot = p.Results.do_plot;
+    
+    Im1 = double(I1)
+    Im2 = double(I2)
+    
+    % *************** Feature preparation准备 ***************
+    % 消除离边界太近的参数，并返回剩下参数的个数
+    % 找到一个范围，在这个范围里的都要，在这个范围外的都舍弃
+    range_x_begin  = ceil(window_length/2);
+    range_x_end    = size(I1,2) - floor(window_length/2);   
+    range_y_begin  = ceil(window_length/2);
+    range_y_end    = size(I1,1) - floor(window_length/2);
+    
+    % 将在range外的特征值都变成1
+   	% logical(A)将数据A中所有非0值都变成逻辑数1，这里ind1就会变成一个2XN的1/0逻辑数组
+   	% 注意logical返回的是逻辑值！！！
+	ind1 = logical([Ftp1(1,:)<range_x_begin; Ftp1(1,:)>range_x_end; Ftp1(2,:)<range_y_begin; Ftp1(2,:)>range_y_end]);
+	% 将这个2XN的1/0逻辑数组变成1XN的1/0逻辑数组
+	% any(ind1,1)后面的1表示检测第一个维度（列）如果有一个非0数就返回1。
+    ind1 = any(ind1,1);
+    % 1XN逻辑数组中1即代表这个特征值在数组外，令该特征值为空，即在数组中删除了这个值。
+    % 加入C是一个逻辑数组[1,1,0,1],那么A(:,C)只会返回C中逻辑值为1的部分
+    Ftp1(:,ind1) = [];   
+    
+    % 原理同上处理第二个图片
+    ind2 = logical([Ftp2(1,:)<range_x_begin; Ftp2(1,:)>range_x_end; Ftp2(2,:)<range_y_begin; Ftp2(2,:)>range_y_end]);
+    ind2 = any(ind2,1);
+    Ftp2(:,ind2) = [];   
+    
+    no_pts1  = size(Ftp1,2);
+    no_pts2  = size(Ftp2,2);
+end
+```
+
+
+
+
 
