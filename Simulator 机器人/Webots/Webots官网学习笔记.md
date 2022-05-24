@@ -14,10 +14,13 @@
   - alt+鼠标左键：给物体施加力。注意如果物体（node）质量为0，就无法施加力，所以要先设定质量。
   - [DEF-USE mechanism](https://cyberbotics.com/doc/guide/tutorial-2-modification-of-the-environment?tab-language=c++#:~:text=field%20stands%20for.-,DEF%2DUSE%20Mechanism,-The%20DEF%2DUSE): it allows to define a node in one place and to reuse that definition elsewhere in the scene tree。点NODE 会出来DEF:字段，取个名字，然后在添加node列表里的USE中就会出现我们定义好的node。
     - 注意：只能通过修改原始的DEF来一次性修改所有的node.
+  - delete:选中node后+delete删除一个节点
 
 ## Node
 
 Nodes用的是VRML97 syntax语法，一系列的node共同构建了world。在Scene Tree栏中，可以看到现在world中所有的nodes。每一个node下都有各种field字段，用于设置该node(物体)的速度、大小、位置、controller等等一切属性。
+
+ ### Solid Node
 
 - Solid Node:A [Solid node](https://cyberbotics.com/doc/reference/solid?tab-language=c++)  represents a **rigid body**刚体, that is a body in which deformation变形 can be neglected忽视。
 
@@ -34,3 +37,13 @@ Nodes用的是VRML97 syntax语法，一系列的node共同构建了world。在Sc
     - boundingObject：定义了碰撞边界，它的形状可以和shape不同
     - physics：定义了if the object belongs to the dynamical or to the static environment.
       - 要定义pyhsics字段，必须先定义boundingObject字段。
+
+### Nodes related to the graphical
+
+- Shapen node 下的Appearance/PBRAppearance node可以设置物体的表面图案、颜色和纹理。
+  - 一些标签
+    - baseColor: rgb调色
+    - metalness:[0,1]设置金属光泽
+    - roughness:设置粗糙度
+  - 更倾向于用PBRAppearance，也有很多预定义好的表面
+  - PBRAppearance node下的baseColorMap node可以添加自定义的图片纹理texture
