@@ -153,6 +153,7 @@ $$
 
     - Keep all the features, but reduce the magnitude of parameters $\theta_j$
     - Regularization works well when we have a lot of slightly useful features.
+    - A strategy to increase train error and decrease validation error 
 
 - Cost function
 
