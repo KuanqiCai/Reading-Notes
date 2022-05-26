@@ -35,7 +35,7 @@
 
 The following Figure explains why **Logistic Regression is actually a very simple Neural Network!**
 
-![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/deeplearning_1week_1.png?raw=true)
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/deeplearning_1week_1.png?raw=true)
 
 
 
@@ -248,7 +248,7 @@ The following Figure explains why **Logistic Regression is actually a very simpl
 
 - 模型图片
 
-  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Neural%20Network%20model.png?raw=true)
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Neural%20Network%20model.png?raw=true)
 
 - 对于一个example $x^{(i)}$
 
@@ -392,7 +392,7 @@ The following Figure explains why **Logistic Regression is actually a very simpl
 
         - Implement backward propagation to get the gradients
 
-          ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/grad_summary.png?raw=true)
+          ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/grad_summary.png?raw=true)
 
           ```python
           # 计算反向传播是深度学习的难点
@@ -534,7 +534,7 @@ def predict(parameters, X):
   - $a^{[l]}_i$ denotes the $i^{th}$ entry of the $l^{th}$ layer's activations).
 - 通用步骤：
 
-![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20Neural%20Networks.png?raw=true)
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Deep%20Neural%20Networks.png?raw=true)
 
 For every forward function, there is a corresponding backward function. This is why at every step of your forward module you will be storing some values in a cache. These cached values are useful for computing gradients.
 
@@ -720,7 +720,7 @@ For every forward function, there is a corresponding backward function. This is 
 
   传递过程是L-1层 linear->Relu，然后最后一层是Sigmoid
 
-  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/L_layer_model_forward.png?raw=true)
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/L_layer_model_forward.png?raw=true)
 
   ```python
   # GRADED FUNCTION: L_model_forward
@@ -786,7 +786,7 @@ def compute_cost(AL, Y):
 
 - 与Forward(紫色)的对比
 
-![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Back%20vs%20Forward%20.png?raw=true)
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Back%20vs%20Forward%20.png?raw=true)
 
 - 步骤：
 
@@ -865,7 +865,7 @@ def compute_cost(AL, Y):
 
    - Backward pass:
 
-   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Back%20ward%20pass.png?raw=true)
+   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Back%20ward%20pass.png?raw=true)
 
    - To backpropagate through this network, you know that the output is: 
      $A^{[L]} = \sigma(Z^{[L]})$. Your code thus needs to compute `dAL` $= \frac{\partial \mathcal{L}}{\partial A^{[L]}}$.
@@ -1029,7 +1029,7 @@ print ("test_x's shape: " + str(test_x.shape))
 
 #### * Model Architecture
 
-![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/2_layer_Architecture.png?raw=true)
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/2_layer_Architecture.png?raw=true)
 
 - The input is a (64,64,3) image which is flattened to a vector of size $(12288,1)$. 
 - The corresponding vector: $[x_0,x_1,...,x_{12287}]^T$ is then multiplied by the weight matrix $W^{[1]}$ of size $(n^{[1]}, 12288)$.
@@ -1167,7 +1167,7 @@ predictions_test = predict(test_x, test_y, parameters)
 
 #### * Model Architecture
 
-![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/L_layer_Architecture.png?raw=true)
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/L_layer_Architecture.png?raw=true)
 
 #### * L-layer Model
 
