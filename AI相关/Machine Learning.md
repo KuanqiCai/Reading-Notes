@@ -14,7 +14,7 @@
 
 - Hypothesis假设h
 
-  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/supervised%20learning%20model.png?raw=true)
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/supervised%20learning%20model.png?raw=true)
 
   :比如对于linear Regression线性规划: 
 
@@ -777,7 +777,7 @@ SVM也被称作large Margin Classifier
 
 - SVM利用核函数可以构造出复杂的非线性分类器，如下图
 
-  - ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Kernel.png?raw=true)
+  - ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Kernel.png?raw=true)
 
   - 这里定义Hypothesis为
     $$
