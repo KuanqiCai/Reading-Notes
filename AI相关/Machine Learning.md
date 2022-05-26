@@ -270,6 +270,10 @@ $$
     &J(\theta)=-\frac{1}{m}\sum_{i=1}^m[y^{(i)}log(h_\theta(x^{(i)}))+(1-y^{(i)})log(1-h_\theta(x^{i}))]
     \end{aligned}
     $$
+    - 为什么这里$J(\theta)$要有一个负号？
+    
+      因为$h_\theta(x)$是一个[0,1]的概率值，那么$log(h)$就是一个负数，可见2项和也是负数。这会导致$J(\theta)$最后趋于负无穷，而我们是要让他变成0，所以在前面加一个负号。
+    
     继续将其向量化：
     $$
     \begin{aligned}
