@@ -4,6 +4,18 @@
 
 https://www.runoob.com/python/os-file-methods.html
 
+## 2） python numpy库
+
+https://numpy.org/doc/stable/
+
+### 2.1array
+
+- 固定的一维矩阵`a=np.array([2,3,4])`
+- 固定的二维矩阵`a=np.array([2,3,4],[1,2,3])`
+- 随机的mxn维矩阵`a=np.random.rand(4,3)`
+
+
+
 # *. 一些特别的Python机制
 
 ## 1） Iterator迭代器和Generator生成器
@@ -79,6 +91,43 @@ https://www.runoob.com/python/os-file-methods.html
       ```
      
      - 在调用生成器运行的过程中，每次遇到 yield 时函数会暂停并保存当前所有的运行信息，返回 yield 的值, 并在下一次执行 next() 方法时从当前位置继续运行。
+
+
+
+# *.一些重要概念
+
+## 1）损失函数Loss Functions
+
+具体代码参见2.4
+
+- Loss Function: 
+
+  Used to measure the goodness of the predictions(the network's performance)
+
+- Classification loss:
+
+  - Cross-Entropy loss 多分类
+
+    $E(y,\hat{y};\theta)=-\sum_{i=1}^n\sum_{k=1}^k(y_{ik}\cdot log\hat{y}_{ik})$
+
+  - Loss function: Binary Cross-Entropy (BCE).用于二分类
+
+    $$BCE(y,\hat{y}) =- y \cdot log(\hat y ) - (1- y) \cdot log(1-\hat y) $$
+
+    - $y\in\mathbb{R}$ is the ground truth
+    -  $\hat y\in\mathbb{R}$ is the predicted probability of the house being expensive.
+
+- Regression loss
+
+  - L1 loss: $L(y,\hat{y};\theta)=\frac{1}{n}\sum_i^n||y_i-\hat y_i||_1$
+  - MSE loss: $L(y,\hat{y};\theta)=\frac{1}{n}\sum_i^n||y_i-\hat{y}_i||_2^2$
+
+## 2) 激活函数Activation Functions
+
+- Sigmoid: $\sigma(x)=\frac{1}{(1+e^{-x})}$
+- tanh: $tanh(x)$
+- ReLU:$max(0,x)$
+- Leaky ReLU: $max(0.1x,x)$
 
 # 1. 数据预处理
 
@@ -469,3 +518,571 @@ class DataLoader:
 
 ```
 
+# 2.逻辑回归：判断房家贵/不贵
+
+## 2.1加载库
+
+```python
+from exercise_code.data.csv_dataset import CSVDataset
+from exercise_code.data.csv_dataset import FeatureSelectorAndNormalizationTransform
+from exercise_code.data.dataloader import DataLoader
+
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import pandas as pd
+import seaborn as sns
+
+
+pd.options.mode.chained_assignment = None  # default='warn'
+
+%matplotlib inline
+%load_ext autoreload
+%autoreload 2
+```
+
+## 2.2数据集下载
+
+```python
+from exercise_code.networks.utils import *
+
+X_train, y_train, X_val, y_val, X_test, y_test, train_dataset = get_housing_data()
+
+print("train data shape:", X_train.shape)
+print("train targets shape:", y_train.shape)
+print("val data shape:", X_val.shape)
+print("val targets shape:", y_val.shape)
+print("test data shape:", X_test.shape)
+print("test targets shape:", y_test.shape, '\n')
+
+print('The original dataset looks as follows:')
+train_dataset.df.head()
+```
+
+## 2.3分类模型
+
+- 模型：$\mathbf{\hat{y}}  = \sigma \left( \mathbf{X} \cdot \mathbf{w} \right)$
+  - $\mathbf{X} \in \mathbb{R}^{N\times (D+1)}$ be our data with $N$ samples and $D$ feature dimensions
+  - $\mathbf{w}\in \mathbb{R}^{(D+1) \times 1}$ is the weight matrix of our model
+  -  **sigmoid function**：$ \sigma(t) = \frac{1}{1+e^{-t}},\in[0.1] $
+
+```python
+    def sigmoid(self, x):
+        """
+        Computes the ouput of the sigmoid function
+
+        :param x: input of the sigmoid, np.array of any shape
+        :return: output of the sigmoid with same shape as input vector x
+        """
+        out = None
+
+        out = 1/(1+np.exp(-x))
+
+        return out
+```
+
+
+
+## 2.4损失函数
+
+用于确定我们的模型是否足够好
+
+```python
+
+import os
+import pickle
+import numpy as np
+from exercise_code.networks.linear_model import *
+
+
+class Loss(object):
+    def __init__(self):
+        self.grad_history = []
+
+    def forward(self, y_out, y_truth):
+        return NotImplementedError
+
+    def backward(self, y_out, y_truth, upstream_grad=1.):
+        return NotImplementedError
+
+    def __call__(self, y_out, y_truth):
+        loss = self.forward(y_out, y_truth)
+        grad = self.backward(y_out, y_truth)
+        return (loss, grad)
+
+
+class L1(Loss):
+
+    def forward(self, y_out, y_truth):
+        """
+        Performs the forward pass of the L1 loss function.
+
+        :param y_out: [N, ] array predicted value of your model.
+               y_truth: [N, ] array ground truth value of your training set.
+        :return: [N, ] array of L1 loss for each sample of your training set.
+        """
+        result = None
+        result = np.abs(y_out - y_truth)
+        return result
+
+    def backward(self, y_out, y_truth):
+        """
+        Performs the backward pass of the L1 loss function.
+
+        :param y_out: [N, ] array predicted value of your model.
+               y_truth: [N, ] array ground truth value of your training set.
+        :return: [N, ] array of L1 loss gradients w.r.t y_out for
+                  each sample of your training set.
+        """
+        gradient = None
+        gradient = y_out - y_truth
+
+        zero_loc = np.where(gradient == 0)
+        negative_loc = np.where(gradient < 0)
+        positive_loc = np.where(gradient > 0)
+
+        gradient[zero_loc] = 0
+        gradient[positive_loc] = 1
+        gradient[negative_loc] = -1
+
+        return gradient
+
+
+class MSE(Loss):
+
+    def forward(self, y_out, y_truth):
+        """
+        Performs the forward pass of the MSE loss function.
+
+        :param y_out: [N, ] array predicted value of your model.
+                y_truth: [N, ] array ground truth value of your training set.
+        :return: [N, ] array of MSE loss for each sample of your training set.
+        """
+        result = None
+        result = (y_out - y_truth)**2
+        return result
+
+    def backward(self, y_out, y_truth):
+        """
+        Performs the backward pass of the MSE loss function.
+
+        :param y_out: [N, ] array predicted value of your model.
+               y_truth: [N, ] array ground truth value of your training set.
+        :return: [N, ] array of MSE loss gradients w.r.t y_out for
+                  each sample of your training set.
+        """
+        gradient = None
+        gradient = 2 * (y_out - y_truth)
+        return gradient
+
+
+class BCE(Loss):
+
+    def forward(self, y_out, y_truth):
+        """
+        Performs the forward pass of the binary cross entropy loss function.
+
+        :param y_out: [N, ] array predicted value of your model.
+                y_truth: [N, ] array ground truth value of your training set.
+        :return: [N, ] array of binary cross entropy loss for each sample of your training set.
+        """
+        result = None
+
+        result = -y_truth*np.log(y_out)-(1-y_truth)*np.log(1-y_out)
+
+
+        return result
+
+    def backward(self, y_out, y_truth):
+        """
+        Performs the backward pass of the loss function.
+
+        :param y_out: [N, ] array predicted value of your model.
+               y_truth: [N, ] array ground truth value of your training set.
+        :return: [N, ] array of binary cross entropy loss gradients w.r.t y_out for
+                  each sample of your training set.
+        """
+        gradient = None
+
+        gradient = -y_truth/y_out +(1-y_truth)/(1-y_out)
+
+        return gradient
+
+```
+
+## 2.5前向传播，反向传播
+
+- 前向传播用的2.3的模型：$\mathbf{\hat{y}}  = \sigma \left( \mathbf{X} \cdot \mathbf{w} \right)$
+- 反向传播即它的导数：
+  - $$\frac{\partial \hat y}{\partial w} = \frac{\partial \sigma(s)}{\partial w} = \frac{\partial \sigma(s)}{\partial s} \cdot \frac{\partial s}{\partial w}$$
+  - $\frac{\partial \sigma(s)}{\partial s}=\sigma(s)*(1-\sigma(s))$
+  - $\frac{\partial s}{\partial w}=X$
+
+```python
+   def forward(self, X):
+        """
+        Performs the forward pass of the model.
+
+        :param X: N x D array of training data. Each row is a D-dimensional point.
+        :return: Predicted labels for the data in X, shape N x 1
+                 1-dimensional array of length N with classification scores.
+        """
+        assert self.W is not None, "weight matrix W is not initialized"
+        # add a column of 1s to the data for the bias term
+        batch_size, _ = X.shape
+        X = np.concatenate((X, np.ones((batch_size, 1))), axis=1)
+        # save the samples for the backward pass
+        self.cache = X
+        # output variable
+        y = None
+
+        y = self.sigmoid(np.dot(X, self.W))
+
+        return y
+
+    def backward(self, y):
+        """
+        Performs the backward pass of the model.
+
+        :param y: N x 1 array. The output of the forward pass.
+        :return: Gradient of the model output (y=sigma(X*W)) wrt W
+        """
+        assert self.cache is not None, "run a forward pass before the backward pass"
+        dW = None
+
+
+        ds = self.sigmoid(np.dot(self.cache, self.W))
+        dW = self.cache * (ds * (1 - ds))
+
+
+        return dW
+```
+
+
+
+## 2.6 优化器:梯度下降
+
+- Optimizer:Gradient Descent 修改我们的参数使损失函数足够的小
+  0. Initialize the weights with random values.
+  1. Calculate loss with the current weights and the loss function.
+  2. Calculate the gradient of the loss function w.r.t. the weights.
+  3. Update weights with the corresponding gradient.
+     - $ w^{(n+1)} = w^{(n)} - \alpha \cdot \frac {dL}{dw}, $
+  4. Iteratively perform Step 1 to 3 until converges.
+
+```python
+class Optimizer(object):
+    def __init__(self, model, learning_rate=5e-5):
+        self.model = model
+        self.lr = learning_rate
+
+    def step(self, dw):
+        """
+        :param dw: [D+1,1] array gradient of loss w.r.t weights of your linear model
+        :return weight: [D+1,1] updated weight after one step of gradient descent
+        """
+        weight = self.model.W
+
+        weight = weight - self.lr*dw
+
+        self.model.W = weight
+```
+
+## 2.7初始化权重
+
+一个很low的随机方式来初始化权重
+
+```python
+    def initialize_weights(self, weights=None):
+        """
+        Initialize the weight matrix W
+
+        :param weights: optional weights for initialization
+        """
+        if weights is not None:
+            assert weights.shape == (self.num_features + 1, 1), \
+                "weights for initialization are not in the correct shape (num_features + 1, 1)"
+            self.W = weights
+        else:
+            self.W = 0.001 * np.random.randn(self.num_features + 1, 1)
+```
+
+## 2.8训练模型
+
+1. 不经训练的模型
+
+```python
+from exercise_code.networks.classifier import Classifier
+
+#initialization
+model = Classifier(num_features=1)
+model.initialize_weights()
+
+y_out, _ = model(X_train)
+
+# plot the prediction
+plt.scatter(X_train, y_train)
+plt.plot(X_train, y_out, color='r')
+```
+
+2. 训练后的模型更准确
+
+```python
+from exercise_code.networks.optimizer import *
+from exercise_code.networks.classifier import *
+# Hyperparameter Setting, we will specify the loss function we use, and implement the optimizer we finished in the last step.
+num_features = 1
+
+# initialization
+model = Classifier(num_features=num_features)
+model.initialize_weights()
+
+loss_func = BCE() 
+learning_rate = 5e-1
+loss_history = []
+opt = Optimizer(model,learning_rate)
+
+steps = 400
+# Full batch Gradient Descent
+for i in range(steps):
+    
+    # Enable your model to store the gradient.
+    model.train()
+    
+    # 因为Classifier的父类Networks和BCE的父类loss，都定义了__call__()这一魔法方法，所以才能像下面这样调用。
+    # Compute the output and gradients w.r.t weights of your model for the input dataset.
+    model_forward, model_backward = model(X_train)
+    # 因为Classifier的父类Networks和BCE的父类loss，都定义了__call__()这一魔法方法，所以才能像下面这样调用。
+    # Compute the loss and gradients w.r.t output of the model.
+    loss, loss_grad = loss_func(model_forward, y_train)
+    
+    # Use back prop method to get the gradients of loss w.r.t the weights.
+    grad = loss_grad * model_backward
+    
+    # Compute the average gradient over your batch
+    grad = np.mean(grad, 0, keepdims = True)
+
+    # After obtaining the gradients of loss with respect to the weights, we can use optimizer to
+    # do gradient descent step.
+    # Take transpose to have the same shape ([D+1,1]) as weights.
+    opt.step(grad.T)
+    
+    # Average over the loss of the entire dataset and store it.
+    average_loss = np.mean(loss)
+    loss_history.append(average_loss)
+    if i%10 == 0:
+        print("Epoch ",i,"--- Average Loss: ", average_loss)
+
+```
+
+## 2.9可视化训练成果
+
+```python
+# Plot the loss history to see how it goes after several steps of gradient descent.
+plt.plot(loss_history, label = 'Train Loss')
+plt.xlabel('iteration')
+plt.ylabel('training loss')
+plt.title('Training Loss history')
+plt.legend()
+plt.show()
+
+
+# forward pass
+y_out, _ = model(X_train)
+
+
+# plot the prediction
+plt.scatter(X_train, y_train, label = 'Ground Truth')
+inds = X_train.argsort(0).flatten()
+plt.plot(X_train[inds], y_out[inds], color='r', label = 'Prediction')
+plt.title('Prediction of our trained model')
+plt.legend()
+plt.show()
+```
+
+## 2.10一个通用的调用模型的方法
+
+```python
+import numpy as np
+
+
+from exercise_code.networks.optimizer import Optimizer
+
+
+class Solver(object):
+    """
+    A Solver encapsulates all the logic necessary for training classification
+    or regression models.
+    The Solver performs gradient descent using the given learning rate.
+
+    The solver accepts both training and validation data and labels so it can
+    periodically check classification accuracy on both training and validation
+    data to watch out for overfitting.
+
+    To train a model, you will first construct a Solver instance, passing the
+    model, dataset, learning_rate to the constructor.
+    You will then call the train() method to run the optimization
+    procedure and train the model.
+
+    After the train() method returns, model.W will contain the parameters
+    that performed best on the validation set over the course of training.
+    In addition, the instance variable solver.loss_history will contain a list
+    of all losses encountered during training and the instance variables
+    solver.train_loss_history and solver.val_loss_history will be lists containing
+    the losses of the model on the training and validation set at each epoch.
+    """
+
+    def __init__(self, model, data, loss_func, learning_rate,
+                 is_regression=True, verbose=True, print_every=100):
+        """
+        Construct a new Solver instance.
+
+        Required arguments:
+        - model: A model object conforming to the API described above
+
+        - data: A dictionary of training and validation data with the following:
+          'X_train': Training input samples.
+          'X_val':   Validation input samples.
+          'y_train': Training labels.
+          'y_val':   Validation labels.
+
+        - loss_func: Loss function object.
+        - learning_rate: Float, learning rate used for gradient descent.
+
+        Optional arguments:
+        - verbose: Boolean; if set to false then no output will be printed during
+          training.
+        - print_every: Integer; training losses will be printed every print_every
+          iterations.
+        """
+        self.model = model
+        self.learning_rate = learning_rate
+        self.loss_func = loss_func
+
+        # Use an `Optimizer` object to do gradient descent on our model.
+        self.opt = Optimizer(model, learning_rate)
+
+        self.is_regression = is_regression
+        self.verbose = verbose
+        self.print_every = print_every
+
+        self.X_train = data['X_train']
+        self.y_train = data['y_train']
+        self.X_val = data['X_val']
+        self.y_val = data['y_val']
+
+        self._reset()
+
+    def _reset(self):
+        """
+        Set up some book-keeping variables for optimization. Don't call this
+        manually.
+        """
+        # Set up some variables for book-keeping
+        self.best_val_loss = None
+        self.best_W = None
+
+        self.train_loss_history = []
+        self.val_loss_history = []
+
+    def _step(self):
+        """
+        Make a single gradient update. This is called by train() and should not
+        be called manually.
+        """
+        model = self.model
+        loss_func = self.loss_func
+        X_train = self.X_train
+        y_train = self.y_train
+        opt = self.opt
+
+        model.train()
+        model_forward, model_backward = model(X_train)
+        loss, loss_grad = loss_func(model_forward, y_train)
+        grad = loss_grad*model_backward
+        grad = np.mean(grad,0,keepdims=True)
+        opt.step(grad.T)
+
+
+    def check_loss(self, validation=True):
+        """
+        Check loss of the model on the train/validation data.
+
+        Returns:
+        - loss: Averaged loss over the relevant samples.
+        """
+
+        X = self.X_val if validation else self.X_train
+        y = self.y_val if validation else self.y_train
+
+        model_forward, _ = self.model(X)
+        loss, _ = self.loss_func(model_forward, y)
+
+        return loss.mean()
+
+    def train(self, epochs=1000):
+        """
+        Run optimization to train the model.
+        """
+
+        for t in range(epochs):
+            # Update the model parameters.
+            self._step()
+
+            # Check the performance of the model.
+            train_loss = self.check_loss(validation=False)
+            val_loss = self.check_loss(validation=True)
+
+            # Record the losses for later inspection.
+            self.train_loss_history.append(train_loss)
+            self.val_loss_history.append(val_loss)
+
+            if self.verbose and t % self.print_every == 0:
+                print('(Epoch %d / %d) train loss: %f; val_loss: %f' % (
+                    t, epochs, train_loss, val_loss))
+
+            # Keep track of the best model
+            self.update_best_loss(val_loss)
+
+        # At the end of training swap the best params into the model
+        self.model.W = self.best_W
+
+    def update_best_loss(self, val_loss):
+        # Update the model and best loss if we see improvements.
+        if not self.best_val_loss or val_loss < self.best_val_loss:
+            self.best_val_loss = val_loss
+            self.best_W = self.model.W
+
+```
+
+- 调用这个类去运行我们的模型
+
+  ```python
+  #We use the BCE loss
+  loss = BCE()
+  
+  # Please use these hyperparmeter as we also use them later in the evaluation
+  learning_rate = 1e-1
+  epochs = 25000
+  
+  # Setup for the actual solver that's going to do the job of training
+  # the model on the given data. set 'verbose=True' to see real time 
+  # progress of the training.
+  solver = Solver(model, 
+                  data, 
+                  loss,
+                  learning_rate, 
+                  verbose=True, 
+                  print_every = 1000)
+  # Train the model, and look at the results.
+  solver.train(epochs)
+  
+  
+  # Test final performance
+  y_out, _ = model(X_test)
+  
+  accuracy = test_accuracy(y_out, y_test)
+  print("Accuracy AFTER training {:.1f}%".format(accuracy*100))
+  ```
+
+  
