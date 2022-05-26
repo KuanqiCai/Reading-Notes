@@ -319,6 +319,8 @@ Correspondence Estimation of Feature Points特征点的对应估计
 
   - Examine image sections $V_i$ around $x_i$ and $W_i$ around $y_i$ in matrix representation and compare the respective intensity values.
 
+    - 这里$x_i,y_i$是2张图片各自的特征点不是横纵坐标的意思
+
   - Formal Definition
 
     - A criterion判断标准：$d(V,W)=||V-W||^2_F$
@@ -326,7 +328,7 @@ Correspondence Estimation of Feature Points特征点的对应估计
       - 这里$||A||^2_F=\displaystyle\sum_{kl}A^2_{kl}=trace(A*A)$描述了quadratic二次的 Frobenius norm范数
 
     - 找一个对于$V_j$合适的$W_j$来使$j=arg\ \displaystyle\min_{k=1,..,n}d(V_i,W_k)$. 反过来找V也OK.
-
+  
   - SSD方法的缺点：
   
     Change in Illumination光亮 or Rotation。为了克服它需要Normalization正则化亮度和旋转
@@ -393,15 +395,17 @@ Correspondence Estimation of Feature Points特征点的对应估计
          &=:V_n
          \end{aligned}
          $$
-    
+  
     **方法2、Normalized Cross Correlation(NCC)**归一化互相关
-    
-    Derivation起源于SSD
-    
-    - SSD of two normalized image sections:$d(V,W)=||V_N-W_N||^2_F=2(N-1)-2tr(W_n^TV_n)$
-    
-    - The Normalized Cross Correlation of th two image sections is defined as $NCC=\frac{1}{N-1}tr(W_n^TV_n)$
-    - $-1\leq NCC\leq1$
+  
+    Derivation起源于SSD，同样需要进行上面那4步窗口正则化**参考作业2.1**
+  
+    - SSD方法：SSD of two normalized image sections:$d(V,W)=||V_N-W_N||^2_F=2(N-1)-2tr(W_n^TV_n)$
+      - 这里的**N**是窗口内所有的像素个数：即`window_length*window_length`
+  
+    - NCC方法：The Normalized Cross Correlation of th two image sections is defined as $NCC=\frac{1}{N-1}tr(W_n^TV_n)$
+      - 注意这里和上面公式中$W_n和V_n$的顺序，
+    - $-1\leq NCC\leq1$，相关度超出阈值的部分要舍弃(=0)
     - 两个normalized image section是相似的,如果
       1. SSD small (few differences)
       2. NCC close to =1 (high correlation)
@@ -1005,7 +1009,7 @@ end
 
 ```matlab
 % 输入：I1,I2是2个灰度的图片
-% Ftp1,Ftp2分别是2张图片所有的特征的坐标（x,y）
+% Ftp1,Ftp2分别是2张图片所有的特征的坐标（x,y）维度是[2,N],N是特征个数
 % varargin是可选的参数
 function [window_length, min_corr, do_plot, Im1, Im2] = point_correspondence(I1, I2, Ftp1, Ftp2, varargin)
     % In this function you are going to compare the extracted features of a stereo recording
@@ -1053,6 +1057,104 @@ function [window_length, min_corr, do_plot, Im1, Im2] = point_correspondence(I1,
     
     no_pts1  = size(Ftp1,2);
     no_pts2  = size(Ftp2,2);
+    
+    % *************** Normalization ***************
+    % 用一、4.的SSD方法将每一个窗口里的图片信息正则化，并将正则后的图片灰度强度按列存在Mat_feat_1/2中
+   	% 一个窗口的大小，窗口的正中间是特征的坐标。每一个特征都有一个自己的窗口
+    win_size = -floor(window_length/2):floor(window_length/2);
+    % 每一个特征的窗口里的正则值都按一列保存在矩阵Mat_feat_1中
+    Mat_feat_1 = zeros(window_length*window_length,no_pts1);
+    Mat_feat_2 = zeros(window_length*window_length,no_pts2);
+   
+   	% 同时遍历2张图片所有的特征，因为2张图片的特征数不一致，所以取大的那个
+    for i = 1:max(no_pts1,no_pts2)
+        if i <= no_pts1
+        	% win_size是一个类似[-2,-1,0,1,2]的1维矩阵，矩阵+1个值=矩阵每个元素加上这个值
+        	% 加上特征的x,y坐标后，如x=1，y=1就会变成[-1,0,1,2,3]的一个窗口
+            win_x_size = win_size + Ftp1(1,i);
+            win_y_size = win_size + Ftp1(2,i);
+            % 得到窗口的大小后，获得这个窗口内的图片的灰度强度值
+            window = Im1(win_y_size,win_x_size);
+            % 将这个窗口内的图片参数正则化
+            Mat_feat_1(:,i) = (window(:)-mean(window(:)))/std(window(:));
+        end
+        
+        if i <= no_pts2
+            win_x_size = win_size + Ftp2(1,i);
+            win_y_size = win_size + Ftp2(2,i);
+            window = Im2(win_y_size,win_x_size);    
+            Mat_feat_2(:,i) = (window(:)-mean(window(:)))/std(window(:));
+    end
+    
+    % *************** NCC calculations ***************
+    % 根据各个窗口中灰度强度，用一、4.的NCC方法的公式计算NCC矩阵，要注意2张图片的顺序
+    NCC_matrix = 1/(window_length*window_length-1)*Mat_feat_2'*Mat_feat_1;
+    % NCC矩阵中的每个值都是相关度
+    % NCC矩阵中所有相关度小于最小阈值的值都设置为0
+    NCC_matrix(NCC_matrix<min_corr) = 0;
+    % 将相关度按降序排列
+    % [B,I]=sort(A),B是A排列后的矩阵，I描述了 A 的元素沿已排序的维度在 B 中的排列情况，即索引
+    % B=A(I)
+    [sorted_list,sorted_index] = sort(NCC_matrix(:),'descend');
+    % 那些小于最小阈值的值（即=0）丢弃
+    sorted_index(sorted_list==0) = [];
+    
+    % *************** Correspondeces ***************
+    % 用上面储存了2个图片各特征点之间的相关度的矩阵NCC_matrix和它的降值排列索引sorted_index来确定相关图像点corresponding image points
+    
+    % 将2张图片中2个相关的点保存在矩阵cor=[x1,y1,x2,y2]中，所以这里是4行。
+    % 相关点是根据2个特征点的窗口内灰度强度的相关性确定的，所以是min(no_pts1,no_pts2)列
+    cor = zeros(4,min(no_pts1,no_pts2));
+    % 记录相关点的个数
+    cor_num = 1;
+    
+    % numel(A)返回数组A中的元素数目
+    for i = 1:numel(sorted_index)  
+    	% NCC矩阵中所有相关度小于最小阈值的值都设置为0了，所以遇到这些特征点直接跳过就行
+        if(NCC_matrix(sorted_index(i))==0)
+            continue;
+        else
+        	% 找到我们现在要处理的2个特征点的相关度在NCC_matrix中的
+        	% [row,col]=ind2sub(sz,ind)将线性索引转换为下标，返回数组row和col分别是大小为sz的矩阵的线性索引ind对应的等效行和列下标。
+        	% sz 是包含两个元素的向量，其中 sz(1) 指定行数，sz(2) 指定列数
+        	% 比如sz=[3 3],即一个3X3的矩阵。第二个线性索引ind=[2],那么row=2,col=1。可见线性索引顺序是竖着下来的。而矩阵下标是横着数过来的
+            [Idx_fpt2,Idx_fpt1] = ind2sub(size(NCC_matrix),sorted_index(i));
+        end
+		% 如果一个相关点被找到，就将该列设为0，保证图片1中的1个特征只会映射图片2中的1个特征。
+		% NCC_matrix中的x,y包含了第二个图片中的点X和第一个图片中的点Y之间的correlation相关性
+        NCC_matrix(:,Idx_fpt1) = 0;
+        % Ftp1,Ftp2分别是2张图片所有的特征的坐标（x,y）维度是[2,N],N是特征个数
+        % 将图片1中第Idx_fpt1个特征点和图片2中第Idx_fpt2个特征点，加入我们的相关点
+        cor(:,cor_num) = [Ftp1(:,Idx_fpt1);Ftp2(:,Idx_fpt2)];
+        cor_num = cor_num+1;
+    end
+    % 因为cor初始化为min(no_pts1,no_pts2)列，所以后面有一堆为[0,0,0,0]的点，删掉他们。
+    cor = cor(:,1:cor_num-1)
+    
+    % *************** Visualize the correspoinding image point pairs ***************
+    if do_plot
+    	% 创建图床窗口，窗口名字是Punkt-Korrespondenzen
+        figure('name', 'Punkt-Korrespondenzen');
+        % 用无符号整数显示灰度图片I1
+        imshow(uint8(I1))
+        hold on
+        % 给第一张图中的相关点画上红星
+        plot(cor(1,:),cor(2,:),'r*')
+        imshow(uint8(I2))
+        % 将上面的图片透明度设置为0.5
+        alpha(0.5);
+        hold on
+        % 给第二张图中的相关点画上绿星
+        plot(cor(3,:),cor(4,:),'g*')
+        % 给两个相关点之间画上连线
+        for i=1:size(cor,2)
+            hold on
+            x_1 = [cor(1,i), cor(3,i)];
+            x_2 = [cor(2,i), cor(4,i)];
+            line(x_1,x_2);
+        end
+        hold off
+    end
 end
 ```
 
