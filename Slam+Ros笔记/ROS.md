@@ -32,6 +32,41 @@ catkin clean
 #相当于rm -r ${build} ${devel}，但是避免了rm -r这种危险的操作！
 ```
 
+## *从0搭建一个project
+
+1. 创建工作空间:`mkdir -p ~/test_ws/src`
+
+2. 创建包：`catkin_create_pkg test_ros_pkg std_msgs roscpp`
+
+3. 写节点
+
+   1. 包目录下的src目录下编写c++
+
+   2. 包目录下的CMakeLists编写,比如添加
+
+      ```
+      add_executable(superROS src/supeROS.cpp)
+      target_link_libraries(superROS ${catkin_LIBRARIES})
+      ```
+
+4. 编译：`catkin build`
+
+   1. 首次编译后，记得在 ~/.bashrc文件尾部加入`source ~/Destktop/as_ws/devel/setup.bash`
+
+      这样就不用每打开一个bash都要输一遍`source devel/setup.bash`
+
+5. 重复3，4
+
+运行:
+
+1. 启动master:`roscore`
+2. 跑节点：具体看节点那一节
+3. 分析数据:
+   1. rostopic list, rostopic info, rostopic echo [topic]
+   2. rosnode list, rosnode info [node]
+   3. rosmsg list,
+   4. rospkg list,
+
 ## 一、创建工作空间Workspace
 
 ```shell
@@ -265,6 +300,183 @@ $ echo $ROS_PACKAGE_PATH
   - `rosnode machine`列出在特定机器或列表机器上运行的节点
   
   - `rosnode cleanup`清除不可到达节点的注册信息
+
+### 简单的例子
+
+#### 1.Publisher
+
+```c++
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+
+#include <sstream>
+
+//main function
+int main(int argc, char **argv)
+{
+
+  //start node
+  ros::init(argc, argv, "SupeROS");
+
+  //create variable for node
+  ros::NodeHandle n;
+
+  //declare publishers (employees)
+  ros::Publisher MrFish = n.advertise<std_msgs::String>("fish", 1000);
+  ros::Publisher MrVeggies = n.advertise<std_msgs::String>("veggies", 1000);
+  ros::Publisher MrFruits = n.advertise<std_msgs::String>("fruits", 1000);
+
+
+  ros::Rate loop_rate(10);
+
+  int count = 0;
+  while (ros::ok())
+  {
+    // declare msg for publishing data
+    std_msgs::String msg_fisher;
+    std_msgs::String msg_veggies;
+    std_msgs::String msg_fruits;
+
+    //define possible options for food
+    std::vector<std::string> fisher_options = { "tuna", "salmon", "shark" };
+    std::vector<std::string> veggies_options = { "onion", "potatoes", "carrots" };
+    std::vector<std::string> fruit_options = { "bananas", "apples", "grapes" };
+
+    //store current option
+    if (count == 3){count = 0;} //reset counter if longer than amount of options
+    msg_fisher.data = fisher_options[count];
+    msg_veggies.data = veggies_options[count];
+    msg_fruits.data = fruit_options[count];
+
+
+    //publish
+    MrFish.publish(msg_fisher);
+    MrVeggies.publish(msg_veggies);
+    MrFruits.publish(msg_fruits);
+
+    ros::spinOnce();
+
+    loop_rate.sleep();
+
+    ++count;
+  }
+
+
+  return 0;
+}
+
+```
+
+#### 2.Client
+
+```c++
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+
+void customerCallback1(const std_msgs::String& msg){
+        if (msg.data == "carrots")
+        {
+            //print in command window
+            ROS_INFO("Customer 1: I got carrots!");
+        }
+}
+void customerCallback2(const std_msgs::String& msg){
+        if (msg.data == "tuna")
+        {
+            //print in command window
+            ROS_INFO("Customer 2: I got tuna!");
+        }
+}
+
+int main(int argc, char **argv)
+{
+
+  ros::init(argc, argv, "Clients");
+
+  ros::NodeHandle n;
+
+  ros::Subscriber customer1_sub = n.subscribe("veggies", 1000, customerCallback1);
+  ros::Subscriber customer2_sub = n.subscribe("fish", 1000, customerCallback2);
+
+  ros::spin();
+
+  return 0;
+}
+
+```
+
+#### 3.将通信包装成一个类
+
+- 把所有的变量都包装在一个类中
+  - 一个实例的回调函数就可以调用同一个变量
+  - Subscriber和Publisher也只在类实例化的时候生成一次
+
+```c++
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+#include "std_msgs/Float64.h"
+
+
+
+//Class defining clients of supermarket
+class SupeROS_clients{
+
+  //Declare ROS things
+  ros::NodeHandle nh_;
+  ros::Subscriber customer_sub_;
+  ros::Publisher customer_pub_;
+
+  //Declare customer identifier
+  float customer_identifier_;
+
+  //Declare string variables to store desired products
+  std::string desired_product_;
+
+public:
+
+  //Constructor
+  SupeROS_clients(float customer_identifier, std::string desired_product, std::string desired_topic)
+  {
+    //Store class identifier
+    customer_identifier_ = customer_identifier;
+
+    //Store desired product
+    desired_product_ = desired_product;
+
+    //Define subsciber and publisher
+    customer_pub_ = nh_.advertise<std_msgs::Float64>("/Money", 1);
+    customer_sub_ = nh_.subscribe(desired_topic, 1000, &SupeROS_clients::customerCallback, this);
+  }
+
+  //Callback where we check if the employee offers what customers wants and pay back
+  void customerCallback(const std_msgs::String& msg){
+        if (msg.data == desired_product_)
+        {
+                //pay back
+                std_msgs::Float64 coin_msg;
+                coin_msg.data = 1.0;
+                customer_pub_.publish(coin_msg);
+
+                //print in command window
+                ROS_INFO("Customer %f: I got %s and I paid back!", customer_identifier_, desired_product_.c_str());
+        }
+  }
+};
+
+//Main function
+int main(int argc, char **argv)
+{
+        // initialize node
+        ros::init(argc, argv, "Clients");
+        ros::NodeHandle nh_private("~");
+        
+        //initialize classes
+        SupeROS_clients Clients_node1(1.0, "tuna","fish"), Clients_node2(2.0, "carrots","veggies");
+        
+        ros::spin();
+}
+
+```
 
 ### 用`rosrun`启动单个节点
 
