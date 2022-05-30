@@ -47,3 +47,85 @@ Nodes用的是VRML97 syntax语法，一系列的node共同构建了world。在Sc
     - roughness:设置粗糙度
   - 更倾向于用PBRAppearance，也有很多预定义好的表面
   - PBRAppearance node下的baseColorMap node可以添加自定义的图片纹理texture
+
+# 二、控制
+
+Webots提供的[Nodes和API函数](https://cyberbotics.com/doc/reference/nodes-and-api-functions)。比如下面例子中Robot，DistanceSensor，Motor等Node的变量，函数都可以在这里查到
+
+## 1. 简单的避障
+
+```c++
+#include <webots/Robot.hpp>
+#include <webots/DistanceSensor.hpp>
+#include <webots/Motor.hpp>
+// 定义每一个物理step的持续时间，最终间隔是它会乘以WorldInfo Node中'basicTimeStep'这一标签的值
+#define TIME_STEP 64
+#define MAX_SPEED 6.28
+using namespace webots;
+
+// entry point of the controller
+// 这里的arg由Robot node的 'controllerArgs'这一标签给予
+int main(int argc, char **argv) {
+  // create the Robot instance.
+  Robot *robot = new Robot();
+
+  // initialize distance sensors
+  DistanceSensor *ps[8];
+  char psNames[8][4] = {
+    "ps0", "ps1", "ps2", "ps3",
+    "ps4", "ps5", "ps6", "ps7"
+  };
+  for (int i = 0; i < 8; i++) {
+    ps[i] = robot->getDistanceSensor(psNames[i]);
+    ps[i]->enable(TIME_STEP);
+  }
+	
+  // initialize motor
+  Motor *leftMotor = robot->getMotor("left wheel motor");
+  Motor *rightMotor = robot->getMotor("right wheel motor");
+  leftMotor->setPosition(INFINITY);
+  rightMotor->setPosition(INFINITY);
+  leftMotor->setVelocity(0.0);
+  rightMotor->setVelocity(0.0);
+
+  // feedback loop: step simulation until an exit event is received
+  while (robot->step(TIME_STEP) != -1) {
+    // read sensors outputs
+    double psValues[8];
+    for (int i = 0; i < 8 ; i++)
+      psValues[i] = ps[i]->getValue();
+
+    // detect obstacles
+    bool right_obstacle =
+      psValues[0] > 80.0 ||
+      psValues[1] > 80.0 ||
+      psValues[2] > 80.0;
+    bool left_obstacle =
+      psValues[5] > 80.0 ||
+      psValues[6] > 80.0 ||
+      psValues[7] > 80.0;
+
+    // initialize motor speeds at 50% of MAX_SPEED.
+    double leftSpeed  = 0.5 * MAX_SPEED;
+    double rightSpeed = 0.5 * MAX_SPEED;
+    // modify speeds according to obstacles
+    if (left_obstacle) {
+      // turn right
+      leftSpeed  = 0.5 * MAX_SPEED;
+      rightSpeed = -0.5 * MAX_SPEED;
+    }
+    else if (right_obstacle) {
+      // turn left
+      leftSpeed  = -0.5 * MAX_SPEED;
+      rightSpeed = 0.5 * MAX_SPEED;
+    }
+    // write actuators inputs
+    leftMotor->setVelocity(leftSpeed);
+    rightMotor->setVelocity(rightSpeed);
+  }
+
+  delete robot;
+  return 0; //EXIT_SUCCESS
+}
+```
+
