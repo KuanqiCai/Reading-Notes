@@ -1813,6 +1813,13 @@ int main(int argc, char** argv){
     作为树状结构，要保证父子坐标系都有某个节点在持续地发布他们之间的位姿关系，才能使树状结构保持完整。只有父子坐标系的位姿关系能被正确的发布，才能保证任意两个frame之间的连通。
 
   - 每两个相邻frame之间靠节点发布它们之间的位姿关系，这种节点称为**broadcaster**。broadcaster就是一个发布器publisher,如果两个frame之间发生了相对运动，broadcaster就会发布相关消息。
+  
+- 分析
+
+  - tf树的信息：`rosrun tf tf_monitor`
+  - 2个frame坐标系之间转换的信息:`rosrun tf tf_echo source_frame target_frame`
+  -  可视化tf tree:`rosrun tf view_frames`
+
 
 ### 1. 用c++写一个tf broadcaster(subscriber)
 
