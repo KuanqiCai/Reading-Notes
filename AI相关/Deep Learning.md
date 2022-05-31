@@ -1,3 +1,7 @@
+# 零、其他一些参考资料
+
+- [动手学深度学习](https://zh.d2l.ai/index.html)
+
 # 一、Neural Networks and Deep Learning
 
 ## 1.数据预处理三部曲：
