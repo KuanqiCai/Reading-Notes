@@ -1186,9 +1186,27 @@ SVM也被称作large Margin Classifier
 
 # 五、Large Scale Machine Learning
 
-对于一个大规模的数量级比如100万个数据，首先要考虑是否有必要训练这么多数据。可能1000个数据就很有效了。
+对于一个大规模的数量级比如100万个数据，首先要考虑是否有必要训练这么多数据。可能1000个数据就很有效了。然后就有各种Optimization优化算法：
+
+## 0.各种优化算法的抉择
+
+- Linear Systems(AX=b)
+  - LU, QR, Cholesky, Jacobi, Gauss-Seidel, CG, PCG, etc.
+- Non-linear (gradient-based)
+  - Newton, Gauss-Newton, LM, (L)BFGS         <---Second order
+  - Gradient Descent, SGD                                  <---first order
+- Others
+  - Genetic algorithms, MCMC, Metropolis-Hastings, etc.
+  - Constrained and convex solvers (Langrage, ADMM,
+    Primal-Dual, etc.)
 
 ## 1. Stochastic Gradient Descent随机梯度下降
+
+简称：SGD
+
+随机也就是说我每次用样本中的一个例子来近似我所有的样本，用这一个例子来计算梯度并用这个梯度来更新$\theta$，即每一次计算之后就更新$\theta$。因为每次只用了一个样本因而容易陷入到局部最优解中。
+
+
 
 如果一定需要一个大规模的训练集，可以尝试使用随机梯度下降法来替代批量梯度下降法batch gradient descent
 
@@ -1200,18 +1218,24 @@ SVM也被称作large Margin Classifier
   for\ &i:=1,..,m \{ \\
   &\theta:=\theta_j-\alpha(h_\theta(x^{(i)})-y^{(i)})x_j^{(i)}\ \ \ for\ j=0:n\\
   \}
-  \end{aligned}
+  \end{aligned}\ 
   $$
 
   - 随机梯度下降算法在每一次计算之后便更新参数$\theta$ ，而不需要首先将所有的训练集求和，在梯度下降算法还没有完成一次迭代时，随机梯度下降算法便已经走出了很远。
   - 缺点：不是每一步都是朝着”正确”的方向迈出的。因此算法虽然会逐渐走向全局最小值的位置，但是可能无法站到那个最小值的那一点，而是在最小值点附近徘徊。
   - 优点：相比于批量梯度，更快，更快收敛
 
+- SGD is not a way to solve a linear system
+  
 - 检测是否收敛（小批量梯度下降同理）
 
   每次更新$\theta$前计算cost function.每1000个（自行决定）样本，计算下他们的平均值。然后画图。最后观察是否收敛。
 
 ## 2.Mini-Batch Gradient Descent小批量梯度下降
+
+简称：MBGD
+
+SGD用一个样本不准，那就用更多的b个样本来近似。这样一个数据集就被分成了m个minibatch,每一个minibatch有b个样本。在每个mini-batch里计算每个样本的梯度，然后在这个mini-batch里求和取平均作为最终的梯度来更新参数；然后再用下一个mini-batch来计算梯度，如此循环下去直到m个mini-batch操作完就称为一个epoch结束。
 
 Repeat
 $$
@@ -1224,6 +1248,14 @@ for\ &i:=1,..,m \{ \\
 $$
 
 - 小批量梯度下降算法是介于批量梯度下降算法和随机梯度下降算法之间的算法，每计算常数b次训练实例，便更新一次参数 $\theta$
+
+- 一个大的训练集如此就被划分为了多个Subset,称之为Minibatch。
+  - Minibatch的尺寸是hyperparameter,在用GPU时，尺寸通常是2的指数(8,16,32..),会获得更少的运行时间
+
+  - Minibatch的size越小，梯度的variance方差越大，也就意味着noisy update。
+    - 一般来说 Batch_Size 越大，其确定的下降方向越准，引起训练震荡越小。跑完一次 epoch（全数据集）所需的迭代次数减少，对于相同数据量的处理速度进一步加快，但是要想达到相同的精度，其所花费的时间大大增加了，从而对参数的修正也就显得更加缓慢。当Batch_Size 增大到一定程度，其确定的下降方向已经基本不再变化，也可能会超出内存容量。
+
+  - 批量处理中的所有样本可以并行处理，**内存消耗和批量大小会成正比**。对于很多硬件设备，这是批量大小的限制因素。
 
 - 他用了一些小样本来近似全部的，其本质就是我1个指不定不太准，那我用个30个50个样本那比随机的要准不少了吧，而且批量的话还是非常可以反映样本的一个分布情况的。
 
