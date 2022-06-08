@@ -269,3 +269,93 @@ int main(int argc, char **argv) {
      ```
 
      
+
+## 3. 用Supervisor监督者来操作scene
+
+- i=0: Moving Objects
+  - 流程是：获得一个node的reference标识，然后直接改动这个node的某一个feld的值。
+
+- i=10:Removing Nodes
+
+- i=20:spawning产生 nodes
+
+  - 流程是：获得roor node的reference标识，
+    - 然后在root node的children field下添加新的node的描述，但一个大型复杂的node描述会有几百几千行。
+    - 所以，这种很长的描述可以写在.wbo文件中，然后用[`importMFNode`](https://cyberbotics.com/doc/reference/supervisor#wb_supervisor_field_import_mf_node?tab-language=c++) or [`importSFNode`](https://cyberbotics.com/doc/reference/supervisor#wb_supervisor_field_import_sf_node?tab-language=c++)来导入
+    - 一种生成.wbo文件的方式：
+      - 先在webots建出想要的东西，给他定义一个DEF名字。然后工程文件夹的worlds目录下的xx.wbt文件中就会出现它的描述
+      - 然后在工程文件夹的controllers/supervisor_controller/下建一个xx.wbo文件
+      - 文件中加入`\#VRML_OBJ R2022a`，然后将xx.wbt中相关的描述复制进去
+
+-  Track Object Position Using a Supervisor
+
+```c++
+// 不用robot头文件，而是supervisor头文件
+#include <webots/Supervisor.hpp>
+#define TIME_STEP 32
+
+// All the webots classes are defined in the "webots" namespace
+using namespace webots;
+
+int main(int argc, char **argv) {
+  Supervisor *robot = new Supervisor(); // create Supervisor instance
+  
+  /*用于Moving Objects*/
+  // 先给我们要移动的机器人的DEF命名为BB-8
+  // 得到这个robot node的reference标识
+  Node *bb8Node = robot->getFromDef("BB-8");
+  // 获得上面node的叫“translation”的field的值
+  Field *translationField = bb8Node->getField("translation");
+  
+  /*用于spawning nodes*/
+  // 场景scene实际上是一个Group node,我们的robot,worldinfo等等一切都是它的子节点。
+  // 所以要创建一个新node，就要先获得根节点
+  Node *rootNode = robot->getRoot();
+  // 然后新的node都是父节点的children field下定义
+  Field *childrenField = rootNode->getField("children");
+    
+  /*Track Object Position Using a Supervisor*/
+  // 从我们自己定义的xx.wbo文件导入node
+  childrenField->importMFNode(-1, "custom_ball.wbo");
+  // 得到上面这个自定义的node的标识，在xx.wbo中我们设置了它的def为"ball"
+  Node *ballNode = robot->getFromDef("BALL");
+  // 得到上面这个自定义node的外貌node
+  Node *appearanceNode = robot->getFromDef("SPHERE_COLOR");
+  // // 得到上面这个自定义node的外貌node的颜色field
+  Field *colorField = appearanceNode->getField("baseColor");  
+    
+  int i = 0;
+  while (robot->step(TIME_STEP) != -1) {
+    // 通过supervisor直接改变robot"BB-8"的位置
+    if (i == 0) {
+      //translation的数据结构是SFVec3：一个三维向量
+      const double newValue[3] = {2.5, 0, 0};
+      // 用setSFVec3方法设置它的值
+      translationField->setSFVec3f(newValue);
+    }
+    if (i == 10)
+  		bb8Node->remove();
+    if (i == 20)
+        // Nao机器人已经存在于Webots库中
+        // -1描述了插入node的position,“Nao { }”描述了想要生成的node
+        // 还可以直接Nao { translation 2.5 0 0.334 }，精确生成的位置。{}还可以填controller,cameraW idth
+  		childrenField->importMFNodeFromString(-1, "Nao { }");
+    //跟踪小球的位置
+    const double *position = ballNode->getPosition();
+	std::cout << "Ball position: " << position[0] << " " << position[1] << " " << position[2] << std::endl;
+    // 如果小球撞到地面，换颜色
+    if (position[2] < 0.2) {
+  		const double redColor[3] = {1, 0, 0};
+  		colorField->setSFColor(redColor);
+	} 
+    i++;
+  }
+  delete robot;
+  return 0;
+}
+```
+
+
+
+
+
