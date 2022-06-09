@@ -724,6 +724,173 @@ $$
   - 三个图像上的点是共线的，如果$det[x_1,x_2,x_3]=0$
   - 但实际中由于Discretization离散化、Noise噪音。上面=0的条件是不可能达到的。需要利用thresholds阈值。
 
+# 三、Epipolargeometrie
+
+对极几何。
+
+前面的相机矩阵是针对单个相机的，但单个相机图片不能告诉我们物体的深度信息。这时至少需要两个相机，这样在两视图间内在的射影几何关系就是对极几何，而基本矩阵就算对极几何的代数表示。
+
+## 1.Epipolargleichung
+
+- 目的: describing the correlation相关性 between corresponding image points with
+  respect to the euclidian motion欧几里得运动 of the camera
+
+  - 研究三维场景与观测到的二维投影之间的几何关系是基于两种类型的变换：
+
+    - 用**欧几里得运动 (Euclidean motion)** 或**刚体运动 (rigid-body motion)** 来表示相机从当前帧到下一帧图像的运动
+
+    - 用**透视投影 (Perspective projection)** 来表示图像的形成过程 (如：**针孔相机 (pinhole camera)** 等)。
+
+- 几何模型
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Computer%20Vision/%E5%AF%B9%E6%9E%81%E5%87%A0%E4%BD%95.jpg?raw=true)
+
+  - $O,O'$是两个相机的中心
+  - P点是物体所在
+    - 如果我们只看左边图像 ![[公式]](https://www.zhihu.com/equation?tex=%5Cpi) 上的点p，我们不能知道物体到底是在哪，点P1、P2或其他地方，可有了右边图像$\pi'$上的$p'$我们就能得到物体点P
+  - 基线：连线$OO'$
+  - 对极平面Epipolar plane of P：极限$OO'$和观测物体$P$组成的平面$OO'P$
+    - The epipolar plane is spanned by the position vectors of the image point and of the epipole :$span(p,e)$
+  - 对极线Epipolar line：对极平面和两相机图像的交线$l,l'$
+    - The intersection相交 of the epipolar plane and the image plane
+    - The epipolar line is the image that is created from the Preimage原像 in the other camera system
+    - The epipolar line is identified确认 by means of the Coimage余象：$l$~$e\times p$
+  - 对极点Epipoles：基线和两相机图像的交点$e,e'$
+    - The perspective projection透视投影 of the respective各自的 optical centres in the other camera systems
+
+- 本质矩阵:Essential matrix
+
+  The essential matrix contains the information of the euclidian motion
+
+  - 我们知道由相机1到相机2是[刚体运动](https://zhuanlan.zhihu.com/p/32297200)，那么观测点P在相机1坐标系的坐标$P$就可以通过刚体转换变成相机2坐标系下$P'$:
+    $$
+    P'=RP+T
+    $$
+
+    - T和R分别表示平移和旋转，即欧几里得运动(R,T)
+    - $P$是物体在相机1下的坐标
+    - $P'$是物体在相机2下的坐标
+
+  - 两边同时叉乘T
+    $$
+    T\times P' = T\times RP+T\times T=T\times RP
+    $$
+
+    - $T\times P'$表示对极平面的法线
+
+  - 两边同时左乘$P'$
+    $$
+    P'(T\times P')=P'(T\times RP)
+    $$
+
+  - 由于$P'$点在对极平面上，所以$P'$和$T\times P'$是垂直的
+    $$
+    0=P'(T\times RP)
+    $$
+
+  - 两个向量的叉乘 = 一个向量的反对称矩阵 与 另一个向量 的点乘
+    $$
+    P'(T\times RP)=P'\hat{T}RP=P'^TEP=0
+    $$
+
+    - $\hat{T}$​是T的反对称矩阵skew symmetric matrix
+
+    - Epipolar equation对极方程：$P'^TEP=0$
+
+      The epipolar equation describes the correlation between corresponding image points from different images of the same scene
+
+    - **Essential matrix本质矩阵**：$E=\hat{T}R$
+
+- 本质矩阵的特性：[奇异值分解SVD](https://zhuanlan.zhihu.com/p/26306568)(Singular Value Decomposition)
+
+  - 任何一个m x n的矩阵A都可以奇异值分解为：$A=P\Sigma Q^T$
+
+    - $P:AA^T=P\Lambda_1P^T$
+
+      - $P$每一列是$AA^T$的特征向量，称之为**左奇异向量**（left singular vector）
+
+      - $AA^T$是 m x m的对称矩阵
+
+      - $\Lambda_1$是$矩阵AA^T$对角线上的元素是从大到小排列的特征值，m x m, 且与$\Lambda_2$非零元素相同。
+
+        即矩阵$AA^T$和矩阵$A^TA$的非零特征值相同
+
+    - $Q:A^TA=Q\Lambda_2Q^T$
+
+      - $Q$每一列是$A^TA$的特征向量，称之为**右奇异向量**（right singular vector）
+      - $A^TA$是 n x n的对称矩阵
+      - $\Lambda_2$是$矩阵A^TA$对角线上的元素是从大到小排列的特征值，n x n,且与$\Lambda_1$非零元素相同
+
+    - $\Sigma:m\times n的矩阵$，位于其对角线上的元素称为**奇异值**（singular value）
+
+  - 本质矩阵就可以被分解为
+    $$
+    E=P \left[
+     \begin{matrix}
+       \sigma &  &  \\
+        & \sigma &  \\
+        &  & 0
+      \end{matrix}
+      \right]Q^T=
+      [p_1\ p_2\ p_3]\left[
+     \begin{matrix}
+       \sigma &  &  \\
+        & \sigma &  \\
+        &  & 0
+      \end{matrix}
+      \right]\left[
+     \begin{matrix}
+       q_1^T  \\
+        q_2^T \\
+        q_3^T
+      \end{matrix}
+      \right]
+    $$
+    Essential matrices are the ones , whose singular value decomposition produces two **identical** singular values and one singular value equal to zero
+
+## 2.Epipole und Epipolarlinien
+
+- Epipole对极点和本质矩阵的关系：
+
+  $Ee_1=0；E^Te_2=0$
+  
+  因为：
+  
+  - The Coimage余象 of $e_1$is equivalent to the third singular value of E from the right: $e_1等价于q_3 $
+  - The Coimage余象 of $e_2$is equivalent to the third singular value of E from the left: $e_2等价于p_3 $
+
+- Epipolar lines对极线的一些性质：
+
+  - $l^Tp=0,l^Te=0$
+    - l,p,e分别是某一图像面上的对极线，图像点，对极点
+  - $l\ 等价于E^Tp',l'\ 等价于Ep$
+    - 上标 ' 表示第二个图像的xx
+
+- 应用：Correspondence一致点 Search
+
+  已知：$E和p$
+
+  1. 计算: $l'等价于Ep$
+  2. 确定$l'$的图像2
+  3. 在这个图像2中寻找p的一致点$p'$
+
+## 3.Acht-Punkt-Algorithmus
+
+- 如果Euclidian Motion未知，Feature points对应关系已知，如何确认Essential Matrix?
+
+  给定：n pairs of corresponding points$(x_1^j,x_2^j)$
+
+  1. 每一对点都满足:$x_2^jEx_1^j=0$
+  2. 因为$E\in R^{3\times3}$,所以有9个未知量
+  3. Scaling invariance缩放不变性：如果E是答案，那么$\lambda E$也是答案
+  4. 一共需要8个independent equations
+
+- 
+
+## 4.3D Rekonstruktion
+
+## 5.Die Fundamentalmatrix
+
 
 
 # *、 TUM CV课作业代码
@@ -1159,6 +1326,30 @@ end
 ```
 
 
+
+## 第三次作业
+
+```
+    no_points = length(correspondences);  
+    i = 1;
+    
+    while i<=s
+        i = i+1;
+        index = randperm(no_points,k);
+        F = epa(correspondences(:,index));
+        dist_Sampson = sampson_dist(F,x1_pixel,x2_pixel);
+        current_selector = dist_Sampson < tolerance;
+        dcheck           = dist_Sampson(current_selector);
+        current_set_size = numel(dcheck);
+        current_set_dist = sum(dcheck);
+        if (current_set_size > largest_set_size) || ((current_set_size == largest_set_size) && (current_set_dist < largest_set_dist))
+            largest_set_dist = current_set_dist;
+            largest_set_size = current_set_size;
+            selector = current_selector;
+        end
+    end
+    correspondences_robust = [x1_pixel(1:2,selector);x2_pixel(1:2,selector)];
+```
 
 
 
