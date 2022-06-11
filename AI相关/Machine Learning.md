@@ -743,7 +743,7 @@ $$
 
 ## 6.Support Vector Machine
 
-SVM也被称作large Margin Classifier
+SVM也被称作large Margin Classifier.SVM是一个面向数据的分类算法，它的目标是为确定一个分类超平面，从而将不同的数据分隔开。
 
 ### (1)Large Margin边缘 Classification
 
