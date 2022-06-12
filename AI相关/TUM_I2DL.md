@@ -129,6 +129,190 @@ https://numpy.org/doc/stable/
 - ReLU:$max(0,x)$
 - Leaky ReLU: $max(0.1x,x)$
 
+## 3) 优化算法Optimization 
+
+### 3.0 不同优化算法之间的关系
+
+[参考](https://zhuanlan.zhihu.com/p/81048198)
+
+每次梯度下降都遍历整个数据集会耗费大量计算能力，而mini-batch梯度下降法通过从数据集抽取小批量的数据进行小批度梯度下降解决了这一问题。使用mini-batch会产生下降过程中左右振荡的现象。而动量梯度下降法通过减小振荡对算法进行优化。动量梯度下降法的核心便是对一系列梯度进行指数加权平均。
+
+- Linear Systems(AX=b)
+  - LU, QR, Cholesky, Jacobi, Gauss-Seidel, CG, PCG, etc.
+- Non-linear (gradient-based)
+  - [Newton, Gauss-Newton, LM, (L)BFGS](https://zhuanlan.zhihu.com/p/29672873)         <---Second order
+  - Gradient Descent, SGD                                  <---first order
+- Others
+  - Genetic algorithms, MCMC, Metropolis-Hastings, etc.
+  - Constrained and convex solvers (Langrage, ADMM,
+    Primal-Dual, etc.)
+
+### 3.1Gradient Descent
+
+- Single Training Sample
+  1. Given a loss function $L$ and a single training sample $\{x_i,y_i\}$
+  2. Find best model parameters$\theta=\{W,b\}$
+  3. Cost$L_i(\theta,x_i,y_i)$
+     - $\theta=arg minL_i(x_i,y_i)$
+  4. Gradient Descent
+     1. Initialize$\theta^1$with random values
+     2. Update step:$\theta^{k+1}=\theta^{k}-\alpha\nabla_\theta L_i(\theta^k,x_i,y_i)$
+        - $\nabla_\theta L_i(\theta^k,x_i,y_i)$ computed via backpropagation
+     3. Iterate until convergence:$|\theta^{k+1}-\theta^k|<\epsilon$
+
+- Multiple Training Samples
+  1. Given a loss function $L$ and multiple(n) training samples $\{x_i,y_i\}$
+  2. Find best model parameters$\theta=\{W,b\}$
+  3. Cost$L=\frac{1}{n}\sum_{i=1}^n L_i(\theta,x_i,y_i)$
+     - $\theta=arg min L$
+  4. Gradient Descent
+     1. Initialize$\theta^1$with random values
+     2. Update step:$\theta^{k+1}=\theta^{k}-\alpha\nabla_\theta L(\theta^k,x_{\{1..n\}},y_{\{1..n\}})$
+        - Gradient is sum over residuals$\nabla_\theta L(\theta^k,x_{\{1..n\}},y_{\{1..n\}})=\frac{1}{n}\sum_{i=1}^n \nabla_\theta L_i(\theta,x_i,y_i)$
+        - $\nabla_\theta L_i(\theta^k,x_i,y_i)$ computed via backpropagation
+        - omitting省略$\frac{1}{n}$is not wrong: 可以看作resacling缩放 the learning rate
+
+### 3.2Stochastic Gradient Descent(SGD)
+
+随机梯度下降法-》小批量梯度下降法
+
+如果有n=1million个training samples$\{x_i,y_i\}$,有50万个参数$\theta$，计算变得非常expensive无法一次性计算所有的samples。
+
+根据empirical risk minimization经验风险最小化，可以用一小撮数据mini batch来近似计算。事实发现，实际训练中使用mini-batch梯度下降法可以大大加快训练速度，并节省计算机资源
+
+实现方法：将样本总体分成多个mini-batch。例如100万的数据，分成10000份,每份包含100个数据的mini-batch-1到mini-batch-10000，每次梯度下降使用其中一个mini-batch进行训练，除此之外和梯度下降法没有任何区别
+$$
+L=\frac{1}{n}\sum_{i=1}^n L_i(\theta,x_i,y_i)\approx\frac{1}{|S|}\sum_{j\in S} L_j(\theta,x_j,y_j)
+$$
+
+- 与GD的对比
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D.jpg?raw=true)
+
+  - 可以看到由于mini-batch每次仅使用数据集中的一部分进行梯度下降，所以每次下降并不是严格按照朝最小方向下降，但是总体下降趋势是朝着最小方向
+  - 当然实际上GD也是曲折的，SGD会加剧曲折
+
+- Minibatch: choose subset of transet $m<<n$
+  $$
+  \begin{aligned}
+  B_i &= \{ \{x_1,y_1\},\{x_2,y_2\},..,\{x_m,y_m\}\} \\
+    &= \{B_1,B_2,...B_{\frac{n}{m}}\}
+  \end{aligned}
+  $$
+
+  - m: Minibatch size选择选择为 power of 2 即8，16，32.....
+  - 越小的minibatch size ->  greater variance in the gradients -> noisy updates
+  - It is limited by GPU memory(in backward pass)
+
+- Stochastic Gradient Descent
+
+  - $\theta^{k+1}=\theta^{k}-\alpha\nabla_\theta L(\theta^k,x_{\{1..m\}},y_{\{1..m\}})$
+    - k现在refers to k-th **iteration**,$k\in(1.\frac{n}{m})$
+    - 当所有的$\frac{n}{m}$个minibatch都更新完，就称为完成了一个**epoch**
+  - $\nabla_\theta L=\frac{1}{m}\sum_{i=1}^m\nabla_\theta L_i$
+    - m training samples in the current minibatch
+    - $\nabla_\theta$: Gradient for the k-th minibatch
+
+- Problems of SGD
+
+  - Gradient is scaled equally均等缩放 across all dimensions
+    - i.e., cannot independently scale directions
+    - need to have conservative保守的 min learning rate to avoid divergence发散
+    - Slower than ‘necessary’
+  - Finding good learning rate is an art by itself
+
+### 3.3Gradient Descent with Momentum
+
+[动量梯度下降法](https://zhuanlan.zhihu.com/p/34240246)， 主要是针对mini-batch梯度下降法进行优化。
+
+原理：给梯度下降加一个动量，让它在伪最优解的地方能够像现实生活中的小球那样冲出去。
+
+- 好处：
+  - 可以很轻松的跳出下面这三种伪最优解
+    - plateau(稳定的水平)：下降的很慢，微分约等于0
+    - saddle point(鞍点)：微分时沿着某一方向是稳定的(=0)，另一条方向是不稳定的奇点
+    - local minima(局部最小点)；
+  - 让寻找最优解的曲线能够不那么振荡、波动，让他能够更加的平滑，在水平方向的速度更快。（如下图）
+
+- 与SGD的对比
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/sgd_momentum.png?raw=true)
+
+  - 可以看到动量优化之后左右的摆动减小，从而提高了效率。
+
+-  Gradient Descent with Momentum
+
+  - $v^{k+1}=\beta \cdot v^k-\alpha\cdot\nabla_\theta L(\theta^k)$
+    - $v$: velocity。这是一个向量
+    - $\beta$: accmulation rate积累速率(friction, momentum)，和$\alpha$一样都是Hyperparameters
+  - $\theta^{k+1}=\theta^k+v^{k+1}$
+
+### 3.4Root Mean Squared Prop(RMSProp)
+
+均方根传递
+
+Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然较大和收敛速度较慢。RMSProp在动量法的基础上进一步优化该问题。具体做法是更新权重时，使用除根号的方法，使得较大幅度大幅度变小，较小幅度小幅度变小；然后通过设置较大learning rate，使得学习步子变大。
+
+- 直观展示：
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/RMSProp.png?raw=true)
+
+  - Division in Y-Direction will be large
+  - Division in X-Direction will be small
+
+- RMSProp
+
+  - $s^{k+1}=\beta\cdot s^k + (1-\beta)[\nabla_\theta L\bigodot \nabla_\theta L]$
+
+    - $\nabla_\theta L\bigodot \nabla_\theta L$: 表示element wise multiplication
+
+  - $\theta^{k+1}=\theta^k-\alpha\cdot\frac{\nabla_\theta L}{\sqrt{s^{k+1}+\epsilon}}$
+
+    - $\epsilon,\alpha,\beta$都是Hyperparameters
+
+- 特点：
+  
+  - Dampening抑制 the oscillations振荡 for high-variance高方差 directions
+  - Can use faster learning rate because it is less likely to diverge
+    - Speed up learning speed
+    - Second moment二阶矩估计
+  
+
+### 3.5Adaptive Moment Estimation (Adam)
+
+自适应矩估计，本质上是带有动量项momentum的RMSprop.它利用梯度的一阶矩估计和二阶矩估计动态调整每个参数的学习率。Adam的优点主要在于经过偏置校正后，每一次迭代学习率都有个确定范围，使得参数比较平稳。
+
+- Adam
+  - 原理即结合Momentum和RMSProp
+    - Momentum:   $m^{k+1}=\beta_1\cdot m^k+(1-\beta_1)\nabla_\theta L(\theta^k)$
+    - RMSProp:        $v^{k+1}=\beta_2\cdot v^k + (1-\beta_2)[\nabla_\theta L\bigodot \nabla_\theta L]$
+  - 初始化$m^0=0,v^0=0$
+  - 跟新两个值
+    - Momentum:$\hat{m}^{k+1}=\frac{m^{k+1}}{1-\beta_1^{k+1}}$
+    - RMSProp:$\hat{v}^{k+1}=\frac{v^{k+1}}{1-\beta_2^{k+1}}$
+  - 更新参数
+    - $\theta^{k+1}=\theta^k-\alpha\cdot\frac{\hat{m}^{k+1}}{\sqrt{\hat{v}^{k+1}}+\epsilon}$
+- 特点：
+  - Exponentially-decaying指数衰减 mean and variance of gradients (combines first and second order momentum)
+  - 优点：
+    - 实现简单，计算高效，对内存需求少
+    - 参数的更新不受梯度的伸缩变换影响
+    - 超参数具有很好的解释性，且通常无需调整或仅需很少的微调
+    - 更新的步长能够被限制在大致的范围内（初始学习率）
+    - 能自然地实现步长退火过程（自动调整学习率）
+    - 很适合应用于大规模的数据及参数的场景
+    - 适用于不稳定目标函数
+    - 适用于梯度稀疏或梯度存在很大噪声的问题
+  - 在实际应用中 ，Adam为最常用的方法
+
+### 3.6梯度下降之外的优化算法：
+
+1. Newton’s Method牛顿法
+   - BFGS and L-BFGS，Gauss-Newton，Levenberg，Levenberg-Marquardt
+   - 牛顿法doesn’t work well for minibatches，适用于全数据集处理
+2. Conjugate Gradien共轭梯度法
+3. coordinate descent坐标下降法
+
 # 1. 数据预处理
 
 ## 1.1加载库
