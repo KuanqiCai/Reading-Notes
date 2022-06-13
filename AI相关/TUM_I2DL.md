@@ -106,9 +106,19 @@ https://numpy.org/doc/stable/
 
 - Classification loss:
 
-  - Cross-Entropy loss 多分类
+  - Cross-Entropy loss 交叉熵损失函数
 
-    $E(y,\hat{y};\theta)=-\sum_{i=1}^n\sum_{k=1}^k(y_{ik}\cdot log\hat{y}_{ik})$
+    也叫做Softmax Loss，用于多分类中表示预测和真实分布之间的距离有多远。
+
+    $$ CE(\hat{y}, y) = \frac{1}{N} \sum_{i=1}^N \sum_{k=1}^{C} \Big[ -y_{ik} \log(\hat{y}_{ik}) \Big] $$
+
+    where:
+    - $ N $ is again the number of samples
+
+    - $ C $ is the number of classes
+      - 当C=2，即binary cross-entropy(BCE)
+    - $ \hat{y}_{ik} $ is the probability that the model assigns for the $k$'th class when the $i$'th sample is the input. 
+    - $y_{ik} = 1 $ iff the true label of the $i$th sample is $k$ and 0 otherwise. This is called a [one-hot encoding](https://machinelearningmastery.com/why-one-hot-encode-data-in-machine-learning/).
 
   - Loss function: Binary Cross-Entropy (BCE).用于二分类
 
@@ -125,15 +135,50 @@ https://numpy.org/doc/stable/
 ## 2) 激活函数Activation Functions
 
 - Sigmoid: $\sigma(x)=\frac{1}{(1+e^{-x})}$
+
+  Sigmoid is one of the oldest used non-linearities. 
+
+  - 公式：$\sigma(x)=\frac{1}{1+exp(-x)}$
+
+  - Sigmoid的导数：$\frac{\partial\sigma(x)}{\partial x}=\sigma(x)(1-\sigma(x))$
+
+  - 反向求导：
+    $$
+    \frac{\partial L}{\partial x}=\frac{\partial L}{\partial \sigma(x)}\cdot\frac{\partial\sigma(x)}{\partial x}
+    $$
+
+    - $\frac{\partial L}{\partial \sigma(x)}$对应下面3.2.2代码backward中的`dout`
+    - $\frac{\partial\sigma(x)}{\partial x}$对应下面3.2.2代码backward中的`sd`
+
 - tanh: $tanh(x)$
+
 - ReLU:$max(0,x)$
+
+  Rectified Linear Units线性整流单元 are the currently most used non-linearities in deep learning
+
+  - 公式:$ReLU(x) = max(0,x)=\begin{cases}x(x>0)\\0(x\leq0) \end{cases}$
+
+    - ReLU的导数：$\frac{\partial ReLU(x)}{\partial x}=\begin{cases}1(x>0)\\0(x\leq0) \end{cases}$
+
+  - 反向求导:
+    $$
+    \frac{\partial L}{\partial x}=\frac{\partial L}{\partial ReLU(x)}\cdot\frac{\partial ReLU(x)}{\partial x}
+    $$
+
+    - $\frac{\partial L}{\partial ReLU(x)}$对应下面3.2.2代码backward中的dout
+    - $\frac{\partial ReLU(x)}{\partial x}$如果>0值为1就是传dout本身，所以只需要让<=0的dout值为0即可。
+
 - Leaky ReLU: $max(0.1x,x)$
 
 ## 3) 优化算法Optimization 
 
+具体代码实现见3.5
+
 ### 3.0 不同优化算法之间的关系
 
-[参考](https://zhuanlan.zhihu.com/p/81048198)
+[参考1](https://zhuanlan.zhihu.com/p/81048198)
+
+[参考2](https://ruder.io/optimizing-gradient-descent/)（老师推荐）
 
 每次梯度下降都遍历整个数据集会耗费大量计算能力，而mini-batch梯度下降法通过从数据集抽取小批量的数据进行小批度梯度下降解决了这一问题。使用mini-batch会产生下降过程中左右振荡的现象。而动量梯度下降法通过减小振荡对算法进行优化。动量梯度下降法的核心便是对一系列梯度进行指数加权平均。
 
@@ -1267,6 +1312,967 @@ class Solver(object):
   
   accuracy = test_accuracy(y_out, y_test)
   print("Accuracy AFTER training {:.1f}%".format(accuracy*100))
+  ```
+
+
+# 3.数据集CIFAR10分类
+
+## 3.1加载库
+
+```
+# As usual, a bit of setup
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+
+from exercise_code.data import (
+    DataLoader,
+    ImageFolderDataset,
+    RescaleTransform,
+    NormalizeTransform,
+    FlattenTransform,
+    ComposeTransform,
+)
+from exercise_code.networks import (
+    ClassificationNet,
+    CrossEntropyFromLogits
+)
+from exercise_code.tests.layer_tests import *
+from exercise_code.tests.sgdm_tests import *
+
+from exercise_code.solver import Solver
+from exercise_code.networks.optimizer import (
+    SGD,
+    SGDMomentum,
+    Adam
+)
+from exercise_code.networks.compute_network_size import *
+
+%load_ext autoreload
+%autoreload 2
+%matplotlib inline
+
+plt.rcParams['figure.figsize'] = (10.0, 8.0) # set default size of plots
+plt.rcParams['image.interpolation'] = 'nearest'
+plt.rcParams['image.cmap'] = 'gray'
+```
+
+## 3.2神经网络模型
+
+### 3.2.1Modularization模块化
+
+模块化chain rule:$\frac{\partial f}{\partial y}=\frac{\partial f}{\partial d}\cdot\frac{\partial d}{\partial y}$
+
+- in the `forward` pass do all required computations as well as save all values that are required to compute gradients
+
+  ```python
+  def layer_forward(x, w):
+    """ Receive inputs x and weights w """
+    # Do some computations ...
+    z = # ... some intermediate value
+    # Do some more computations ...
+    out = # the output
+    cache = (x, w, z, out) # Values we need to compute gradients
+    return out, cache
+  ```
+
+- in the `backward` function they will use the incoming gradients from later building blocks, to compute their respective各自的 gradients using their cached values.
+
+  ```python
+  def layer_backward(dout, cache):
+    """
+    Receive derivative of loss with respect to outputs and cache,
+    and compute derivative with respect to inputs.
+    """
+    # Unpack cache values
+    x, w, z, out = cache
+    # Use values in cache to compute derivatives
+    dx = # Derivative of loss with respect to x
+    dw = # Derivative of loss with respect to w
+    return dx, dw
+  ```
+
+- We can just simply chain an arbitrary amount of such blocks, so called `layers`
+
+### 3.2.2Layer Non-Linearities(Sigmoid,Relu)
+
+1. **Sigmoid**
+
+   Sigmoid is one of the oldest used non-linearities. 
+
+   - 公式：$\sigma(x)=\frac{1}{1+exp(-x)}$
+
+   - Sigmoid的导数：$\frac{\partial\sigma(x)}{\partial x}=\sigma(x)(1-\sigma(x))$
+
+   - 反向求导：
+     $$
+     \frac{\partial L}{\partial x}=\frac{\partial L}{\partial \sigma(x)}\cdot\frac{\partial\sigma(x)}{\partial x}
+     $$
+
+     - $\frac{\partial L}{\partial \sigma(x)}$对应下面代码backward中的`dout`
+     - $\frac{\partial\sigma(x)}{\partial x}$对应下面代码backward中的`sd`
+
+   ```python
+   class Sigmoid:
+       def __init__(self):
+           pass
+   
+       def forward(self, x):
+           """
+           :param x: Inputs, of any shape.
+   
+           :return out: Outputs, of the same shape as x.
+           :return cache: Cache, stored for backward computation, of the same shape as x.
+           """
+           shape = x.shape
+           out, cache = np.zeros(shape), np.zeros(shape)
+   
+           #out用于计算前向传播，cache用于计算反向传播
+           out = 1/(1+np.exp(-x))
+           cache = out
+   
+           return out, cache
+   
+       def backward(self, dout, cache):
+           """
+           :param dout: Upstream gradient from the computational graph, from the Loss function
+                       and up to this layer. Has the shape of the output of forward().
+           :param cache: The values that were stored during forward() to the memory,
+                       to be used during the backpropogation.
+           :return: dx: the gradient w.r.t. input X, of the same shape as X
+           """
+           dx = None
+   
+           sd = cache*(1-cache)
+           dx = dout*sd
+   
+           return dx
+   ```
+
+2. **Relu**
+
+   Rectified Linear Units线性整流单元 are the currently most used non-linearities in deep learning
+
+   - 公式:$ReLU(x) = max(0,x)=\begin{cases}x(x>0)\\0(x\leq0) \end{cases}$
+
+     - ReLU的导数：$\frac{\partial ReLU(x)}{\partial x}=\begin{cases}1(x>0)\\0(x\leq0) \end{cases}$
+
+   - 反向求导:
+     $$
+     \frac{\partial L}{\partial x}=\frac{\partial L}{\partial ReLU(x)}\cdot\frac{\partial ReLU(x)}{\partial x}
+     $$
+
+     - $\frac{\partial L}{\partial ReLU(x)}$对应下面代码backward中的dout
+     - $\frac{\partial ReLU(x)}{\partial x}$如果>0值为1就是传dout本身，所以只需要让<=0的dout值为0即可。
+
+   ```python
+   class Relu:
+       def __init__(self):
+           pass
+   
+       def forward(self, x):
+           """
+           :param x: Inputs, of any shape.
+   
+           :return outputs: Outputs, of the same shape as x.
+           :return cache: Cache, stored for backward computation, of the same shape as x.
+           """
+           out = None
+           cache = None
+   		#out用于计算前向传播，cache用于计算反向传播
+           out = np.maximum(0,x)
+           cache = out
+   
+           return out, cache
+   
+       def backward(self, dout, cache):
+           """
+           :param dout: Upstream gradient from the computational graph, from the Loss function
+                       and up to this layer. Has the shape of the output of forward().
+           :param cache: The values that were stored during forward() to the memory,
+                       to be used during the backpropogation.
+           :return: dx: the gradient w.r.t. input X, of the same shape as X
+           """
+           dx = None
+   
+           dx = dout
+           # dx,cache的维度一样，所以可以直接下面这样获得cache=0的索引
+           dx[cache<=0]=0
+   
+           return dx
+   ```
+
+### 3.2.3 Affine layer仿射层
+
+ Affine layer仿射层又称之为linear 线性变换层， Full-connected Layer全连接层。仿射（Affine）的意思是前面一层中的每一个神经元都连接到当前层中的每一个神经元。仿射层通常被加在卷积神经网络或循环神经网络做出最终预测前的输出的顶层。
+
+**全连接层之前的作用是提取特征，而全连接层的作用是分类**
+
+- 公式:$z=Wx+b$
+
+  - W是权重矩阵
+
+- 反向求导：
+  $$
+  \begin{aligned}
+  &\frac{\partial L}{\partial x}=\frac{\partial L}{\partial z}\cdot W^T\\
+  &\frac{\partial L}{\partial W}=x^T\cdot \frac{\partial L}{\partial z}\\
+  &\frac{\partial L}{\partial b}=1^T\cdot\frac{\partial L}{\partial z}
+  \end{aligned}
+  $$
+
+  - $\frac{\partial L}{\partial z}$:对应下面代码的dout
+  - $\frac{\partial L}{\partial b}$:是$\frac{\partial L}{\partial z}$即dout的求和
+  - $\frac{\partial L}{\partial x},\frac{\partial L}{\partial W}$分别对应下面代码的dx,dw
+
+```python
+def affine_forward(x, w, b):
+    """
+    Computes the forward pass for an affine (fully-connected) layer.
+    The input x has shape (N, d_1, ..., d_k) and contains a minibatch of N
+    examples, where each example x[i] has shape (d_1, ..., d_k). We will
+    reshape each input into a vector of dimension D = d_1 * ... * d_k, and
+    then transform it to an output vector of dimension M.
+    Inputs:
+    :param x: A numpy array containing input data, of shape (N, d_1, ..., d_k)
+    :param w: A numpy array of weights, of shape (D, M)
+    :param b: A numpy array of biases, of shape (M,)
+    :return out: output, of shape (N, M)
+    :return cache: (x, w, b)
+    """
+    N, M = x.shape[0], b.shape[0]
+    out = np.zeros((N,M))
+
+    #N:每一个minibatch下的样本数
+    N=x.shape[0]
+    x_shape=x.shape[1:]
+    D=1
+    for i in range(len(x_shape)):
+        D=D*x_shape[i]
+    # 将输入x的数据排列为(N,D)的x_new
+    x_new = np.reshape(x, (N, D))
+    # 前向输出
+    out = np.dot(x_new, w) + b
+
+    cache = (x, w, b)
+    return out, cache
+
+
+def affine_backward(dout, cache):
+    """
+    Computes the backward pass for an affine layer.
+    Inputs:
+    :param dout: Upstream derivative, of shape (N, M)
+    :param cache: Tuple of:
+      - x: Input data, of shape (N, d_1, ... d_k)
+      - w: Weights, of shape (D, M)
+      - b: A numpy array of biases, of shape (M,
+    :return dx: Gradient with respect to x, of shape (N, d1, ..., d_k)
+    :return dw: Gradient with respect to w, of shape (D, M)
+    :return db: Gradient with respect to b, of shape (M,)
+    """
+    x, w, b = cache
+    dx, dw, db = None, None, None
+	# 将输入x的数据排列为(N,D)的x_new
+    N = x.shape[0]
+    D_backup = x.shape[1:]
+    D = 1
+    for i in range(len(D_backup)):
+        D = D * D_backup[i]
+    x_new = np.reshape(x, (N, D))
+	# 反向传播计算
+    dw = np.dot(x_new.T, dout)
+    db = np.sum(dout, axis=0)
+    dx_backup = np.dot(dout, w.T)
+    dx = np.reshape(dx_backup, x.shape)
+
+    return dx, dw, db
+```
+
+### 3.2.4 N-layer Classification Network
+
+- 用Relu计算一个2层网络,
+
+  ```python
+  # Define a dummy input
+  test_input = np.random.randn(1, 10)   # (batch_size, input_size)
+  
+  # Define a test model
+  test_model = ClassificationNet(input_size=10, 
+                                 hidden_size=128,
+                                 activation=Relu(), 
+                                 num_layer=2, 
+                                 num_classes=3)
+  
+  # Compute output
+  model_output = test_model.forward(test_input)
+  ```
+
+  - `ClassificationNet`类的定义如下
+
+- 将上面这些层的前向，反向传播整合在一个类里，就可以想建几层网络建几层，想用什么激活函数用什么激活函数
+
+  ```python
+  class ClassificationNet(Network):
+      """
+      A fully-connected classification neural network with configurable 
+      activation function, number of layers, number of classes, hidden size and
+      regularization strength. 
+      """
+  
+      def __init__(self, activation=Relu(), num_layer=2,
+                   input_size=3 * 32 * 32, hidden_size=100,
+                   std=1e-3, num_classes=10, reg=0, **kwargs):
+          """
+          :param activation: choice of activation function. It should implement
+              a forward() and a backward() method.
+          :param num_layer: integer, number of layers. 
+          :param input_size: integer, the dimension D of the input data.
+          :param hidden_size: integer, the number of neurons H in the hidden layer.
+          :param std: float, standard deviation used for weight initialization.
+          :param num_classes: integer, number of classes.
+          :param reg: float, regularization strength.
+          """
+          super().__init__("cifar10_classification_net")
+  
+          self.activation = activation
+          self.reg_strength = reg
+  
+          self.cache = None
+  
+          # Initialize random gaussian weights for all layers and zero bias
+          self.num_layer = num_layer
+          self.params = {'W1': std * np.random.randn(input_size, hidden_size),
+                         'b1': np.zeros(hidden_size)}
+  
+          for i in range(num_layer - 2):
+              self.params['W' + str(i + 2)] = std * np.random.randn(hidden_size,
+                                                                    hidden_size)
+              self.params['b' + str(i + 2)] = np.zeros(hidden_size)
+  
+          self.params['W' + str(num_layer)] = std * np.random.randn(hidden_size,
+                                                                    num_classes)
+          self.params['b' + str(num_layer)] = np.zeros(num_classes)
+  
+          self.grads = {}
+          self.reg = {}
+          for i in range(num_layer):
+              self.grads['W' + str(i + 1)] = 0.0
+              self.grads['b' + str(i + 1)] = 0.0
+  
+      def forward(self, X):
+          """
+          Performs the forward pass of the model.
+          :param X: Input data of shape (N, d_1, ..., d_k) and contains a minibatch of N
+          examples, where each example x[i] has shape (d_1, ..., d_k)
+          :return: Predicted value for the data in X, shape N x num_classes
+                   num_classes-dimensional array of length N with the classification scores.
+          """
+  
+          self.cache = {}
+          self.reg = {}
+          X = X.reshape(X.shape[0], -1)
+          # Unpack variables from the params dictionary
+          for i in range(self.num_layer - 1):
+              W, b = self.params['W' + str(i + 1)], self.params['b' + str(i + 1)]
+  
+              # Forward i_th layer
+              X, cache_affine = affine_forward(X, W, b)
+              self.cache["affine" + str(i + 1)] = cache_affine
+  
+              # Activation function
+              X, cache_sigmoid = self.activation.forward(X)
+              self.cache["sigmoid" + str(i + 1)] = cache_sigmoid
+  
+              # Store the reg for the current W
+              self.reg['W' + str(i + 1)] = np.sum(W ** 2) * self.reg_strength
+  
+          # last layer contains no activation functions
+          W, b = self.params['W' + str(self.num_layer)],\
+                 self.params['b' + str(self.num_layer)]
+          y, cache_affine = affine_forward(X, W, b)
+          self.cache["affine" + str(self.num_layer)] = cache_affine
+          self.reg['W' + str(self.num_layer)] = np.sum(W ** 2) * self.reg_strength
+  
+          return y
+  
+      def backward(self, dy):
+          """
+          Performs the backward pass of the model.
+          :param dy: N x num_classes array. The gradient wrt the output of the network.
+          :return: Gradients of the model output wrt the model weights
+          """
+  
+          # Note that last layer has no activation
+          cache_affine = self.cache['affine' + str(self.num_layer)]
+          dh, dW, db = affine_backward(dy, cache_affine)
+          self.grads['W' + str(self.num_layer)] = \
+              dW + 2 * self.reg_strength * self.params['W' + str(self.num_layer)]
+          self.grads['b' + str(self.num_layer)] = db
+  
+          # The rest sandwich layers
+          for i in range(self.num_layer - 2, -1, -1):
+              # Unpack cache
+              cache_sigmoid = self.cache['sigmoid' + str(i + 1)]
+              cache_affine = self.cache['affine' + str(i + 1)]
+  
+              # Activation backward
+              dh = self.activation.backward(dh, cache_sigmoid)
+  
+              # Affine backward
+              dh, dW, db = affine_backward(dh, cache_affine)
+  
+              # Refresh the gradients
+              self.grads['W' + str(i + 1)] = dW + 2 * self.reg_strength * \
+                                             self.params['W' + str(i + 1)]
+              self.grads['b' + str(i + 1)] = db
+  
+          return self.grads
+  
+      def save_model(self):
+          directory = 'models'
+          model = {self.model_name: self}
+          if not os.path.exists(directory):
+              os.makedirs(directory)
+          pickle.dump(model, open(directory + '/' + self.model_name + '.p', 'wb'))
+  
+      def get_dataset_prediction(self, loader):
+          scores = []
+          labels = []
+  
+          for batch in loader:
+              X = batch['image']
+              y = batch['label']
+              score = self.forward(X)
+              scores.append(score)
+              labels.append(y)
+  
+          scores = np.concatenate(scores, axis=0)
+          labels = np.concatenate(labels, axis=0)
+  
+          preds = scores.argmax(axis=1)
+          acc = (labels == preds).mean()
+  
+          return labels, preds, acc
+  ```
+
+## 3.3加载CIFAR10 Dataset
+
+- 下载数据
+
+    ```python
+    # Define output path similar to exercise 3
+    i2dl_exercises_path = os.path.dirname(os.path.abspath(os.getcwd()))
+    cifar_root = os.path.join(i2dl_exercises_path, "datasets", "cifar10")
+
+    # Dictionary so that we can convert label indices to actual label names
+    classes = [
+        'plane', 'car', 'bird', 'cat', 'deer',
+        'dog', 'frog', 'horse', 'ship', 'truck',
+    ]
+
+    # Simply call dataset class
+    dataset = ImageFolderDataset(
+            root=cifar_root
+        )
+    ```
+
+- 这个project中我们的输入是一维的，所以要把数据集展成1维
+
+  ```python
+  # Use the Cifar10 mean and standard deviation computed in Exercise 3.
+  cifar_mean = np.array([0.49191375, 0.48235852, 0.44673872])
+  cifar_std  = np.array([0.24706447, 0.24346213, 0.26147554])
+  
+  # Define all the transforms we will apply on the images when 
+  # retrieving them.
+  rescale_transform = RescaleTransform()
+  normalize_transform = NormalizeTransform(
+      mean=cifar_mean,
+      std=cifar_std
+  )
+  
+  # Add the new flatten transform
+  flatten_transform = FlattenTransform()
+  
+  # And string them together
+  compose_transform = ComposeTransform([
+      rescale_transform, 
+      normalize_transform,
+      flatten_transform
+  ])
+  ```
+  
+- 加载数据
+
+  具体加载代码可看1.4/1.5
+
+  ```python
+  from exercise_code.data import MemoryImageFolderDataset
+  #DATASET = ImageFolderDataset
+  DATASET = MemoryImageFolderDataset
+  # Create a dataset and dataloader
+  batch_size = 8
+  
+  dataset = DATASET(
+      mode='train',
+      root=cifar_root,
+      transform=compose_transform,
+      split={'train': 0.01, 'val': 0.2, 'test': 0.79}
+  )
+      
+  dataloader = DataLoader(
+      dataset=dataset,
+      batch_size=batch_size,
+      shuffle=True,
+      drop_last=True,
+  )
+  
+  print('Dataset size:', len(dataset))
+  print('Dataloader size:', len(dataloader))
+  ```
+
+## 3.4Cross-Entropy Loss交叉熵
+
+- Cross-Entropy Los模型：
+
+  $$ CE(\hat{y}, y) = \frac{1}{N} \sum_{i=1}^N \sum_{k=1}^{C} \Big[ -y_{ik} \log(\hat{y}_{ik}) \Big] $$
+
+  - $ N $ is again the number of samples
+  - $ C $ is the number of classes
+  - $ \hat{y}_{ik} $ is the probability that the model assigns for the $k$'th class when the $i$'th sample is the input. 
+  - $y_{ik} = 1 $ iff the true label of the $i$th sample is $k$ and 0 otherwise. This is called a [one-hot encoding](https://machinelearningmastery.com/why-one-hot-encode-data-in-machine-learning/).
+
+- [Logits](https://datascience.stackexchange.com/questions/31041/what-does-logits-in-machine-learning-mean):
+
+  **Logits interpreted to be the unnormalised** (or not-yet normalised) **predictions** (or outputs) **of a model. These can give results, but we don't normally stop with logits, because interpreting their raw values is not easy.**
+
+  比如我们分类2张猫狗图，得到的Logits value分别为：
+
+  1. 第一张图猫为16，狗为0.7，结果判断为猫
+  2. 第二张图猫为1.004，狗为0.6，结果判断为猫
+
+  模型都成功了，但我们要想比较这两张图的判断结果，必须要先normalise the logits。为此我们使用softmax function ,它可以将每张图预测结果和为1，并可认为他们是概率。
+
+  第一张图经过normalise（softmax）后，猫的值为0.9999，狗的值为0.0001。所以我们认为这张图99.99%的概率是猫
+
+- Softmax
+
+  - 公式：
+
+    $$softmax(x)=\sigma(x)=\frac{e^{x_i}}{\sum_{i=1}^ne^{x_i}}$$
+
+    - $x=(x_i)_{(1\leq i\leq n)}\in\mathbb{R}^n$是一个vector
+
+  - 问题：数值不稳定Numerical Stability
+
+    计算机中用浮点数来表示实数时总会引入近似误差
+
+    1. **下溢**：当接近零的数被四舍五入为零时发生下溢（除零，对0取对数）
+    2. **上溢**：大量级的数被近似为无穷时发生上溢。
+
+  - 解决方法：$$\sigma(x-\max_{1\leq i\leq n}x_i)$$
+
+    - 减去最大值导致exp最大为0，排除了上溢的可能性
+    - 分母中至少有一个值为1的项（exp(0)=1），从而也排除了因分母=下溢导致被零除的可能性
+
+- 代码实现：
+
+  ```python
+  class CrossEntropyFromLogits(Loss):
+      def __init__(self):
+          self.cache = {}
+       
+      def forward(self, y_out, y_truth, reduction='mean'):
+          """
+          Performs the forward pass of the cross entropy loss function.
+          
+          :param y_out: [N, C] array with the predicted logits of the model
+              (i.e. the value before applying any activation)
+          :param y_truth: (N,) array with ground truth labels.
+          :return: float, the cross-entropy loss value
+          """
+          # Transform the ground truth labels into one hot encodings.
+          N, C = y_out.shape
+          ## Return an array of zeros with the same shape and type as a given array.
+          y_truth_one_hot = np.zeros_like(y_out)
+          y_truth_one_hot[np.arange(N), y_truth] = 1
+          
+          # Transform the logits into a distribution using softmax.
+          # First make the operation numerically stable by substracting the
+          # biggest element from all entries before applying exp
+          y_out_exp = np.exp(y_out - np.max(y_out, axis=1, keepdims=True))
+          y_out_probs = y_out_exp / np.sum(y_out_exp, axis=1, keepdims=True)
+          
+          # Compute the loss for each element in the batch.
+          # Hint: Why do we add the minus sign to the formula?
+          loss = -y_truth_one_hot * np.log(y_out_probs)
+          loss = loss.sum(axis=1).mean()
+             
+          self.cache['probs'] = y_out_probs
+          
+          return loss
+      
+      def backward(self, y_out, y_truth):
+          """
+          Performs the backward pass of the loss function.
+  
+          :param y_out: [N, C] array predicted value of your model.
+                 y_truth: [N, ] array ground truth value of your training set.
+          :return: [N, C] array of cross entropy loss gradients w.r.t y_out for
+                    each sample of your training set.
+          """
+          N, C = y_out.shape
+          gradient = self.cache['probs']
+          gradient[np.arange(N), y_truth] -= 1
+          gradient /= N
+          
+          return gradient
+  ```
+
+## 3.5Optimization优化算法
+
+- 注意事项
+
+  Always, always, always when starting a new project or defining a new network: **overfit on a small set first and then generalize**. The 500 images we are using here are already too many sample for most cases. Start with a single sample, then 10 and finally a few hundred. Don't cheap out on this step! More often, your network will fail to generalize properly and you have to first know if it has enough capacity to overfit and that the full training pipeline is working!
+
+- 下面每一点都要先如3.2.4中一样设置我们的模型
+
+### 3.5.1 计算神经网络所需要的内存
+
+经计算计算一个batchsize为8的子集，前向/反向传播分别要用到3M和6M内存。
+
+但我们共有50000个子集，这就需要36.81G的内存。可见SGD重要性
+
+- 计算前向传播需要的内存
+
+  ```python
+  # Set up loss
+  loss_func = CrossEntropyFromLogits()
+  
+  # Get a random batch of our dataloader with batch_size 8
+  sample_batch = iter(dataloader).__next__()
+  sample_images = sample_batch['image']
+  sample_labels = sample_batch['label']
+  
+  # Compute model output
+  model_output = model.forward(sample_images)
+  
+  num_bytes = compute_network_pass_size(model)
+  print('\nTotal number of bytes used by network for batch:', GetHumanReadable(num_bytes))
+  ```
+
+- 计算反向传播需要的内存
+
+  ```python
+  # 1. Compute loss
+  _ = loss_func.forward(model_output, sample_labels)
+  # 2. Compute loss gradients
+  dout = loss_func.backward(model_output, sample_labels)
+  # 3. Backpropagate gradients through model
+  _ = model.backward(dout)
+  
+  # Now calculate bytes again
+  num_bytes = compute_network_pass_size(model)
+  
+  print('\nTotal number of bytes used by network for batch:', GetHumanReadable(num_bytes))
+  ```
+
+- 用到的`compute_network_pass_size`类
+
+  ```python
+  def compute_network_pass_size(model):
+      """Computes the size of a network pass in bytes using cached
+      parameters as well as gradients"""
+      num_bytes = 0
+  
+      print('Adding layer caches for forward pass:')
+      for layer in model.cache.keys():
+          # Add size of forward caches
+          key_num_bytes = 0
+          for value in model.cache[layer]:
+              value_num_bytes = sys.getsizeof(value)
+              key_num_bytes += value_num_bytes
+          num_bytes += key_num_bytes
+  
+          print(layer, key_num_bytes)
+  
+      print('\nAdding layer gradients for backward pass:')
+      for key in model.grads.keys():
+          # Add size of backward gradients
+          key_num_bytes = sys.getsizeof(model.grads[key])
+          num_bytes += key_num_bytes
+          print(key, key_num_bytes)
+         
+      return num_bytes
+  ```
+
+### 3.5.2 SGD
+
+- 使用2.10所写的solver直接调用 SGD优化算法
+
+  ```python
+  learning_rate = 1e-2
+  
+  # We use our training dataloader for validation as well as testing
+  solver = Solver(model, dataloader, dataloader, 
+                  learning_rate=learning_rate, loss_func=loss_func, optimizer=SGD)
+  
+  # This might take a while depending on your hardware. When in doubt: use google colab
+  solver.train(epochs=20)
+  ```
+
+- SGD
+
+  ```python
+  class SGD(object):
+      def __init__(self, model, loss_func, learning_rate=1e-4):
+          self.model = model
+          self.loss_func = loss_func
+          self.lr = learning_rate
+          self.grads = None
+  
+      def backward(self, y_pred, y_true):
+          """
+          Compute the gradients wrt the weights of your model
+          """
+          dout = self.loss_func.backward(y_pred, y_true)
+          self.model.backward(dout)
+  
+      def _update(self, w, dw, lr):
+          """
+          Update a model parameter
+          """
+          w -= lr * dw
+          return w
+  
+      def step(self):
+          """
+          Perform an update step with the update function, using the current
+          gradients of the model
+          """
+  
+          # Iterate over all parameters
+          for name in self.model.grads.keys():
+  
+              # Unpack parameter and gradient
+              w = self.model.params[name]
+              dw = self.model.grads[name]
+  
+              # Update the parameter
+              w_updated = self._update(w, dw, lr=self.lr)
+              self.model.params[name] = w_updated
+  
+              # Reset gradient
+              self.model.grads[name] = 0.0
+  ```
+
+### 3.5.3 SGD+Momentum
+
+- 可以直接用2.10的olver调用
+
+- SGD+Momentum
+
+  ```python
+  class SGDMomentum(object):
+      """
+      Performs stochastic gradient descent with momentum.
+  
+      config format:
+      - momentum: Scalar between 0 and 1 giving the momentum value.
+        Setting momentum = 0 reduces to sgd.
+      - velocity: A numpy array of the same shape as w and dw used to store a moving
+        average of the gradients.
+      """
+      def __init__(self, model, loss_func, learning_rate=1e-4, **kwargs):
+          self.model = model
+          self.loss_func = loss_func
+          self.lr = learning_rate
+          self.grads = None
+          self.optim_config = kwargs.pop('optim_config', {})
+          self._reset()
+  
+      def _reset(self):
+          self.optim_configs = {}
+          for p in self.model.params:
+              d = {k: v for k, v in self.optim_configs.items()}
+              self.optim_configs[p] = d
+  
+      def backward(self, y_pred, y_true):
+          """
+          Compute the gradients wrt the weights of your model
+          """
+          dout = self.loss_func.backward(y_pred, y_true)
+          self.model.backward(dout)
+  
+      def _update(self, w, dw, config, lr):
+          """
+          Update a model parameter
+          
+          :param w: Current weight matrix
+          :param dw: The corresponding calculated gradient, of the same shape as w.
+          :param config: A dictionary, containing relevant parameters, such as the "momentum" value. Check it out.
+          :param lr: The value of the "learning rate".
+  
+          :return next_w: The updated value of w.
+          :return config: The same dictionary. Might needed to be updated.
+          """
+          if config is None:
+              config = {}
+          config.setdefault('momentum', 0.9)
+          v = config.get('velocity', np.zeros_like(w))
+          next_w = None
+  
+          ########################################################################
+          # TODO: Implement the momentum update formula. Store the updated       #  
+          # value in the next_w variable. You should also use and update the     #
+          # velocity v.                                                          #
+          ########################################################################
+  
+          mu = config['momentum']
+          learning_rate = lr
+          v = mu * v - learning_rate * dw
+          next_w = w + v
+          config['velocity'] = v
+  
+          ########################################################################
+  
+          config['velocity'] = v
+  
+          return next_w, config
+  
+      def step(self):
+          """
+          Perform an update step with the update function, using the current
+          gradients of the model
+          """
+  
+          # Iterate over all parameters
+          for name in self.model.grads.keys():
+  
+              # Unpack parameter and gradient
+              w = self.model.params[name]
+              dw = self.model.grads[name]
+  
+              config = self.optim_configs[name]
+  
+              # Update the parameter
+              w_updated, config = self._update(w, dw, config, lr=self.lr)
+              self.model.params[name] = w_updated
+              self.optim_configs[name] = config
+              # Reset gradient
+              self.model.grads[name] = 0.0
+  ```
+
+### 3.5.4 Adam
+
+- Adam
+
+  ```python
+  class Adam(object):
+      """
+      Uses the Adam update rule, which incorporates moving averages of both the
+      gradient and its square and a bias correction term.
+  
+      config format:
+      - beta1: Decay rate for moving average of first moment of gradient.
+      - beta2: Decay rate for moving average of second moment of gradient.
+      - epsilon: Small scalar used for smoothing to avoid dividing by zero.
+      - m: Moving average of gradient.
+      - v: Moving average of squared gradient.
+      - t: Iteration number.
+      """
+      def __init__(self, model, loss_func, learning_rate=1e-4, **kwargs):
+          self.model = model
+          self.loss_func = loss_func
+          self.lr = learning_rate
+          self.grads = None
+  
+          self.optim_config = kwargs.pop('optim_config', {})
+  
+          self._reset()
+  
+      def _reset(self):
+          self.optim_configs = {}
+          for p in self.model.params:
+              d = {k: v for k, v in self.optim_configs.items()}
+              self.optim_configs[p] = d
+  
+      def backward(self, y_pred, y_true):
+          """
+          Compute the gradients wrt the weights of your model
+          """
+          dout = self.loss_func.backward(y_pred, y_true)
+          self.model.backward(dout)
+  
+      def _update(self, w, dw, config, lr):
+          """
+          Update a model parameter
+          
+          :param w: Current weight matrix
+          :param dw: The corresponding calculated gradient, of the same shape as w.
+          :param config: A dictionary, containing relevant parameters, such as the "beta1" value. Check it out.
+          :param lr: The value of the "learning rate".
+  
+          :return next_w: The updated value of w.
+          :return config: The same dictionary. Might needed to be updated.
+          """
+          if config is None:
+              config = {}
+          config.setdefault('beta1', 0.9)
+          config.setdefault('beta2', 0.999)
+          config.setdefault('epsilon', 1e-4)
+          config.setdefault('m', np.zeros_like(w))
+          config.setdefault('v', np.zeros_like(w))
+          config.setdefault('t', 0)
+          next_w = None
+  
+          #########################################################################
+          # TODO: Look at the Adam implementation.                                #
+          #########################################################################
+          m = config['m']
+          v = config['v']
+          t = config['t']
+          beta1 = config['beta1']
+          beta2 = config['beta2']
+          learning_rate = lr
+          eps = config['epsilon']
+  
+          m = beta1 * m + (1 - beta1) * dw
+          m_hat = m / (1 - np.power(beta1, t + 1))
+          v = beta2 * v + (1 - beta2) * (dw ** 2)
+          v_hat = v / (1 - np.power(beta2, t + 1))
+          next_w = w - learning_rate * m_hat / (np.sqrt(v_hat) + eps)
+  
+          config['t'] = t + 1
+          config['m'] = m
+          config['v'] = v
+          ########################################################################
+  
+  
+          return next_w, config
+  
+      def step(self):
+          """
+          Perform an update step with the update function, using the current
+          gradients of the model
+          """
+  
+          # Iterate over all parameters
+          for name in self.model.grads.keys():
+  
+              # Unpack parameter and gradient
+              w = self.model.params[name]
+              dw = self.model.grads[name]
+  
+              config = self.optim_configs[name]
+  
+              # Update the parameter
+              w_updated, config = self._update(w, dw, config, lr=self.lr)
+              self.model.params[name] = w_updated
+              self.optim_configs[name] = config
+              # Reset gradient
+              self.model.grads[name] = 0.0
   ```
 
   
