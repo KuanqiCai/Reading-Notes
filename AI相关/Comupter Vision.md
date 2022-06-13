@@ -616,8 +616,10 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
 
     $f_x=\alpha\cdot f;f_y=\beta\cdot f$
 
-  - $c_x,c_y$：是平移的距离，和相机成像平面的大小有关
+    f是焦距
 
+  - $c_x,c_y$：是平移的距离，和相机成像平面的大小有关
+  
   求解相机内参数的过程称为**标定**
 
 ### 3.2外参数
@@ -757,8 +759,7 @@ $$
     - The epipolar line is identified确认 by means of the Coimage余象：$l$~$e\times p$
   - 对极点Epipoles：基线和两相机图像的交点$e,e'$
     - The perspective projection透视投影 of the respective各自的 optical centres in the other camera systems
-
-- 本质矩阵:Essential matrix
+### 本质矩阵:Essential matrix
 
   The essential matrix contains the information of the euclidian motion
 
@@ -876,22 +877,196 @@ $$
 
 ## 3.Acht-Punkt-Algorithmus
 
+用于求本质矩阵
+
 - 如果Euclidian Motion未知，Feature points对应关系已知，如何确认Essential Matrix?
 
-  给定：n pairs of corresponding points$(x_1^j,x_2^j)$
+  已知：n pairs of corresponding points$(x_1^j,x_2^j)$
 
-  1. 每一对点都满足:$x_2^jEx_1^j=0$
+  1. 每一对点都满足:$x_2^jEx_1^j=0$（对极方程）
+
+     - n对特征点可以展开变形为$AE^s=0$
+
+       - A是n个特征点向量组成的矩阵：
+
+         X1,X2是一对特征点。$\bigotimes$是Kronecker product
+
+       $$
+       X_1= \left[
+        \begin{matrix}
+          x_1  \\
+          y_1  \\
+          z_1 
+         \end{matrix}
+         \right]
+         X_2=\left[
+        \begin{matrix}
+          x_2  \\
+          y_2  \\
+          z_2 
+         \end{matrix}
+         \right]\Rightarrow
+         a:=X_1\bigotimes x_2=\left[
+        \begin{matrix}
+          x_1x_2  \\
+          x_1y_2  \\
+          x_1z_2  \\
+          y_1x_2  \\
+          y_1y_2  \\
+          y_1z_2  \\
+          z_1x_2  \\
+          z_1y_2  \\
+          z_1z_2  \\
+         \end{matrix}
+         \right]\\
+         A：=\left[
+        \begin{matrix}
+          a^{1\ T}  \\
+          a^{2\ T}  \\
+          \vdots	 \\
+          a^{n\ T} 
+         \end{matrix}
+         \right]
+       $$
+
+       - $E^s$是本质矩阵的向量化：
+         $$
+         E= \left[
+          \begin{matrix}
+            e_{11} & e_{12} & e_{13}  \\
+            e_{21} & e_{22} & e_{23}  \\
+            e_{31} & e_{32} & e_{33} 
+           \end{matrix}
+           \right]\Rightarrow E^s= \left[
+          \begin{matrix}
+            e_{11} \\ e_{12} \\ e_{13}  \\
+            e_{21} \\ e_{22} \\ e_{23}  \\
+            e_{31} \\ e_{32} \\ e_{33} 
+           \end{matrix}
+           \right]
+         $$
+         
+
   2. 因为$E\in R^{3\times3}$,所以有9个未知量
+
   3. Scaling invariance缩放不变性：如果E是答案，那么$\lambda E$也是答案
+
   4. 一共需要8个independent equations
 
-- 
+- 8点算法：
+
+  - 由$n\geq8$个对应点对构建矩阵A
+  
+  - 求线性解：
+  
+    因为n>8个时，the homogeneous system of linear equations has non-trivial非凡 solutions。所以$AE^s=0$需要转化为$G^s=argmin_{||E^s||_2=1}||AE^s||_2^2$
+  
+    - $||x||_2$是欧几里得范数的意思
+    - 通过奇异值分解$A=P\Sigma Q^T$，可求得解为$G^s=q_9$(Q的第9列)
+  
+  - 将解$G^s$Projection onto normalized essential matrices(奇异性约束)
+  
+    上面求得的G不符合本质矩阵的定义(奇异性约束)，因此我们可以假设一个E去逼近G求得E。
+  
+    - Resorting重新排列向量$G^s$为3X3的矩阵 G
+    - 对G奇异值分解:$G=U_G\Sigma_GV_G^T$
+      - 其中$\Sigma_G=\left[
+         \begin{matrix}
+           \sigma_1 &  &   \\
+            & \sigma_2 &   \\
+            &  & \sigma_3
+          \end{matrix}
+          \right]$
+    - Find the next “ essential matrix w.r.t. G
+      - 通过最小化 $E=argmin_{||E\in\epsilon}||E-G||_F^2$来得到最佳的本质矩阵
+      - 最后解为:$E=U_G\left[
+         \begin{matrix}
+           \sigma &  &   \\
+            & \sigma &   \\
+            &  & 0
+          \end{matrix}
+          \right]V_G^T$
+        - 实际中$\sigma$取1
 
 ## 4.3D Rekonstruktion
 
+- 目的：
+
+  - Estimate the euclidian motion$(R,T)$from the essential matrix
+  - reconstruct 3D points from point correspondences$(X_1^j,X_2^j)$
+
+- Reconstruction of Rotation and Translation重新得到$(R,T)$
+
+  - 由3我们已经算出了$E=U\Sigma V^T$,又知道$E=\hat{T}R$
+
+  - 从而我们分解得到：
+    $$
+    \begin{cases}
+    \hat{T_1}=UR_Z(\frac{\pi}{2})\Sigma U^T \\
+    \hat{T_1}=UR_Z(-\frac{\pi}{2})\Sigma U^T \\
+    R_1=UR_Z^T(\frac{\pi}{2})V^T \\
+    R_2=UR_Z^T(-\frac{\pi}{2})V^T
+    \end{cases}\ 其中
+    R_Z(\pm\frac{\pi}{2})= \begin{bmatrix}
+       0 & \mp1 & 0 \\
+       \pm1 & 0 & 0 \\
+       0 & 0 & 1
+      \end{bmatrix}表示饶Z轴的旋转矩阵
+    $$
+
+    - 可知有4组解$(\hat{T}_1,R_1)(\hat{T}_1,R_2)(\hat{T}_2,R_1)(\hat{T}_2,R_2)$,但只有一组满足所有投影点在两个相机中都为正深度，代入匹配点计算出坐标，即可选出正确的一组
+
+  - 最后再将反对称矩阵$\hat{T}$转为T
+
+- Reconstruction of the 3D Coordinates（三角测量）
+
+  目的：: estimate估计 the depth of points in space
+
+  - 由上面得到了(T,R)后，2个图像上的特征点可描述为
+
+    $\lambda_2 x_2=\lambda_1Rx_1+\gamma T$
+
+    - $\lambda_1,\lambda_2$分别是2个图像上各自特征点对应的深度
+    - 3个特征点组成的线性方程组，就可以求得上面这3个系数
+
 ## 5.Die Fundamentalmatrix
 
+- 动机：
 
+  - 对于一个标定了相机有Epipolar equation对极方程$x_2^TEx_1=0$
+
+  - 是否有同样的方程描述点在标定了的相机和未标定相机之间的关系？
+
+  - 已知相机矩阵K秒速了标定坐标和未标定坐标之间的关系（二、3.1）
+    $$
+    K=K_sK_f
+    =
+    \begin{bmatrix}
+    f_x & f_\theta &c_x\\
+    0 & f_y & c_y\\
+    0 & 0 & 1
+    \end{bmatrix}
+    $$
+
+- Fundamental Matrix基本矩阵
+
+  1. 由二、3.2可知相机坐标系$x_c$由世界坐标系$x_w$经外参而得 :$x_c=Rx_w+t$
+
+  2. 由二、3.1可知图像坐标系$x_{im}$由相机坐标系$x_c$经内参而得:$x_{im}=Kx_c$
+
+  3. 标定了的相机有对极方程$x_{2c}^TEx_{1c}=0$
+
+  4. 由2可得$x_{1c}=K^{-1}x_{1im},x_{2c}=K^{-1}x_{2im}$
+  5. 将4代入3可得：$x_{2im}^TK^{-T}EK^{-1}x_{1im}=0$
+  6. 其中$F=K^{-T}EK^{-1}$即基本矩阵
+
+- 基本矩阵的性质：
+
+  - 未标定相机：Epipolargleichung$x_2^{'}Fx_1^{’}=0$
+  - 基本矩阵：$F=K^{-T}\hat{T}RK^{-1}$
+  - 对于极点：$Fe_1^{'}=0,F^Te_2^{'}=0$
+  - 对于极线：$l_2^{'}等价于Fx_1^{'},l_1^{'}等价于Fx_2^{'}$
+  - 不能依靠F来三维重建
 
 # *、 TUM CV课作业代码
 
