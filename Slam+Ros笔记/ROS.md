@@ -639,7 +639,7 @@ topic要经历下面几步的初始化过程：
 
 topic可以同时有多个subscribers，也可以有多个publishers。如/rosout,/tf等。
 
-​	![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/topic-stru.jpg?raw=true)
+​	![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/topic-stru.jpg?raw=true)
 
 - 小案例
 
@@ -961,7 +961,7 @@ $ cd -
 
 ​	服务提供方NodeB提供一个服务接口叫/Service。请求方NodeA向服务方发送一个请求request，服务方NodeA处理后反馈给请求方一个reply。
 
-![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/service_structure.png?raw=true)
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/service_structure.png?raw=true)
 
 - rosservice相关命令
 
@@ -1092,9 +1092,9 @@ $ cd -
 
 客户端会向服务器发送目标指令和取消动作指令,而服务器则可以给客户端发送实时的状态信息,结果信息,反馈信息等等,从而完成了service没法做到的部分.
 
-![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/actionlib.png?raw=true)
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/actionlib.png?raw=true)
 
-![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/action_interface.png?raw=true)
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/action_interface.png?raw=true)
 
 **Action规范**
 
@@ -1149,6 +1149,14 @@ $ cd -
   ```
 
 ## $$时间Time和时长Duration
+
+- time由2种
+  - 通常ROS使用pc系统的clock作为time source(**wall time**)
+  - 对于仿真，使用**simulated time**更方便。使用simulated time需要
+    - set the `/use_sim_time` parameter
+    - publish the time on the topic `/clock` from
+      - Gazebo(enabled by default)
+      - ROS bag(use option --clock)
 
 - 需要头文件`#include <ros/time.h>`和`#include <ros/duration.h>`
 
@@ -1261,7 +1269,33 @@ $ cd -
   # 比如设置为Warn,则会得到Warn,Error,Fatal的消息
   ```
 
-  
+
+## $$ROS Bags
+
+- A bag is a format for storing message data
+
+  - Binary format with file extension *.bag
+  - Suited for logging and recording datasets for later visualization and analysis
+
+- 一些指令
+
+  - Record all topics in a bag：`rosbag record --all`
+
+  - Record topics：`rosbag record topic_1 topic_2`
+
+  - Show information about a bag：`rosbag info bag_name.bag`
+
+  - Read a bag and publish its content：`rosbag play bag_name.bag`
+
+    可以设置playback的一些参数`rosbag play --rate=0.5 bag_name.bag`
+
+    - ---rate=factor: puiblish rate factor
+    - --clock: publish the clock time
+    - --loop: loop playback
+
+    
+
+- 可以用rqt_bag来调试
 
 ## $$编辑rosed
 
@@ -1274,6 +1308,20 @@ $ cd -
 技巧：`$ rosed [package_name] <tab><tab>`
 
 ​			如果不知道具体的文件名，可以按两下tab显式这个包下所有的文件名。
+
+## $$Debugging Strategies
+
+- Compile and run code often to catch bugs early
+- Understand compilation and runtime error messages
+- Use analysis tools to check data flow (rosnode info, rostopic echo, roswtfm rqt_graph, etc.)
+- Visualize and plot data (Rviz, RQT Multiplot, etc.)
+- Divide program into smaller stepps and check intermediate results (ROS_INFO, ROS_DEBUG, etc.)
+- Extend and optimize only once a basic version works。扩展的时候从最简单基本的一点点扩展
+- If things don’t make sense, clean your workspace
+  - `catkin clean --all`因为可能有些东西需要rebuild
+- Build in debug mode and use GDB or Valgrind
+  - `catkin config --cmake-args -DCMAKE_BUILD_TYPE=Debug`
+- Maintain code with unit tests 单元测试and integration tests组装测试
 
 
 ## 五、写一个简单的Publisher 和 Subscriber
@@ -1619,10 +1667,12 @@ $ catkin_make
   #include "ros/ros.h"
   #include "beginner_tutorials/AddTwoInts.h"
   
+  //callback function会在收到request后，将request作为在自己的参数（这里的req）
   //该函数提供了两个整数相加的服务，它接收 srv 文件中定义的请求和响应类型，并返回一个布尔值。
   bool add(beginner_tutorials::AddTwoInts::Request  &req,
            beginner_tutorials::AddTwoInts::Response &res)
   {
+    //Response &res是回复给client的值
     res.sum = req.a + req.b;
     ROS_INFO("request: x=%ld, y=%ld", (long int)req.a, (long int)req.b);
     ROS_INFO("sending back response: [%ld]", (long int)res.sum);
@@ -1679,7 +1729,7 @@ $ catkin_make
     srv.request.a = atoll(argv[1]);
     srv.request.b = atoll(argv[2]);
       
-    //client.call(srv)呼叫服务。如果成功返回true,并返回response值。如果失败返回false,此时response值无意义。
+    //client.call(srv)呼叫服务service。如果成功返回true,并返回response值。如果失败返回false,此时response值无意义。
     if (client.call(srv))
     {
       //AddTwoInts服务类有1个reponse值 
