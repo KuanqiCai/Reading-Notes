@@ -1068,6 +1068,30 @@ $$
   - 对于极线：$l_2^{'}等价于Fx_1^{'},l_1^{'}等价于Fx_2^{'}$
   - 不能依靠F来三维重建
 
+# 四、Planare Szenen
+
+Planar Scenes平面场景
+
+## 1.Planare Epipolargleichung
+
+Planar Epipolar Equation平面对极方程
+
+- 目的：
+  1. Formal correlation正式的相互关系 between correspondences联系
+  2. Estimate估计 the euclidian motion of the camera through correspondences in a planar sene
+
+## 2.Vier-Punkt-Algorithmus
+
+4-Point Algorithm4点算法
+
+## 3.Kamerakalibrierung
+
+Camera Calibration相机标定
+
+
+
+
+
 # *、 TUM CV课作业代码
 
 ## 第一次作业
