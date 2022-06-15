@@ -134,13 +134,26 @@ https://numpy.org/doc/stable/
 
 ## 2) 激活函数Activation Functions
 
-- Sigmoid: $\sigma(x)=\frac{1}{(1+e^{-x})}$
+激活函数（Activation Function）类似于人类大脑中基于神经元的模型，激活函数最终决定了要发射给下一个神经元的内容。
 
-  Sigmoid is one of the oldest used non-linearities. 
+- 激活函数为什么是非线性的
+  - 如果使用线性激活函数，那么输入跟输出之间的关系为线性的，无论神经网络有多少层都是线性组合。
+  - 激活函数给神经元引入了非线性因素，使得神经网络可以任意逼近任何非线性函数，这样神经网络就可以应用到众多的非线性模型中。
+  - 输出层可能会使用线性激活函数，但在**隐含层都使用非线性激活函数**
+
+### 2.1Sigmoid
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Sigmoid%20function.png?raw=true)
+
+$\sigma(x)=\frac{1}{(1+e^{-x})}$
+
+- Sigmoid is one of the oldest used non-linearities. 
 
   - 公式：$\sigma(x)=\frac{1}{1+exp(-x)}$
 
+
   - Sigmoid的导数：$\frac{\partial\sigma(x)}{\partial x}=\sigma(x)(1-\sigma(x))$
+
 
   - 反向求导：
     $$
@@ -148,27 +161,77 @@ https://numpy.org/doc/stable/
     $$
 
     - $\frac{\partial L}{\partial \sigma(x)}$对应下面3.2.2代码backward中的`dout`
+    
     - $\frac{\partial\sigma(x)}{\partial x}$对应下面3.2.2代码backward中的`sd`
+    
+  - 优点：
 
-- tanh: $tanh(x)$
 
-- ReLU:$max(0,x)$
+    - The output is between 0 and 1. So sigmoid can be used for output layer of classification-aimed neural networks
 
-  Rectified Linear Units线性整流单元 are the currently most used non-linearities in deep learning
+  - 缺点：
 
-  - 公式:$ReLU(x) = max(0,x)=\begin{cases}x(x>0)\\0(x\leq0) \end{cases}$
 
-    - ReLU的导数：$\frac{\partial ReLU(x)}{\partial x}=\begin{cases}1(x>0)\\0(x\leq0) \end{cases}$
+    - It requires **computation of an exponent**, which need more compute resouce and makes the convergence of the network slower.
+    - **vanishing gradient**梯度消失：the neuro is saturated, because when it reaches its maximum or minimum value, the derivative will be equal to 0.$\sigma(x)(1-\sigma(x))$趋于0，因为sigmoid最小最大值为0和1。then the weights will not be updated
+    - **Not zero-centered function**:During update process, these weights are only allowed to move in one direction, i.e. positive or negative, at a time. This makes the loss function optimization harder.
+### 2.2tanh
 
-  - 反向求导:
-    $$
-    \frac{\partial L}{\partial x}=\frac{\partial L}{\partial ReLU(x)}\cdot\frac{\partial ReLU(x)}{\partial x}
-    $$
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Tanh%20function.png?raw=true)
 
-    - $\frac{\partial L}{\partial ReLU(x)}$对应下面3.2.2代码backward中的dout
-    - $\frac{\partial ReLU(x)}{\partial x}$如果>0值为1就是传dout本身，所以只需要让<=0的dout值为0即可。
+- 公式：$tanh(x)=\frac{sinhx}{coshx}=\frac{e^x-e^{-x}}{e^x+e^{-x}}$
+  -  tanh的导数：$\frac{\partial tanhx}{\partial x}=1-tan(x)^2$
+- 优点：
+  - The output is between -1 and 1. Unlike Sigmoid, It is a **zero-centered function** so that the optimization of the loss function becomes easier.
+- 缺点：
+  - Has the same problem as Sigmoid: **vanishing gradient** and **computation of an exponent**
 
-- Leaky ReLU: $max(0.1x,x)$
+### 2.3ReLU
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/ReLu%20function.png?raw=true)
+
+$max(0,x)$
+
+Rectified Linear Units线性整流单元 are the currently **most used** non-linearities in deep learning
+
+- 公式:$ReLU(x) = max(0,x)=\begin{cases}x(x>0)\\0(x\leq0) \end{cases}$
+
+  - ReLU的导数：$\frac{\partial ReLU(x)}{\partial x}=\begin{cases}1(x>0)\\0(x\leq0) \end{cases}$
+
+- 反向求导:
+  $$
+  \frac{\partial L}{\partial x}=\frac{\partial L}{\partial ReLU(x)}\cdot\frac{\partial ReLU(x)}{\partial x}
+  $$
+
+  - $\frac{\partial L}{\partial ReLU(x)}$对应下面3.2.2代码backward中的dout
+  - $\frac{\partial ReLU(x)}{\partial x}$如果>0值为1就是传dout本身，所以只需要让<=0的dout值为0即可。
+  
+- 优点：
+
+  - It is easy to compute so that the neural network converges very quickly.
+  - For positive values of the neuron: No vanishing gradient
+
+- 缺点：
+
+  - It is not a zero-centered function.
+
+  - **Dead ReLU Problem(神经元坏死现象)**：For negative values, the gradient will be 0 forever and the weights weill not be updated anymore
+
+    解决：
+
+    1.  Use Xavier to initialize
+    2. set a small learning rate
+
+### 2.4Leaky ReLU
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Leaky%20ReLu%20function.png?raw=true)
+
+ $当\alpha =0.01,即max(0.01x,x)$时，叫做leaky relu. 如果$\alpha$等于其他值，就叫randomized relu.
+
+- 优点：
+  - It is easy to compute.
+  - It is close to zero-centered function.
+  - Solved **Dead ReLU Problem(神经元坏死现象)**
 
 ## 3) 优化算法Optimization 
 
