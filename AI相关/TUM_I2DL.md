@@ -96,6 +96,44 @@ https://numpy.org/doc/stable/
 
 # *.一些重要概念
 
+## 0）超参数Hyperparameters
+
+- 参数和超参数：
+
+  - 参数：就是模型可以根据数据可以自动学习出的变量就是参数。
+    - 比如，深度学习的权重，偏差等
+
+  - 超参数：用来确定模型的一些参数
+    - Network architecture(num layers)
+    - Number of iterations
+    - Learning rate(s) (i.e., solver parameters, decay, etc.)
+    - Regularization
+    - Batch size
+
+调参调的就是Hyperparameters
+
+- 调参的方法：
+
+  - Manual search:
+
+    - experience-based
+
+  - Grid search (structured, for ‘real’ applications)
+
+    - Define ranges for all parameters spaces and select points
+    - Usually pseudo-uniformly distributed
+
+    Iterate over all possible configurations
+
+    - 比如2个超参数要调，row横轴是第一个参数，column竖轴是第二个参数。这样每一个点代表一个可能性，迭代每一个点就是迭代了所有的可能性
+
+  - Random search:
+    - Like grid search but one picks points at random in the predefined ranges
+  - Auto-ML search
+    - Bayesian framework; gradient descent on gradient descent, typically complex
+
+  
+
 ## 1）损失函数Loss Functions
 
 具体代码参见2.4
@@ -420,6 +458,116 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
    - 牛顿法doesn’t work well for minibatches，适用于全数据集处理
 2. Conjugate Gradien共轭梯度法
 3. coordinate descent坐标下降法
+
+
+
+## 4) Learning Rate
+
+- 不同learning rate的implication可能后果
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/learning%20rate.png?raw=true)
+
+  - need high learning rate when far away aim
+  - need low learning rate when close
+
+- Learning Rate Decay衰败
+
+  不同的Decay方法
+
+  - $\alpha=\frac{1}{1+decay\_rate*epoch}\cdot\alpha_0$
+
+  - step decay:$\alpha=\alpha-t\cdot\alpha$
+    - only every n steps
+    - t is decay rate(often 0.5)
+  - Exponential decay:$\alpha=t^{epoch}\cdot\alpha_0$
+    - t is decay rate<1.0
+  - $\alpha =\frac{t}{\sqrt{epoch}}\cdot\alpha_0$
+
+## 5) Performance measure
+
+[参考](https://zhuanlan.zhihu.com/p/78204581)
+
+- 标准：
+
+  | Predicted class   \   Actual class | 1                | 0                |
+  | ---------------------------------- | ---------------- | ---------------- |
+  | 1                                  | True & Positive  | False & Positive |
+  | 0                                  | False & Negative | True & Negative  |
+
+  - $精准度precision=\frac{True\ Positive}{True\ Positive+False\ Positive}$
+
+    - Precision从预测结果角度出发，描述了二分类器预测出来的正例结果中有多少是真实正例，即该二分类器预测的正例有多少是准确的
+
+  - $召回率Recall = \frac{True\ Positive}{True\ Positive+False\ Negative}$
+
+    - Recall从真实结果角度出发，描述了测试集中的真实正例有多少被二分类器挑选了出来，即真实的正例有多少被该二分类器召回。
+
+  - $准确性Accuracy=\frac{True\ Positives + True\ Negatives}{Total\ Examples}$
+
+    On **skewed使不公允 datasets**(e.g., when there are more positive examples than negative examples), accuracy is not a good measure of performance and you should instead use F1 score
+
+  - $F_1\ Score=\frac{2 * Precision * Recall}{Precision + Recall}$
+
+- Precision和Recall通常是一对矛盾的性能度量指标。一般来说，Precision越高时，Recall往往越低
+
+## 6) 数据集
+
+- Training set('train')
+
+  -  used for training neural network and get weights用于训练模型以及确定模型权重。
+
+- Validation set('val')
+
+  - Hyperparameter Optimization调整模型的超参数。
+  - tune the model's architecture确定网络结构
+
+- Test set('test')
+
+  -  assess the performance [generalization]检验模型的泛化能力。
+
+- Typocal split分割
+
+  - train:60    val:20    test:20
+  - train:80    val:10    test:10
+  - train:98   val:1    test:1
+  - train:80(cross-validation)    test:20
+
+- [Cross-Validation](https://zhuanlan.zhihu.com/p/24825503)
+
+  1. LOOCV(Leave-one-out cross-validation)
+
+     只用一个数据作为测试集，其他的数据都作为训练集，并将此步骤重复N次（N为数据集的数据数量）。
+
+     结果就是我们最终训练了n个模型，每次都能得到一个MSE（Mean Squarded Error）。而计算最终test MSE则就是将这n个MSE取平均
+
+  2. K-fold cross validation k折交叉验证
+
+     和LOOCV的不同在于，我们每次的测试集将不再只包含一个数据，而是多个，具体数目将根据K的选取决定。
+
+     比如K=5，就把数据集分成5份。不重复地每次取其中一份做测试集，用其他四份做训练集训练模型，之后计算该模型在测试集上的MSE
+
+- 各个数据集误差处理
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/%E5%90%84%E6%95%B0%E6%8D%AE%E9%9B%86%E8%AF%AF%E5%B7%AE.png?raw=true)
+
+  - Ideal Training： Small gap between training and validation loss, and both
+    go down at same rate (stable without fluctuations波动).
+
+## 7）一些训练技巧
+
+1. Debug:
+   1. Use train/validation/test curves
+      - Evaluation needs to be consistent
+      - Numbers need to be comparable
+   2. Only make one change at a time
+2. start with a simple network.
+3. Start with single training sample->increase samples
+4. Did not overfit to single batch first
+5. Don't forgot to toggle train/eval mode for network
+6. Don't Forgot to call `.zero_grad()` (in PyTorch) before calling `.backward()`
+7. Don't pass softmaxed outputs to a loss function that expects raw logits (or vice-versa)
+   - Logit value见3.4，是没有正则化的值
+   - Softmax后的值是正则了的值，见3.4
 
 # 1. 数据预处理
 
