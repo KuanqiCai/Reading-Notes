@@ -1,4 +1,8 @@
-# *. 各种库的用法
+# *. 各种库的安装使用
+
+## 0) 用GPU跑jupyter notebook
+
+https://thegeeksdiary.com/2021/10/07/how-to-setup-tensorflow-with-gpu-support-in-windows-11/
 
 ## 1）python os库
 
@@ -104,11 +108,17 @@ https://numpy.org/doc/stable/
     - 比如，深度学习的权重，偏差等
 
   - 超参数：用来确定模型的一些参数
-    - Network architecture(num layers)
-    - Number of iterations
-    - Learning rate(s) (i.e., solver parameters, decay, etc.)
-    - Regularization
-    - Batch size
+    * Network architecture
+        * Choice of activation function
+        * Number of layers
+        * ...
+    * Learning rate
+    * Number of epochs
+        * epoch数是一个超参数，它定义了学习算法在整个训练数据集中的工作次数。一个Epoch意味着训练数据集中的每个样本都有机会更新内部模型参数。
+    * Batch size
+    * Regularization strength
+    * Momentum
+    * ...
 
 调参调的就是Hyperparameters
 
@@ -120,23 +130,30 @@ https://numpy.org/doc/stable/
 
   - Grid search (structured, for ‘real’ applications)
 
+    **代码见4.5.1**
+  
     - Define ranges for all parameters spaces and select points
     - Usually pseudo-uniformly distributed
 
     Iterate over all possible configurations
 
     - 比如2个超参数要调，row横轴是第一个参数，column竖轴是第二个参数。这样每一个点代表一个可能性，迭代每一个点就是迭代了所有的可能性
-
+  
   - Random search:
+    
+    **代码见4.5.2**
+    
     - Like grid search but one picks points at random in the predefined ranges
+    - To get a deeper understanding of random search and why it is more efficient than grid search, you should definitely check out this [paper](http://www.jmlr.org/papers/volume13/bergstra12a/bergstra12a.pdf):
+    
   - Auto-ML search
     - Bayesian framework; gradient descent on gradient descent, typically complex
-
+  
   
 
 ## 1）损失函数Loss Functions
 
-具体代码参见2.4
+**代码实现**参见2.4
 
 - Loss Function: 
 
@@ -203,13 +220,9 @@ $\sigma(x)=\frac{1}{(1+e^{-x})}$
     - $\frac{\partial\sigma(x)}{\partial x}$对应下面3.2.2代码backward中的`sd`
     
   - 优点：
-
-
     - The output is between 0 and 1. So sigmoid can be used for output layer of classification-aimed neural networks
 
   - 缺点：
-
-
     - It requires **computation of an exponent**, which need more compute resouce and makes the convergence of the network slower.
     - **vanishing gradient**梯度消失：the neuro is saturated, because when it reaches its maximum or minimum value, the derivative will be equal to 0.$\sigma(x)(1-\sigma(x))$趋于0，因为sigmoid最小最大值为0和1。then the weights will not be updated
     - **Not zero-centered function**:During update process, these weights are only allowed to move in one direction, i.e. positive or negative, at a time. This makes the loss function optimization harder.
@@ -223,6 +236,7 @@ $\sigma(x)=\frac{1}{(1+e^{-x})}$
   - The output is between -1 and 1. Unlike Sigmoid, It is a **zero-centered function** so that the optimization of the loss function becomes easier.
 - 缺点：
   - Has the same problem as Sigmoid: **vanishing gradient** and **computation of an exponent**
+- 代码实现见3.2.2
 
 ### 2.3ReLU
 
@@ -270,10 +284,11 @@ Rectified Linear Units线性整流单元 are the currently **most used** non-lin
   - It is easy to compute.
   - It is close to zero-centered function.
   - Solved **Dead ReLU Problem(神经元坏死现象)**
+- 代码实现见3.2.2
 
 ## 3) 优化算法Optimization 
 
-具体代码实现见3.5
+**具体代码**实现见3.5
 
 ### 3.0 不同优化算法之间的关系
 
@@ -568,6 +583,12 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
 7. Don't pass softmaxed outputs to a loss function that expects raw logits (or vice-versa)
    - Logit value见3.4，是没有正则化的值
    - Softmax后的值是正则了的值，见3.4
+
+## 8）整合成接口来调试
+
+1. 将所有的东西写成一个接口`solver`,只要输入参数就能计算不同的模型。**代码见2.10**
+
+2. `solver`调用的模型model，我们也要写成一个函数，来方便调用调参。**代码见4.3**
 
 # 1. 数据预处理
 
@@ -1147,7 +1168,46 @@ class BCE(Loss):
         gradient = -y_truth/y_out +(1-y_truth)/(1-y_out)
 
         return gradient
-
+    
+class CrossEntropyFromLogits(Loss):
+    def __init__(self):
+        self.cache = {}
+     
+    def forward(self, y_out, y_truth, reduction='mean'):
+        """
+        Performs the forward pass of the cross entropy loss function.
+        
+        :param y_out: [N, C] array with the predicted logits of the model
+            (i.e. the value before applying any activation)
+        :param y_truth: [N, ] array with ground truth labels.
+        
+        :return: float, the cross-entropy loss value
+        """
+        
+        # Transform the ground truth labels into one hot encodings.
+        N, C = y_out.shape
+        y_truth_one_hot = np.zeros_like(y_out)
+        y_truth_one_hot[np.arange(N), y_truth] = 1
+        
+        # Transform the logits into a distribution using softmax.
+        y_out_exp = np.exp(y_out - np.max(y_out, axis=1, keepdims=True))
+        y_out_probs = y_out_exp / np.sum(y_out_exp, axis=1, keepdims=True)
+        
+        # Compute the loss for each element in the batch.
+        loss = -y_truth_one_hot * np.log(y_out_probs)
+        loss = loss.sum(axis=1).mean()
+           
+        self.cache['probs'] = y_out_probs
+        
+        return loss
+    
+    def backward(self, y_out, y_truth):
+        N, C = y_out.shape
+        gradient = self.cache['probs']
+        gradient[np.arange(N), y_truth] -= 1
+        gradient /= N
+        
+        return gradient
 ```
 
 ## 2.5前向传播，反向传播
@@ -1344,9 +1404,8 @@ plt.show()
 
 ```python
 import numpy as np
-
-
-from exercise_code.networks.optimizer import Optimizer
+from exercise_code.networks.optimizer import Adam
+from exercise_code.networks import CrossEntropyFromLogits
 
 
 class Solver(object):
@@ -1355,7 +1414,7 @@ class Solver(object):
     or regression models.
     The Solver performs gradient descent using the given learning rate.
 
-    The solver accepts both training and validation data and labels so it can
+    The solver accepts both training and validataion data and labels so it can
     periodically check classification accuracy on both training and validation
     data to watch out for overfitting.
 
@@ -1364,30 +1423,32 @@ class Solver(object):
     You will then call the train() method to run the optimization
     procedure and train the model.
 
-    After the train() method returns, model.W will contain the parameters
+    After the train() method returns, model.params will contain the parameters
     that performed best on the validation set over the course of training.
     In addition, the instance variable solver.loss_history will contain a list
     of all losses encountered during training and the instance variables
-    solver.train_loss_history and solver.val_loss_history will be lists containing
-    the losses of the model on the training and validation set at each epoch.
+    solver.train_loss_history and solver.val_loss_history will be lists
+    containing the losses of the model on the training and validation set at
+    each epoch.
     """
 
-    def __init__(self, model, data, loss_func, learning_rate,
-                 is_regression=True, verbose=True, print_every=100):
+    def __init__(self, model, train_dataloader, val_dataloader,
+                 loss_func=CrossEntropyFromLogits(), learning_rate=1e-3,
+                 optimizer=Adam, verbose=True, print_every=1, lr_decay = 1.0,
+                 **kwargs):
         """
         Construct a new Solver instance.
 
         Required arguments:
         - model: A model object conforming to the API described above
 
-        - data: A dictionary of training and validation data with the following:
-          'X_train': Training input samples.
-          'X_val':   Validation input samples.
-          'y_train': Training labels.
-          'y_val':   Validation labels.
+        - train_dataloader: A generator object returning training data
+        - val_dataloader: A generator object returning validation data
 
         - loss_func: Loss function object.
         - learning_rate: Float, learning rate used for gradient descent.
+
+        - optimizer: The optimizer specifying the update rule
 
         Optional arguments:
         - verbose: Boolean; if set to false then no output will be printed during
@@ -1397,19 +1458,18 @@ class Solver(object):
         """
         self.model = model
         self.learning_rate = learning_rate
+        self.lr_decay = lr_decay
         self.loss_func = loss_func
 
-        # Use an `Optimizer` object to do gradient descent on our model.
-        self.opt = Optimizer(model, learning_rate)
+        self.opt = optimizer(model, loss_func, learning_rate)
 
-        self.is_regression = is_regression
         self.verbose = verbose
         self.print_every = print_every
 
-        self.X_train = data['X_train']
-        self.y_train = data['y_train']
-        self.X_val = data['X_val']
-        self.y_val = data['y_val']
+        self.train_dataloader = train_dataloader
+        self.val_dataloader = val_dataloader
+        
+        self.current_patience = 0
 
         self._reset()
 
@@ -1419,79 +1479,140 @@ class Solver(object):
         manually.
         """
         # Set up some variables for book-keeping
-        self.best_val_loss = None
-        self.best_W = None
+        self.best_model_stats = None
+        self.best_params = None
 
         self.train_loss_history = []
         self.val_loss_history = []
 
-    def _step(self):
+        self.train_batch_loss = []
+        self.val_batch_loss = []
+
+        self.num_operation = 0
+        self.current_patience = 0
+
+    def _step(self, X, y, validation=False):
         """
         Make a single gradient update. This is called by train() and should not
         be called manually.
+
+        :param X: batch of training features
+        :param y: batch of corresponding training labels
+        :param validation: Boolean indicating whether this is a training or
+            validation step
+
+        :return loss: Loss between the model prediction for X and the target
+            labels y
         """
-        model = self.model
-        loss_func = self.loss_func
-        X_train = self.X_train
-        y_train = self.y_train
-        opt = self.opt
+        loss = None
 
-        model.train()
-        model_forward, model_backward = model(X_train)
-        loss, loss_grad = loss_func(model_forward, y_train)
-        grad = loss_grad*model_backward
-        grad = np.mean(grad,0,keepdims=True)
-        opt.step(grad.T)
+        # Forward pass
+        y_pred = self.model.forward(X)
+        # Compute loss
+        loss = self.loss_func.forward(y_pred, y)
+        # Add the regularization
+        loss += sum(self.model.reg.values())
 
+        # Count number of operations
+        self.num_operation += self.model.num_operation
 
-    def check_loss(self, validation=True):
-        """
-        Check loss of the model on the train/validation data.
+        # Perform gradient update (only in train mode)
+        if not validation:
+            # Compute gradients
+            self.opt.backward(y_pred, y)
+            # Update weights
+            self.opt.step()
 
-        Returns:
-        - loss: Averaged loss over the relevant samples.
-        """
+            # If it was a training step, we need to count operations for
+            # backpropagation as well
+            self.num_operation += self.model.num_operation
 
-        X = self.X_val if validation else self.X_train
-        y = self.y_val if validation else self.y_train
+        return loss
 
-        model_forward, _ = self.model(X)
-        loss, _ = self.loss_func(model_forward, y)
-
-        return loss.mean()
-
-    def train(self, epochs=1000):
+    def train(self, epochs=100, patience = None):
         """
         Run optimization to train the model.
         """
 
+        # Start an epoch
         for t in range(epochs):
-            # Update the model parameters.
-            self._step()
 
-            # Check the performance of the model.
-            train_loss = self.check_loss(validation=False)
-            val_loss = self.check_loss(validation=True)
+            # Iterate over all training samples
+            train_epoch_loss = 0.0
+
+            for batch in self.train_dataloader:
+                # Unpack data
+                X = batch['image']
+                y = batch['label']
+
+                # Update the model parameters.
+                validate = t == 0
+                train_loss = self._step(X, y, validation=validate)
+
+                self.train_batch_loss.append(train_loss)
+                train_epoch_loss += train_loss
+
+            train_epoch_loss /= len(self.train_dataloader)
+
+            
+            self.opt.lr *= self.lr_decay
+            
+            
+            # Iterate over all validation samples
+            val_epoch_loss = 0.0
+
+            for batch in self.val_dataloader:
+                # Unpack data
+                X = batch['image']
+                y = batch['label']
+
+                # Compute Loss - no param update at validation time!
+                val_loss = self._step(X, y, validation=True)
+                self.val_batch_loss.append(val_loss)
+                val_epoch_loss += val_loss
+
+            val_epoch_loss /= len(self.val_dataloader)
 
             # Record the losses for later inspection.
-            self.train_loss_history.append(train_loss)
-            self.val_loss_history.append(val_loss)
+            self.train_loss_history.append(train_epoch_loss)
+            self.val_loss_history.append(val_epoch_loss)
 
             if self.verbose and t % self.print_every == 0:
-                print('(Epoch %d / %d) train loss: %f; val_loss: %f' % (
-                    t, epochs, train_loss, val_loss))
+                print('(Epoch %d / %d) train loss: %f; val loss: %f' % (
+                    t + 1, epochs, train_epoch_loss, val_epoch_loss))
 
             # Keep track of the best model
-            self.update_best_loss(val_loss)
+            self.update_best_loss(val_epoch_loss, train_epoch_loss)
+            if patience and self.current_patience >= patience:
+                print("Stopping early at epoch {}!".format(t))
+                break
 
         # At the end of training swap the best params into the model
-        self.model.W = self.best_W
+        self.model.params = self.best_params
 
-    def update_best_loss(self, val_loss):
+    def get_dataset_accuracy(self, loader):
+        correct = 0
+        total = 0
+        for batch in loader:
+            X = batch['image']
+            y = batch['label']
+            y_pred = self.model.forward(X)
+            label_pred = np.argmax(y_pred, axis=1)
+            correct += sum(label_pred == y)
+            if y.shape:
+                total += y.shape[0]
+            else:
+                total += 1
+        return correct / total
+
+    def update_best_loss(self, val_loss, train_loss):
         # Update the model and best loss if we see improvements.
-        if not self.best_val_loss or val_loss < self.best_val_loss:
-            self.best_val_loss = val_loss
-            self.best_W = self.model.W
+        if not self.best_model_stats or val_loss < self.best_model_stats["val_loss"]:
+            self.best_model_stats = {"val_loss":val_loss, "train_loss":train_loss}
+            self.best_params = self.model.params
+            self.current_patience = 0
+        else:
+            self.current_patience += 1
 
 ```
 
@@ -1605,7 +1726,7 @@ plt.rcParams['image.cmap'] = 'gray'
 
 - We can just simply chain an arbitrary amount of such blocks, so called `layers`
 
-### 3.2.2Layer Non-Linearities(Sigmoid,Relu)
+### 3.2.2Layer Non-Linearities(Sigmoid,Relu,Tanh,L-Relu)
 
 1. **Sigmoid**
 
@@ -1712,6 +1833,95 @@ plt.rcParams['image.cmap'] = 'gray'
    
            return dx
    ```
+
+3. **Tanh**
+
+   ```python
+   class Tanh:
+       def __init__(self):
+           pass
+   
+       def forward(self, x):
+           """
+           :param x: Inputs, of any shape
+   
+           :return out: Output, of the same shape as x
+           :return cache: Cache, for backward computation, of the same shape as x
+           """
+           outputs = None
+           cache = None
+           ########################################################################
+           # TODO:                                                                #
+           # Implement the forward pass of Tanh activation function               #
+   
+           outputs = np.tanh(x)
+           cache = outputs
+    ########################################################################
+           #                           END OF YOUR CODE                           #
+   
+           return outputs, cache
+   
+       def backward(self, dout, cache):
+           """
+           :return: dx: the gradient w.r.t. input X, of the same shape as X
+           """
+           dx = None
+           ########################################################################
+           # TODO:                                                                #
+           # Implement the backward pass of Tanh activation function              #
+   
+           dx = dout * (1 - np.square(cache))
+           ########################################################################
+   
+           return dx
+   ```
+
+4. **LeakyRelu**
+
+   ```python
+   class LeakyRelu:
+       def __init__(self, slope=0.01):
+           self.slope = slope
+   
+       def forward(self, x):
+           """
+           :param x: Inputs, of any shape
+   
+           :return out: Output, of the same shape as x
+           :return cache: Cache, for backward computation, of the same shape as x
+           """
+           outputs = None
+           cache = None
+           ########################################################################
+           # TODO:                                                                #
+           # Implement the forward pass of LeakyRelu activation function          #
+   
+           outputs = np.maximum(self.slope * x, x)
+           cache = x
+   
+           ########################################################################
+           #                           END OF YOUR CODE                          #
+           return outputs, cache
+   
+       def backward(self, dout, cache):
+           """
+           :return: dx: the gradient w.r.t. input X, of the same shape as X
+           """
+           dx = None
+           ########################################################################
+           # TODO:                                                                #
+           # Implement the backward pass of LeakyRelu activation function         #
+   
+   
+           dx = dout * np.where(cache > 0, 1, self.slope)
+   
+           ########################################################################
+           #                           END OF YOUR CODE                           #
+   
+           return dx
+   ```
+
+   
 
 ### 3.2.3 Affine layer仿射层
 
@@ -2486,4 +2696,780 @@ def affine_backward(dout, cache):
               self.model.grads[name] = 0.0
   ```
 
+
+# 4.Cifar10分类：调参
+
+## 4.1加载库
+
+```py
+# Some lengthy setup.
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import urllib.request
+
+%load_ext autoreload
+%autoreload 2
+%matplotlib inline
+
+plt.rcParams['figure.figsize'] = (10.0, 8.0) # set default size of plots
+plt.rcParams['image.interpolation'] = 'nearest'
+plt.rcParams['image.cmap'] = 'gray'
+```
+
+## 4.2数据预处理
+
+- Rescale调节尺寸，Normalize正则化，Flatten转为1维。来达到我们希望的数据shape
+
+```python
+class RescaleTransform:
+    """Transform class to rescale images to a given range"""
+    def __init__(self, range_=(0, 1), old_range=(0, 255)):
+        """
+        :param range_: Value range to which images should be rescaled
+        :param old_range: Old value range of the images
+            e.g. (0, 255) for images with raw pixel values
+        """
+        self.min = range_[0]
+        self.max = range_[1]
+        self._data_min = old_range[0]
+        self._data_max = old_range[1]
+
+    def __call__(self, images):
+
+        images = images - self._data_min  # normalize to (0, data_max-data_min)
+        images /= (self._data_max - self._data_min)  # normalize to (0, 1)
+        images *= (self.max - self.min)  # norm to (0, target_max-target_min)
+        images += self.min  # normalize to (target_min, target_max)
+        
+        return images
+
+
+class NormalizeTransform:
+    """
+    Transform class to normalize images using mean and std
+    Functionality depends on the mean and std provided in __init__():
+        - if mean and std are single values, normalize the entire image
+        - if mean and std are numpy arrays of size C for C image channels,
+            then normalize each image channel separately
+    """
+    def __init__(self, mean, std):
+        """
+        :param mean: mean of images to be normalized
+            can be a single value, or a numpy array of size C
+        :param std: standard deviation of images to be normalized
+             can be a single value or a numpy array of size C
+        """
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, images):
+        images = (images - self.mean) / self.std
+        return images
+
+    
+class FlattenTransform:
+    """Transform class that reshapes an image into a 1D array"""
+    def __call__(self, image):
+        return image.flatten()
+
+## 将上面不同模式的数据预处理方式统一
+class ComposeTransform:
+    """Transform class that combines multiple other transforms into one"""
+    def __init__(self, transforms):
+        """
+        :param transforms: transforms to be combined
+        """
+        self.transforms = transforms
+
+    def __call__(self, images):
+        for transform in self.transforms:
+            images = transform(images)
+        return images
+
+```
+
+- 加载数据
+
+  ```python
+  # Choose your preferred dataset here
+  #DATASET = ImageFolderDataset
+  DATASET = MemoryImageFolderDataset
   
+  # Use the Cifar10 mean and standard deviation computed in Exercise 3.
+  cifar_mean = np.array([0.49191375, 0.48235852, 0.44673872])
+  cifar_std  = np.array([0.24706447, 0.24346213, 0.26147554])
+  
+  # Define all the transforms we will apply on the images when 
+  # retrieving them.
+  rescale_transform = RescaleTransform()
+  normalize_transform = NormalizeTransform(
+      mean=cifar_mean,
+      std=cifar_std
+  )
+  flatten_transform = FlattenTransform()
+  compose_transform = ComposeTransform([rescale_transform, 
+                                        normalize_transform,
+                                        flatten_transform])
+  
+  # Create a train, validation and test dataset.
+  datasets = {}
+  for mode in ['train', 'val', 'test']:
+      crt_dataset = DATASET(
+          mode=mode,
+          root=cifar_root, 
+          transform=compose_transform,
+          split={'train': 0.6, 'val': 0.2, 'test': 0.2}
+      )
+      datasets[mode] = crt_dataset
+      
+  # Create a dataloader for each split.
+  dataloaders = {}
+  for mode in ['train', 'val', 'test']:
+      crt_dataloader = DataLoader(
+          dataset=datasets[mode],
+          batch_size=256,
+          shuffle=True,
+          drop_last=True,
+      )
+      dataloaders[mode] = crt_dataloader
+  ```
+
+- 对于训练集trianing set,我们可以**flip the images horizontally** or **blur the images**，来扩充我们的训练集。（不可用于validation and test data）
+
+  ```python
+  class RandomHorizontalFlip:
+      """
+      Transform class that flips an image horizontically randomly with a given probability.
+      """
+  
+      def __init__(self, prob=0.5):
+          """
+          :param prob: Probability of the image being flipped
+          """
+          self.p = prob
+  
+      def __call__(self, image):
+          rand = random.uniform(0,1)
+          if rand < self.p:
+              image = np.flip(image,1)
+          return image
+      
+     
+  #Load the data in a dataset without any transformation 
+  dataset = DATASET(
+          mode=mode,
+          root=cifar_root, 
+          download_url=download_url,
+          split={'train': 0.6, 'val': 0.2, 'test': 0.2},
+      )
+  
+  #Retrieve an image from the dataset and flip it
+  image = dataset[1]['image']
+  transform = RandomHorizontalFlip(1)
+  image_flipped = transform(image)
+  ```
+
+- 参见3.2.4的规范方法ClassificationNet，帮助我们方便调参
+
+  ```python
+  input_size = datasets['train'][0]['image'].shape[0]
+  model = ClassificationNet(input_size=input_size, 
+                            hidden_size=512)
+                            
+  num_layer = 2
+  reg = 0.1
+  model = ClassificationNet(activation=Sigmoid(), 
+                            num_layer=num_layer, 
+                            reg=reg,
+                            num_classes=10)
+  ```
+
+## 4.3 一个分类模型结构
+
+用2.10的`solver`来调用这个model，默认是2层的
+
+```python
+class ClassificationNet(Network):
+    """
+    A fully-connected classification neural network with configurable 
+    activation function, number of layers, number of classes, hidden size and
+    regularization strength. 
+    """
+
+    def __init__(self, activation=Sigmoid(), num_layer=2,
+                 input_size=3 * 32 * 32, hidden_size=100,
+                 std=1e-3, num_classes=10, reg=0, **kwargs):
+        """
+        :param activation: choice of activation function. It should implement
+            a forward() and a backward() method.
+        :param num_layer: integer, number of layers. 
+        :param input_size: integer, the dimension D of the input data.
+        :param hidden_size: integer, the number of neurons H in the hidden layer.
+        :param std: float, standard deviation used for weight initialization.
+        :param num_classes: integer, number of classes.
+        :param reg: float, regularization strength.
+        """
+        super(ClassificationNet, self).__init__("cifar10_classification_net")
+
+        self.activation = activation
+        self.reg_strength = reg
+
+        self.cache = None
+
+        self.memory = 0
+        self.memory_forward = 0
+        self.memory_backward = 0
+        self.num_operation = 0
+
+        # Initialize random gaussian weights for all layers and zero bias
+        self.num_layer = num_layer
+        self.params = {'W1': std * np.random.randn(input_size, hidden_size),
+                       'b1': np.zeros(hidden_size)}
+
+        for i in range(num_layer - 2):
+            self.params['W' + str(i + 2)] = std * np.random.randn(hidden_size,
+                                                                  hidden_size)
+            self.params['b' + str(i + 2)] = np.zeros(hidden_size)
+
+        self.params['W' + str(num_layer)] = std * np.random.randn(hidden_size,
+                                                                  num_classes)
+        self.params['b' + str(num_layer)] = np.zeros(num_classes)
+
+        self.grads = {}
+        self.reg = {}
+        for i in range(num_layer):
+            self.grads['W' + str(i + 1)] = 0.0
+            self.grads['b' + str(i + 1)] = 0.0
+
+    def forward(self, X):
+        """
+        Performs the forward pass of the model.
+
+        :param X: Input data of shape N x D. Each X[i] is a training sample.
+        :return: Predicted value for the data in X, shape N x 1
+                 1-dimensional array of length N with the classification scores.
+        """
+
+        self.cache = {}
+        self.reg = {}
+        X = X.reshape(X.shape[0], -1)
+        # Unpack variables from the params dictionary
+        for i in range(self.num_layer - 1):
+            W, b = self.params['W' + str(i + 1)], self.params['b' + str(i + 1)]
+
+            # Forward i_th layer
+            X, cache_affine = affine_forward(X, W, b)
+            self.cache["affine" + str(i + 1)] = cache_affine
+
+            # Activation function
+            X, cache_sigmoid = self.activation.forward(X)
+            self.cache["sigmoid" + str(i + 1)] = cache_sigmoid
+
+            # Store the reg for the current W
+            self.reg['W' + str(i + 1)] = np.sum(W ** 2) * self.reg_strength
+
+        # last layer contains no activation functions
+        W, b = self.params['W' + str(self.num_layer)],\
+               self.params['b' + str(self.num_layer)]
+        y, cache_affine = affine_forward(X, W, b)
+        self.cache["affine" + str(self.num_layer)] = cache_affine
+        self.reg['W' + str(self.num_layer)] = np.sum(W ** 2) * self.reg_strength
+
+        return y
+
+    def backward(self, dy):
+        """
+        Performs the backward pass of the model.
+
+        :param dy: N x 1 array. The gradient wrt the output of the network.
+        :return: Gradients of the model output wrt the model weights
+        """
+
+        # Note that last layer has no activation
+        cache_affine = self.cache['affine' + str(self.num_layer)]
+        dh, dW, db = affine_backward(dy, cache_affine)
+        self.grads['W' + str(self.num_layer)] = \
+            dW + 2 * self.reg_strength * self.params['W' + str(self.num_layer)]
+        self.grads['b' + str(self.num_layer)] = db
+
+        # The rest sandwich layers
+        for i in range(self.num_layer - 2, -1, -1):
+            # Unpack cache
+            cache_sigmoid = self.cache['sigmoid' + str(i + 1)]
+            cache_affine = self.cache['affine' + str(i + 1)]
+
+            # Activation backward
+            dh = self.activation.backward(dh, cache_sigmoid)
+
+            # Affine backward
+            dh, dW, db = affine_backward(dh, cache_affine)
+
+            # Refresh the gradients
+            self.grads['W' + str(i + 1)] = dW + 2 * self.reg_strength * \
+                                           self.params['W' + str(i + 1)]
+            self.grads['b' + str(i + 1)] = db
+
+        return self.grads
+
+    def save_model(self):
+        directory = 'models'
+        model = {self.model_name: self}
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        pickle.dump(model, open(directory + '/' + self.model_name + '.p', 'wb'))
+
+    def get_dataset_prediction(self, loader):
+        scores = []
+        labels = []
+        
+        for batch in loader:
+            X = batch['image']
+            y = batch['label']
+            score = self.forward(X)
+            scores.append(score)
+            labels.append(y)
+            
+        scores = np.concatenate(scores, axis=0)
+        labels = np.concatenate(labels, axis=0)
+
+        preds = scores.argmax(axis=1)
+        acc = (labels == preds).mean()
+
+        return labels, preds, acc
+
+```
+
+## 4.4 调参前的准备
+
+- 我们需要先从一个小而简单的结构来调整我们的网络结构。
+
+  As a first step you should try to overfit to a single training sample, then to a few batches of training samples and finally go deeper with larger neural networks and the whole training data.
+
+- 注意用2.10的solver接口来统一调用4.3的model/其他model。
+
+- 通过这一系列操作，可以看看我们的代码是否有问题
+
+  - 1，2：检测能否处理不同数目的数据集
+  - 3，4：检测能否处理不同的隐藏层数
+
+1. First, let's start with a 2-layer neural network, and overfit to one single training sample.
+
+   ```python
+   from exercise_code.solver import Solver
+   from exercise_code.networks.optimizer import SGD, Adam
+   from exercise_code.networks import MyOwnNetwork
+   ## 调参部分：
+   num_layer = 2
+   epochs = 20
+   reg = 0.1
+   batch_size = 4
+   
+   model = ClassificationNet(num_layer=num_layer, reg=reg)
+   # model = MyOwnNetwork()
+   
+   loss = CrossEntropyFromLogits()
+   
+   # Make a new data loader with a single training image
+   overfit_dataset = DATASET(
+       mode='train',
+       root=cifar_root, 
+       download_url=download_url,
+       transform=compose_transform,
+       limit_files=1
+   )
+   dataloaders['train_overfit_single_image'] = DataLoader(
+       dataset=overfit_dataset,
+       batch_size=batch_size,
+       shuffle=True,
+       drop_last=False,
+   )
+   
+   # Decrease validation data for only debugging
+   debugging_validation_dataset = DATASET(
+       mode='val',
+       root=cifar_root, 
+       download_url=download_url,
+       transform=compose_transform,
+       limit_files=100
+   )
+   dataloaders['val_500files'] = DataLoader(
+       dataset=debugging_validation_dataset,
+       batch_size=batch_size,
+       shuffle=True,
+       drop_last=True,
+   )
+   
+   solver = Solver(model, dataloaders['train_overfit_single_image'], dataloaders['val_500files'], 
+                   learning_rate=1e-3, loss_func=loss, optimizer=Adam)
+   solver.train(epochs=epochs)
+   
+   ## 将train 和validation数据集的loss曲线画出来，可以看出是overfit了吗
+   plt.title('Loss curves')
+   plt.plot(solver.train_loss_history, '-', label='train')
+   plt.plot(solver.val_loss_history, '-', label='val')
+   plt.legend(loc='lower right')
+   plt.xlabel('Iteration')
+   plt.show()
+   
+   print("Training accuray: %.5f" % (solver.get_dataset_accuracy(dataloaders['train_overfit_single_image'])))
+   print("Validation accuray: %.5f" % (solver.get_dataset_accuracy(dataloaders['val_500files'])))
+   ```
+
+2. This time we want to overfit to a small set of training batch samples
+
+   ```python
+   from exercise_code.networks import MyOwnNetwork
+   ## 调参部分：
+   num_layer = 2
+   epochs = 100
+   reg = 0.1
+   num_samples = 10
+   
+   model = ClassificationNet(num_layer=num_layer, reg=reg)
+   # model = MyOwnNetwork()
+   
+   loss = CrossEntropyFromLogits()
+   
+   # Make a new data loader with a our num_samples training image
+   overfit_dataset = DATASET(
+       mode='train',
+       root=cifar_root, 
+       download_url=download_url,
+       transform=compose_transform,
+       limit_files=num_samples
+   )
+   dataloaders['train_overfit_10samples'] = DataLoader(
+       dataset=overfit_dataset,
+       batch_size=batch_size,
+       shuffle=True,
+       drop_last=False,
+   )
+   
+   solver = Solver(model, dataloaders['train_overfit_10samples'], dataloaders['val_500files'], 
+                   learning_rate=1e-3, loss_func=loss, optimizer=Adam)
+   solver.train(epochs=epochs)
+   
+   ## 将train 和validation数据集的loss曲线画出来，可以看出是overfit了吗
+   plt.title('Loss curves')
+   plt.plot(solver.train_loss_history, '-', label='train')
+   plt.plot(solver.val_loss_history, '-', label='val')
+   plt.legend(loc='lower right')
+   plt.xlabel('Iteration')
+   plt.show()
+   
+   print("Training accuray: %.5f" % (solver.get_dataset_accuracy(dataloaders['train_overfit_10samples'])))
+   print("Validation accuray: %.5f" % (solver.get_dataset_accuracy(dataloaders['val_500files'])))
+   ```
+
+3. 先看看2层跑的怎么样
+
+   ```python
+   from exercise_code.networks import MyOwnNetwork
+   
+   num_layer = 2
+   epochs = 5
+   reg = 0.01
+   
+   # Make a new data loader with 1000 training samples
+   num_samples = 1000
+   overfit_dataset = DATASET(
+       mode='train',
+       root=cifar_root, 
+       download_url=download_url,
+       transform=compose_transform,
+       limit_files=num_samples
+   )
+   dataloaders['train_small'] = DataLoader(
+       dataset=overfit_dataset,
+       batch_size=batch_size,
+       shuffle=True,
+       drop_last=False,
+   )
+   
+   
+   # Change here if you want to use the full training set
+   use_full_training_set = False
+   if not use_full_training_set:
+       train_loader = dataloaders['train_small']
+   else:
+       train_loader = dataloaders['train']
+       
+   
+   model = ClassificationNet(num_layer=num_layer, reg=reg)
+   # model = MyOwnNetwork()
+   
+   loss = CrossEntropyFromLogits()
+   
+   solver = Solver(model, train_loader, dataloaders['val'], 
+                   learning_rate=1e-3, loss_func=loss, optimizer=Adam)
+   
+   solver.train(epochs=epochs)
+   
+   ## 效仿上面1，2画loss曲线
+   ```
+
+4. 再看看5层跑的怎么样
+
+   ```python
+   from exercise_code.networks import MyOwnNetwork
+   
+   num_layer = 5
+   epochs = 5
+   reg = 0.01
+   
+   model = ClassificationNet(num_layer=num_layer, reg=reg)
+   # model = MyOwnNetwork()
+   
+   # Change here if you want to use the full training set
+   use_full_training_set = False
+   if not use_full_training_set:
+       train_loader = dataloaders['train_small']
+   else:
+       train_loader = dataloaders['train']
+   
+   loss = CrossEntropyFromLogits()
+   
+   solver = Solver(model, train_loader, dataloaders['val'], 
+                   learning_rate=1e-3, loss_func=loss, optimizer=Adam)
+   
+   solver.train(epochs=epochs)
+   ```
+
+## 4.5调参方法
+
+### 4.5.1Grid Search
+
+- 代码： 
+
+  ```python
+  def grid_search(train_loader, val_loader,
+                  grid_search_spaces = {
+                      "learning_rate": [0.0001, 0.001, 0.01, 0.1],
+                      "reg": [1e-4, 1e-5, 1e-6]
+                  },
+                  model_class=ClassificationNet, epochs=20, patience=5):
+      """
+      A simple grid search based on nested loops to tune learning rate and
+      regularization strengths.
+      Keep in mind that you should not use grid search for higher-dimensional
+      parameter tuning, as the search space explodes quickly.
+  
+      Required arguments:
+          - train_dataloader: A generator object returning training data
+          - val_dataloader: A generator object returning validation data
+  
+      Optional arguments:
+          - grid_search_spaces: a dictionary where every key corresponds to a
+          to-tune-hyperparameter and every value contains a list of possible
+          values. Our function will test all value combinations which can take
+          quite a long time. If we don't specify a value here, we will use the
+          default values of both our chosen model as well as our solver
+          - model: our selected model for this exercise
+          - epochs: number of epochs we are training each model
+          - patience: if we should stop early in our solver
+  
+      Returns:
+          - The best performing model
+          - A list of all configurations and results
+      """
+      configs = []
+  
+      """
+      # Simple implementation with nested loops
+      for lr in grid_search_spaces["learning_rate"]:
+          for reg in grid_search_spaces["reg"]:
+              configs.append({"learning_rate": lr, "reg": reg})
+      """
+  
+      # More general implementation using itertools
+      for instance in product(*grid_search_spaces.values()):
+          configs.append(dict(zip(grid_search_spaces.keys(), instance)))
+  
+      return findBestConfig(train_loader, val_loader, configs, epochs, patience,
+                            model_class)
+  ```
+
+- 调用：
+
+  ```python
+  from exercise_code.networks import MyOwnNetwork
+  
+  # Specify the used network
+  model_class = ClassificationNet
+  
+  from exercise_code import hyperparameter_tuning
+  best_model, results = hyperparameter_tuning.grid_search(
+      dataloaders['train_small'], dataloaders['val_500files'],
+      grid_search_spaces = {
+          "learning_rate": [1e-2, 1e-3, 1e-4], 
+          "reg": [1e-4]
+      },
+      model_class=model_class,
+      epochs=10, patience=5)
+  ```
+
+### 4.5.2 Random Search
+
+- 代码
+
+  ```python
+  def random_search(train_loader, val_loader,
+                    random_search_spaces = {
+                        "learning_rate": ([0.0001, 0.1], 'log'),
+                        "hidden_size": ([100, 400], "int"),
+                        "activation": ([Sigmoid(), Relu()], "item"),
+                    },
+                    model_class=ClassificationNet, num_search=20, epochs=20,
+                    patience=5):
+      """
+      Samples N_SEARCH hyper parameter sets within the provided search spaces
+      and returns the best model.
+  
+      See the grid search documentation above.
+  
+      Additional/different optional arguments:
+          - random_search_spaces: similar to grid search but values are of the
+          form
+          (<list of values>, <mode as specified in ALLOWED_RANDOM_SEARCH_PARAMS>)
+          - num_search: number of times we sample in each int/float/log list
+      """
+      configs = []
+      for _ in range(num_search):
+          configs.append(random_search_spaces_to_config(random_search_spaces))
+  
+      return findBestConfig(train_loader, val_loader, configs, epochs, patience,
+                            model_class)
+  
+      
+  def random_search_spaces_to_config(random_search_spaces):
+      """"
+      Takes search spaces for random search as input; samples accordingly
+      from these spaces and returns the sampled hyper-params as a config-object,
+      which will be used to construct solver & network
+      """
+      
+      config = {}
+  
+      for key, (rng, mode)  in random_search_spaces.items():
+          if mode not in ALLOWED_RANDOM_SEARCH_PARAMS:
+              print("'{}' is not a valid random sampling mode. "
+                    "Ignoring hyper-param '{}'".format(mode, key))
+          elif mode == "log":
+              if rng[0] <= 0 or rng[-1] <=0:
+                  print("Invalid value encountered for logarithmic sampling "
+                        "of '{}'. Ignoring this hyper param.".format(key))
+                  continue
+              sample = random.uniform(log10(rng[0]), log10(rng[-1]))
+              config[key] = 10**(sample)
+          elif mode == "int":
+              config[key] = random.randint(rng[0], rng[-1])
+          elif mode == "float":
+              config[key] = random.uniform(rng[0], rng[-1])
+          elif mode == "item":
+              config[key] = random.choice(rng)
+  
+      return config
+  ```
+
+- 调用：
+
+  ```python
+  from exercise_code.hyperparameter_tuning import random_search
+  from exercise_code.networks import MyOwnNetwork
+  
+  # Specify the used network
+  model_class = ClassificationNet
+  
+  best_model, results = random_search(
+      dataloaders['train_small'], dataloaders['val_500files'],
+      random_search_spaces = {
+          "learning_rate": ([1e-2, 1e-6], 'log'),
+          "reg": ([1e-3, 1e-7], "log"),
+          "loss_func": ([CrossEntropyFromLogits()], "item")
+      },
+      model_class=model_class,
+      num_search = 1, epochs=20, patience=5)
+  ```
+
+### 4.5.3 找到最好的那一组数据：
+
+- 通过计算train loss, val loss来得到：
+
+  ```python
+  def findBestConfig(train_loader, val_loader, configs, EPOCHS, PATIENCE,
+                     model_class):
+      """
+      Get a list of hyperparameter configs for random search or grid search,
+      trains a model on all configs and returns the one performing best
+      on validation set
+      """
+      
+      best_val = None
+      best_config = None
+      best_model = None
+      results = []
+      
+      for i in range(len(configs)):
+          print("\nEvaluating Config #{} [of {}]:\n".format(
+              (i+1), len(configs)),configs[i])
+  
+          model = model_class(**configs[i])
+          solver = Solver(model, train_loader, val_loader, **configs[i])
+          solver.train(epochs=EPOCHS, patience=PATIENCE)
+          results.append(solver.best_model_stats)
+  
+          if not best_val or solver.best_model_stats["val_loss"] < best_val:
+              best_val, best_model,\
+              best_config = solver.best_model_stats["val_loss"], model, configs[i]
+              
+      print("\nSearch done. Best Val Loss = {}".format(best_val))
+      print("Best Config:", best_config)
+      return best_model, list(zip(configs, results))
+  ```
+
+### 4.5.4 Early stopping
+
+Usually, at some point the validation loss goes up again, which is a sign that we're overfitting to our training data. Since it actually doesn't make sense to train further at this point, it's common practice to apply "early stopping", i.e., cancel the training process when the validation loss doesn't improve anymore. The nice thing about this concept is, that not only it improves generalization through the prevention of overfitting, but also it saves us a lot of time - one of our most valuable resources in deep learning.
+
+Since there are natural fluctuations in the validation loss, you usually don't cancel the training process right at the first epoch when the validation-loss increases, but instead, you wait for some epochs **(specified by the `patience`-parameter)** and if the loss still doesn't improve, we stop.
+
+**实现代码见2.10**
+
+
+
+## 4.6 实际调参：
+
+策略：At the beginning, it's a good approach to first do a coarse random search across a **wide range of values** to find promising sub-ranges of your parameter space and use **a medium large subset of the dataset** . Afterwards, you can zoom into these ranges and do another random search (or grid search) to finetune the configurations. Use the cell below to play around and find good hyperparameters for your model!
+
+```python
+from exercise_code.networks import MyOwnNetwork
+
+best_model = ClassificationNet()
+#best_model = MyOwnNetwork()
+
+########################################################################
+# TODO:                                                                #
+# Implement your own neural network and find suitable hyperparameters  #
+# Be sure to edit the MyOwnNetwork class in the following code snippet #
+# to upload the correct model!                                         #
+########################################################################
+model_class = ClassificationNet
+
+best_model, results = random_search(
+    dataloaders['train_small'], dataloaders['val_500files'],
+    random_search_spaces = {
+        "learning_rate": ([1e-2, 1e-6], 'log'),
+        "reg": ([1e-3, 1e-7], "log"),
+        "loss_func": ([CrossEntropyFromLogits()], "item"),
+        "num_layer":([3,4],"int")
+    },
+    model_class=model_class,
+    num_search = 4, epochs=20, patience=5)
+
+
+########################################################################
+#                           END OF YOUR CODE                           #
+########################################################################
+```
+
