@@ -1528,27 +1528,57 @@ end
 
 ## 第三次作业
 
-```
-    no_points = length(correspondences);  
-    i = 1;
-    
-    while i<=s
-        i = i+1;
-        index = randperm(no_points,k);
-        F = epa(correspondences(:,index));
-        dist_Sampson = sampson_dist(F,x1_pixel,x2_pixel);
-        current_selector = dist_Sampson < tolerance;
-        dcheck           = dist_Sampson(current_selector);
-        current_set_size = numel(dcheck);
-        current_set_dist = sum(dcheck);
-        if (current_set_size > largest_set_size) || ((current_set_size == largest_set_size) && (current_set_dist < largest_set_dist))
-            largest_set_dist = current_set_dist;
-            largest_set_size = current_set_size;
-            selector = current_selector;
-        end
+### 3.1八点算法
+
+```matlab
+function [EF] = epa(correspondences, K)
+    % Depending on whether a calibrating matrix 'K' is given,
+    % this function calculates either the essential or the fundamental matrix    
+    % with the eight-point algorithm.
+    % x1是第一张图片上的特征点，x2是第二张图片上的特征点。加上一个维度的1是为了计算
+    x1 = [correspondences(1:2,:);ones(1,size(correspondences,2))];
+    x2 = [correspondences(3:4,:);ones(1,size(correspondences,2))];
+    % nargin 针对当前正在执行的函数，返回函数调用中给定函数输入参数的数目。
+    % 如果数目=1,说明Calibration Matrix标定矩阵没有给定
+    if(nargin>1)
+    	x1 = K\x1;
+       	x2 = K\x2;
     end
-    correspondences_robust = [x1_pixel(1:2,selector);x2_pixel(1:2,selector)];
+    % kron 计算 Kronecker 张量积。
+    % A是2个图片上对应特征点两两相乘后的矩阵
+    A = (kron(x1,ones(3,1)).*kron(ones(3,1),x2))';
+    % 奇异值分解，我们只需要等到V
+    [~,~,V] = svd(A);
+    
+    %% Estimation of the matrices
+    % estimate估计essential/fundamental matrix
+    G = reshape(V(:,end),3,3);   
+    [U,S,V] = svd(G);
+    % 如果给了标定矩阵K,那么求的是essential matrix本质矩阵
+    if(nargin>1)
+        EF = U * diag([1,1,0]) * V';
+    % 如果没有给标定矩阵K,那么求的是fundamental matrix基本矩阵
+    else
+        S(3,3) = 0;
+        EF = U * S * V';
+    end
+end
 ```
+
+### 3.2RanSac算法
+
+- [Random Sample Consensus](https://zhuanlan.zhihu.com/p/62238520)随机采样一致算法是从一组含有“外点”(outliers)的数据中正确估计数学模型参数的迭代算法。
+  - 外点”一般指的的数据中的噪声，所以，RANSAC也是一种“外点”检测算法。
+  - RANSAC算法是一种不确定算法，它只能在一种概率下产生结果，并且这个概率会随着迭代次数的增加而加大
+  - **基本的假设**：
+    - 数据是由“内点”和“外点”组成的。“内点”就是组成模型参数的数据，“外点”就是不适合模型的数据
+    - 在给定一组含有少部分“内点”的数据，存在一个程序可以估计出符合“内点”的模型。
+- RANSAC是通过反复选择数据集去估计出模型，一直迭代到估计出认为比较好的模型。步骤如下：
+  1. 选择出可以估计出模型的最小数据集；(对于直线拟合来说就是两个点，对于计算Homography矩阵就是4个点)
+  2. 使用这个数据集来计算出数据模型；
+  3. 将所有数据带入这个模型，计算出“内点”的数目；(累加在一定误差范围内的适合当前迭代推出模型的数据)
+  4. 比较当前模型和之前推出的最好的模型的“内点“的数量，记录最大“内点”数的模型参数和“内点”数；
+  5. 重复1-4步，直到迭代结束或者当前模型已经足够好了(“内点数目大于一定数量”)。
 
 
 
