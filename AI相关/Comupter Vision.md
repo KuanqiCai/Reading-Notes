@@ -1550,7 +1550,7 @@ function [EF] = epa(correspondences, K)
     % 奇异值分解，我们只需要等到V
     [~,~,V] = svd(A);
     
-    %% Estimation of the matrices
+    % *************** Estimation of the matrices ***************
     % estimate估计essential/fundamental matrix
     G = reshape(V(:,end),3,3);   
     [U,S,V] = svd(G);
@@ -1573,12 +1573,126 @@ end
   - **基本的假设**：
     - 数据是由“内点”和“外点”组成的。“内点”就是组成模型参数的数据，“外点”就是不适合模型的数据
     - 在给定一组含有少部分“内点”的数据，存在一个程序可以估计出符合“内点”的模型。
+  
 - RANSAC是通过反复选择数据集去估计出模型，一直迭代到估计出认为比较好的模型。步骤如下：
   1. 选择出可以估计出模型的最小数据集；(对于直线拟合来说就是两个点，对于计算Homography矩阵就是4个点)
   2. 使用这个数据集来计算出数据模型；
   3. 将所有数据带入这个模型，计算出“内点”的数目；(累加在一定误差范围内的适合当前迭代推出模型的数据)
   4. 比较当前模型和之前推出的最好的模型的“内点“的数量，记录最大“内点”数的模型参数和“内点”数；
   5. 重复1-4步，直到迭代结束或者当前模型已经足够好了(“内点数目大于一定数量”)。
+  
+- 迭代次数：
+  $$
+  \begin{align}
+  & k=8(这里用的8)\\
+  & s=\frac{log(1-p)}{log(1-(1-\epsilon)^k)}
+  \end{align}
+  $$
+  
+  - $k$：每次计算所用点的个数
+  - $s$：所需要的迭代次数
+  - $1-\epsilon$：内点在数据中的占比：
+  - $p$：我们希望RANSAC得到正确模型的概率
+  
+- 代码实现：
+
+  ```matlab 
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  function sd = sampson_dist(F, x1_pixel, x2_pixel)
+      % This function calculates the Sampson distance based on the fundamental matrix F
+      e3_hat = [0 -1 0;1 0 0; 0 0 0]
+      sd = sum(x2_pixel.*(F*x1_pixel)).^2 ./ (sum((e3_hat*F*x1_pixel).^2) + sum((e3_hat*F'*x2_pixel).^2));
+  end
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  
+  function [epsilon, p, tolerance, x1_pixel, x2_pixel] = F_ransac(correspondences, varargin)
+  	% *************** Input Parameters ***************
+      % This function implements the RANSAC algorithm to determine 
+      % robust corresponding image points
+      P = inputParser;
+      % p: desired probability that the algorithm yields a set of corresponding image points where no outliers are included
+      % epsilon: estiamted probability that a randomly chosen pair of corresponding image points is an outlier
+      % tolerance: tolerance in which a pair of corresponding image points gets assessed as fitting to the model(belonging to the consensus-set)
+      P.addOptional('p', 0.5, @(x)isnumeric(x) && x > 0 && x < 1)
+      P.addOptional('epsilon', 0.5, @(x)isnumeric(x) && x > 0 && x < 1);
+      P.addOptional('tolerance', 0.01, @isnumeric);
+      P.parse(varargin{:});
+      p           = P.Results.p;
+      epsilon     = P.Results.epsilon;
+      tolerance   = P.Results.tolerance;
+  	% x1，x2分别储存第一张图片和第二张图片的特征点
+      if size(correspondences,1)==4
+          x1_pixel = [correspondences(1:2,:);ones(1,length(correspondences))];
+          x2_pixel = [correspondences(3:4,:);ones(1,length(correspondences))];
+      end
+      
+      % *************** RANSAC algorithm preparation ***************
+      % 每次计算所用点的个数
+      k = 8;
+      % 迭代次数计算
+      s = log(1-p)/log(1-(1-epsilon)^k);
+      % largest_set_size：保存当前最大的consensus-set的correspondences数目
+      largest_set_size = 0;
+      % largest_set_dist：保存当前最大的consensus-set的sampson-distances误差
+      largest_set_dist = Inf;
+      % largest_set_F：保存当前最大的consensus-set的fundamental matrix基本矩阵
+      largest_set_F = zeros(3,3);
+      
+      % *************** RANSAC algorithm ***************
+      % 迭代的次数前面我们已经预估了
+      for i=1:s
+      	% 任意取k个点作为子集
+          consensus_set = correspondences(:,randperm(size(correspondences,2), k));
+          % 用八点算法得到基本矩阵
+          [F] = epa(consensus_set);
+          % 计算sampson误差
+          sd = sampson_dist(F, x1_pixel, x2_pixel);
+          % 排除那些不符合的外点outlier
+          sd = sd(sd<tolerance);
+          set_size = size(sd,2);
+          % 选取那些内点最多的子集算出的基本矩阵
+          if set_size > largest_set_size
+              largest_set_size = set_size;
+              largest_set_dist = sum(sd);
+              largest_set_F = F;
+              correspondences_robust = consensus_set;
+          end
+          % 如果内点个数相同，就选一致性更好的那一个
+          if set_size == largest_set_size
+              if sum(sd) < largest_set_dist
+                  largest_set_size = set_size;
+                  largest_set_dist = sum(sd);
+                  largest_set_F = F;
+                  correspondences_robust = consensus_set;
+              end
+          end
+      end
+      
+      % *************** Visualize robust corresponding image points ***************
+      figure
+      figure('name', 'Punkt-Korrespondenzen nach RANSAC');
+      imshow(uint8(IGray1))
+      hold on
+      plot(correspondences_robust(1,:),correspondences_robust(2,:),'r*')
+      imshow(uint8(IGray2))
+      alpha(0.5);
+      hold on
+      plot(correspondences_robust(3,:),correspondences_robust(4,:),'g*')
+      for i=1:size(correspondences_robust,2)
+          hold on
+          x_1 = [correspondences_robust(1,i), correspondences_robust(3,i)];
+          x_2 = [correspondences_robust(2,i), correspondences_robust(4,i)];
+          line(x_1,x_2);
+      end
+      hold off
+      
+  	% *************** Calculate essential matrix ***************
+      load('K.mat');
+      E = epa(correspondences, K)
+  end  
+  ```
+
+  
 
 
 
