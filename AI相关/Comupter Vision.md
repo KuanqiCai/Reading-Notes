@@ -1183,15 +1183,130 @@ Planar Epipolar Equation平面对极方程
 ### 2.2 从单应矩阵来3维重建
 
 - 求解步骤：
-  1. Eigenvalue decomposition
 
+  1. Eigenvalue decomposition特征值分解：$H^TH=V\Sigma^2V^T,V=[v_1\ v_2\ v_3]\in SO(3)$
 
+  2. 定义：
+     $$
+     u_1:=\frac{\sqrt{1-\sigma_3^2}v_1+\sqrt{\sigma_1^2-1}v_3}{\sqrt{\sigma_1^2-\sigma_3^2}},u_2:=\frac{\sqrt{1-\sigma_3^2}v_1-\sqrt{\sigma_1^2-1}v_3}{\sqrt{\sigma_1^2-\sigma_3^2}}
+     $$
+
+  3. 定义：
+     $$
+     U_1:=[v_2\quad u_1\quad \hat{v_2}u_1],\ W_1:=[Hv_2\quad Hu_1\quad \hat{Hv_2}Hu_1]\\
+     U_2:=[v_2\quad u_2\quad \hat{v_2}u_2],\ W_1:=[Hv_2\quad Hu_2\quad\hat{Hv_2}Hu_2]
+     $$
+
+  4. 得到4个解：
+
+     ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Computer%20Vision/%E5%8D%95%E5%BA%94%E7%9F%A9%E9%98%B53%E7%BB%B4%E9%87%8D%E5%BB%BA%E8%A7%A3.png?raw=true)
+
+### 2.3单应矩阵和本质矩阵相互计算
+
+- 由于：
+  $$
+  E=\hat{T}R\ and\ H=R+Tu^T,R\in \mathbb{R}^{3\times3},T、u\in \mathbb{R}^3,||T||=1
+  $$
+
+  - 得到：
+    - $E=\hat{T}H$
+    - $H^TE+E^TH=0$
+    - $H=\hat{T}^TE+Tv^T$  for a specific $v\in \mathbb{R}^3$
+
+- Calculation of the Essential Matrix from the Homography Matrix
+
+  **从单应矩阵H算本质矩阵E：**
+
+  - 单应矩阵H 和 两组corresponding points$(x_1^j,x_2^j ),j=1,2$已知（这两个点不在一个单应矩阵平面上）
+  - Epipolar lines$l_2^j=\hat{x}_2^jHx_1^j$ intersect相交于 epipol对极点$e_2=T$
+  - 可得：$E=\hat{T}H$
+    - 其中$T=\hat{l}_2^1l_2^2$
+    - $||T||_2=1$
+
+- Calculation of the Homography Matrix from the Essential Matrix
+
+  **从本质矩阵E算单应矩阵H**
+
+  - 本质矩阵E 和  三组corresponding points$(x_1^j,x_2^j ),j=1,2,3$已知。3个点都在一个平面内
+  - 可得：$H=\hat{T}^TE+Tv^T$  for a specific $v\in \mathbb{R}^3$
 
 ## 3.Kamerakalibrierung
 
 Camera Calibration相机标定
 
+从几张棋盘得照片来标定calibration matrix 标定矩阵k
 
+- 方法：
+
+  - Z axis of the world coordinates perpendicular to the chessboard
+
+  - 参考3.3有：
+
+    - 对于一个点$P= \left[\begin{matrix}X  \\Y  \\0  \\1 \end{matrix} \right]$，那么：
+      $$
+      x'=K\Pi_0\begin{bmatrix}
+      R & T\\
+      0^T &1
+      \end{bmatrix}
+      \begin{bmatrix}
+      X\\
+      Y\\
+      0\\
+      1
+      \end{bmatrix}=
+      K[r_1\quad r_2\quad T]\begin{bmatrix}
+      X\\
+      Y\\
+      1
+      \end{bmatrix}
+      $$
+
+    
+
+  - Estimation of the Homography求解单应矩阵
+
+    - $H:=K[r_1\quad r_2\quad T]$​是一个单应矩阵，将棋盘得homogeneous coordinates齐次坐标 映射到 homogeneous , uncalibrated coordinates in the image plane 
+    - 用四点算法求解单应矩阵H
+    
+  - Estimation of the Calibration Matrix求解标定矩阵
+
+    - 对每一个view,有constraints约束
+  
+      - $h_1^TBh_2=0$
+      - $h_1^TBh_1=h_2^TBh_2$
+      - 其中$B:=K^{-T}K^{-1}$
+  
+    - 从而得到2个方程
+      $$
+      V^jb=\begin{bmatrix}
+      V^T_{(h_1,h_2)}\\
+      (V(h_1,h_1)-V(h_2,h_2))^T
+      \end{bmatrix}b=0
+      $$
+  
+    - 对于n个views of the chessboard有等式：$Vb=0,V\in\mathbb{R}^{2n\times6}$
+  
+    - 因此需要3张图来确定b
+  
+  - 求解$Vb=0$的步骤
+  
+    - 用SVD分解矩阵V
+  
+    - 用最小V特征值的右奇异矩阵来生成symmetrical matrix对称矩阵$\hat{B}$
+      $$
+      B:=K^{-T}K^{-1}=\begin{bmatrix}
+      B_{11} &B_{12}& B_{13}\\
+      B_{12} &B_{22}& B_{23}\\
+      B_{13} &B_{23}& B_{33}
+      \end{bmatrix}
+      $$
+  
+    - 选择正值$B=\pm\hat{B}$
+  
+    - Decompose分解$B$ with the Cholesky factorization因数分解 into the product$B=\hat{K}^T\hat{K}$, whereby$\hat{K}$is an upper triangular matrix三角矩阵
+  
+    - 可得：$K=\hat{K}^{-1}$
+  
 
 
 
