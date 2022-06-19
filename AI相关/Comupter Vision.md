@@ -1079,10 +1079,113 @@ Planar Epipolar Equation平面对极方程
 - 目的：
   1. Formal correlation正式的相互关系 between correspondences联系
   2. Estimate估计 the euclidian motion of the camera through correspondences in a planar sene
+  
+- Plane epipolar Equation公式推导
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Computer%20Vision/Plane%20Equation.png?raw=true)
+
+  - 平面：$H=:\{P\in R^3| n^TP=d\}$
+
+    - $n:$Normalized normal vector平面的单位法向量
+  
+    - $d:$Distance from $H$ to $O_1$
+  
+    - 点P1的**Plane Equation**展开：
+      $$
+      n^TP_1=n_1X+n_2Y+n_3Z=d \tag{1}
+      $$
+  
+  - Euclidian Motion:$P_2=RP_1+T$代入1式得：
+    $$
+    \begin{align}
+    P_2&=(R+\frac{1}{d}Tn^T)\cdot P_1\\
+    &=HP_1
+    \end{align}\tag{2}
+    $$
+  
+    - H：**Homography Matrix**单应矩阵
+  
+      即上面2式的H，是平面H对于euclidian motion(R,T)的单应矩阵。描述的是空间中**同一平面**上的三维点在两张图像中的对应关系。这里需要强调的是**同一平面**。
+  
+      - 用单应矩阵可以Unique determination of correspondences
+      - 单应矩阵也可以用于计算 epipolar lines outside of the plane
+  
+  - 由此我们得到**Planar epipolar equation**:$x_2=Hx_1$
+  
+    - $x_2\ orthogonal\ to\ 垂直于\ u\times Hx_1\ for\ all\ u \in R^3$
 
 ## 2.Vier-Punkt-Algorithmus
 
-4-Point Algorithm4点算法
+### 2.1 四点算法
+
+4-Point Algorithm4点算法：用于从已知的corresponding points对应点来计算单应矩阵
+
+- 单应矩阵的自由度
+
+  使用的是齐次坐标系，也就是说可以进行任意尺度的缩放。比如我们把hij乘以任意一个非零常数k并不改变等式结果。所以实际上单应矩阵H只有8个自由度。
+
+  所以需要4个点对，去求解H中的8个未知数
+
+- 求解步骤：
+
+  - **Planar epipolar equation**:$x_2=Hx_1$
+
+  - 左乘$x_2$的反对称矩阵:
+    $$
+    \hat{X_2}HX_1=0
+    \\
+    其中:\\
+    X_1= \left[
+     \begin{matrix}
+       x_1  \\
+       y_1  \\
+       z_1 
+      \end{matrix}
+      \right]
+      \hat{X_2}=\left[
+     \begin{matrix}
+       0 & -z_2&y_2  \\
+       z_2 & 0 & -x_2  \\
+       -y_2 &x_2&0 
+      \end{matrix}
+      \right]\Rightarrow
+      B:=X_1\bigotimes \hat{X_2}=\left[
+     \begin{matrix}
+       x_1\hat{X_2}  \\
+       y_1\hat{X_2}  \\
+       z_1\hat{X_2} \\
+      \end{matrix}
+      \right]\in R^{9\times3}
+    $$
+
+  - 展开后可得：$B^TH=0$
+
+  - 如果有n对特征点，即有n个B:
+    $$
+    AH=0,A:=\left[
+     \begin{matrix}
+       B^{1T}  \\
+       B^{2T}  \\
+       \vdots  \\
+       B^{nT} 
+      \end{matrix}
+      \right]\in R^{3n\times 9}
+    $$
+
+  - 类似8点算法，我们要求解最小化问题:$H_L=argmin_{||H||_2=1}||AH||_2^2$
+
+  - 由SVD奇异值分解A，可得：$H_L:=\lambda H$
+
+  - 由**Homography Matrix**单应矩阵的性质$|\lambda|=\sigma_2(H_L)$,可得：$H=\frac{H_L}{\sigma_2(H_L)}$
+
+  - 这样算出来的正负H都符合平面对极方程，所以增加一个 条件：$x_2^THx_1>0$
+
+### 2.2 从单应矩阵来3维重建
+
+- 求解步骤：
+  1. Eigenvalue decomposition
+
+
 
 ## 3.Kamerakalibrierung
 
