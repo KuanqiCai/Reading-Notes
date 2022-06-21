@@ -1,3 +1,8 @@
+# 参考资料
+
+- [URDF](https://ros-planning.github.io/moveit_tutorials/doc/urdf_srdf/urdf_srdf_tutorial.html)
+- 
+
 # 一、使用RVIZ看Moveit
 
 - 运行：`roslaunch panda_moveit_config demo.launch rviz_tutorial:=true`
@@ -420,4 +425,220 @@
   }
   ```
   
+
+# 三、MoveIt Commander
+
+- 简介：
+
+  The [moveit_commander](http://wiki.ros.org/moveit_commander) Python package offers wrappers封装 for the functionality provided in MoveIt. Simple interfaces are available for motion planning, computation of Cartesian paths, and pick and place.
+
+- 两个shell运行：
+
+  - `roslaunch panda_moveit_config demo.launch`
+  - `rosrun moveit_commander moveit_commander_cmdline.py`
+
+- 然后可在上面第二个shell中控制机器人
+
+  - `use panda_arm`
+
+    选择我们想要控制的的joint group的名字。 This will connect you to a running instance of the move_group node
+
+  - `current`
+
+    显示当前机器人所有的状态
+
+  - `rec c`
+
+    将当前joint values保存到c
+
+  - 让机器人到我们想到的地方
+
+    - 直接跑
+
+      ```
+      goal = c
+      goal[0] = 0.2
+      go goal
+      ```
+
+    - 先规划再执行
+
+      ```
+      goal[0] = 0.2
+      goal[1] = 0.2
+      plan goal
+      execute
+      ```
+
+# 四、RobotModel and RobotState Classes
+
+- 简介
+
+  The [RobotModel](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classmoveit_1_1core_1_1RobotModel.html) and [RobotState](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classmoveit_1_1core_1_1RobotState.html) classes are the core classes that give you access to a robot’s kinematics.用于计算运动学
+
+  - RobotModel:
+    - RobotModel contains the relationships between all links and joints including their joint limit properties as loaded from the URDF.
+    - The RobotModel also separates the robot’s links and joints into planning groups defined in the SRDF
+  - RobotState:
+    - RobotState contains information about the robot at a certain point in time, storing vectors of joint positions and optionally velocities and accelerations.
+    - This information can be used to obtain kinematic information about the robot that depends on its current state, such as the Jacobian of an end effector. 
+    - RobotState also contains helper functions for setting the arm location based on the end effector location (Cartesian pose) and for computing Cartesian trajectories.
+
+- 运行：
+
+  `roslaunch moveit_tutorials robot_model_and_robot_state_tutorial.launch`
+
+  - 计算结果在shell中展示
+
+- 代码
+
+  ```c++
+  #include <ros/ros.h>
   
+  // MoveIt
+  #include <moveit/robot_model_loader/robot_model_loader.h>
+  #include <moveit/robot_model/robot_model.h>
+  #include <moveit/robot_state/robot_state.h>
+  
+  int main(int argc, char** argv)
+  {
+    ros::init(argc, argv, "robot_model_and_robot_state_tutorial");
+    ros::AsyncSpinner spinner(1);
+    spinner.start();
+  
+    // BEGIN_TUTORIAL
+    // Start
+    // ^^^^^
+    // Setting up to start using the RobotModel class is very easy. In
+    // general, you will find that most higher-level components will
+    // return a shared pointer to the RobotModel. You should always use
+    // that when possible. In this example, we will start with such a
+    // shared pointer and discuss only the basic API. You can have a
+    // look at the actual code API for these classes to get more
+    // information about how to use more features provided by these
+    // classes.
+    //
+    // We will start by instantiating a
+    // `RobotModelLoader`_
+    // object, which will look up
+    // the robot description on the ROS parameter server and construct a
+    // :moveit_core:`RobotModel` for us to use.
+    //
+    // .. _RobotModelLoader:
+    //     http://docs.ros.org/noetic/api/moveit_ros_planning/html/classrobot__model__loader_1_1RobotModelLoader.html
+    robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
+    const moveit::core::RobotModelPtr& kinematic_model = robot_model_loader.getModel();
+    ROS_INFO("Model frame: %s", kinematic_model->getModelFrame().c_str());
+  
+    // Using the :moveit_core:`RobotModel`, we can construct a
+    // :moveit_core:`RobotState` that maintains the configuration
+    // of the robot. We will set all joints in the state to their
+    // default values. We can then get a
+    // :moveit_core:`JointModelGroup`, which represents the robot
+    // model for a particular group, e.g. the "panda_arm" of the Panda
+    // robot.
+    moveit::core::RobotStatePtr kinematic_state(new moveit::core::RobotState(kinematic_model));
+    kinematic_state->setToDefaultValues();
+    const moveit::core::JointModelGroup* joint_model_group = kinematic_model->getJointModelGroup("panda_arm");
+  
+    const std::vector<std::string>& joint_names = joint_model_group->getVariableNames();
+  
+    // Get Joint Values
+    // ^^^^^^^^^^^^^^^^
+    // We can retrieve the current set of joint values stored in the state for the Panda arm.
+    std::vector<double> joint_values;
+    kinematic_state->copyJointGroupPositions(joint_model_group, joint_values);
+    for (std::size_t i = 0; i < joint_names.size(); ++i)
+    {
+      ROS_INFO("Joint %s: %f", joint_names[i].c_str(), joint_values[i]);
+    }
+  
+    // Joint Limits
+    // ^^^^^^^^^^^^
+    // setJointGroupPositions() does not enforce joint limits by itself, but a call to enforceBounds() will do it.
+    /* Set one joint in the Panda arm outside its joint limit */
+    joint_values[0] = 5.57;
+    kinematic_state->setJointGroupPositions(joint_model_group, joint_values);
+  
+    /* Check whether any joint is outside its joint limits */
+    ROS_INFO_STREAM("Current state is " << (kinematic_state->satisfiesBounds() ? "valid" : "not valid"));
+  
+    /* Enforce the joint limits for this state and check again*/
+    kinematic_state->enforceBounds();
+    ROS_INFO_STREAM("Current state is " << (kinematic_state->satisfiesBounds() ? "valid" : "not valid"));
+  
+    // Forward Kinematics
+    // ^^^^^^^^^^^^^^^^^^
+    // Now, we can compute forward kinematics for a set of random joint
+    // values. Note that we would like to find the pose of the
+    // "panda_link8" which is the most distal link in the
+    // "panda_arm" group of the robot.
+    kinematic_state->setToRandomPositions(joint_model_group);
+    const Eigen::Isometry3d& end_effector_state = kinematic_state->getGlobalLinkTransform("panda_link8");
+  
+    /* Print end-effector pose. Remember that this is in the model frame */
+    ROS_INFO_STREAM("Translation: \n" << end_effector_state.translation() << "\n");
+    ROS_INFO_STREAM("Rotation: \n" << end_effector_state.rotation() << "\n");
+  
+    // Inverse Kinematics
+    // ^^^^^^^^^^^^^^^^^^
+    // We can now solve inverse kinematics (IK) for the Panda robot.
+    // To solve IK, we will need the following:
+    //
+    //  * The desired pose of the end-effector (by default, this is the last link in the "panda_arm" chain):
+    //    end_effector_state that we computed in the step above.
+    //  * The timeout: 0.1 s
+    double timeout = 0.1;
+    bool found_ik = kinematic_state->setFromIK(joint_model_group, end_effector_state, timeout);
+  
+    // Now, we can print out the IK solution (if found):
+    if (found_ik)
+    {
+      kinematic_state->copyJointGroupPositions(joint_model_group, joint_values);
+      for (std::size_t i = 0; i < joint_names.size(); ++i)
+      {
+        ROS_INFO("Joint %s: %f", joint_names[i].c_str(), joint_values[i]);
+      }
+    }
+    else
+    {
+      ROS_INFO("Did not find IK solution");
+    }
+  
+    // Get the Jacobian
+    // ^^^^^^^^^^^^^^^^
+    // We can also get the Jacobian from the :moveit_core:`RobotState`.
+    Eigen::Vector3d reference_point_position(0.0, 0.0, 0.0);
+    Eigen::MatrixXd jacobian;
+    kinematic_state->getJacobian(joint_model_group,
+                                 kinematic_state->getLinkModel(joint_model_group->getLinkModelNames().back()),
+                                 reference_point_position, jacobian);
+    ROS_INFO_STREAM("Jacobian: \n" << jacobian << "\n");
+    // END_TUTORIAL
+  
+    ros::shutdown();
+    return 0;
+  }
+  ```
+
+## Launch File
+
+```xml
+<launch>
+  <include file="$(find panda_moveit_config)/launch/planning_context.launch">
+    <arg name="load_robot_description" value="true"/>
+  </include>
+
+  <node name="robot_model_and_robot_state_tutorial"
+        pkg="moveit_tutorials"
+        type="robot_model_and_robot_state_tutorial"
+        respawn="false" output="screen">
+    <rosparam command="load"
+              file="$(find panda_moveit_config)/config/kinematics.yaml"/>
+  </node>
+</launch>
+```
+
+## Debugging the Robot State
+
+`rosrun moveit_ros_planning moveit_print_planning_model_info`
