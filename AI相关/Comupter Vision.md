@@ -879,7 +879,7 @@ $$
 
 用于求本质矩阵
 
-- 如果Euclidian Motion未知，Feature points对应关系已知，如何确认Essential Matrix?
+- 如果Euclidian Motion未知，Feature points对应关系已知，如何确认Essential Matrix E?
 
   已知：n pairs of corresponding points$(x_1^j,x_2^j)$
 
@@ -1912,5 +1912,191 @@ end
 
   
 
+## 第四次作业
 
+### 4.1Euclidean Movement
+
+从本质矩阵 E 得到Euclidean Movement欧几里得运动 R 和 T.
+
+理论参见(三、4)
+
+```matlab
+function [T1, R1, T2, R2, U, V] = TR_from_E(E)
+    % This function calculates the possible values for T and R 
+    % from the essential matrix
+    [U,S,V]=svd(E);
+    if det(U) < 0
+	    U = U*diag([1 1 -1]);
+    end
+    
+    if det(V) < 0
+	    V = V*diag([1 1 -1]);
+    end
+
+    R_1=[0,-1,0;
+          1,0,0;
+          0,0,1];
+    R_2=[0,1,0;
+          -1,0,0;
+          0,0,1];
+      
+    R1=U*R_1'*V';
+    R2=U*R_2'*V';
+    T1_hat = U*R_1*S*U';
+    T1 = [T1_hat(3,2);T1_hat(1,3);T1_hat(2,1);];
+    T2_hat = U*R_2*S*U';
+    T2 = [T2_hat(3,2);T2_hat(1,3);T2_hat(2,1)];
+
+    
+end
+```
+
+### 4.2 3D Reconstruction
+
+- 辅助函数：
+
+    ```matlab
+    function M1 = M1_erstellen(R, T, N, x1, x2)
+        M1 = zeros(3*N,N+1);
+        for i = 1:N
+            M1(3*i-2:3*i, i) = cross(x2(:,i),R*x1(:,i));
+            M1(3*i-2:3*i, N+1) = cross(x2(:,i),T);
+        end
+    end
+    
+    function M2 = M2_erstellen(R, T, N, x1, x2)
+        M2 = zeros(3*N,N+1);
+        for i = 1:N
+            M2(3*i-2:3*i, i) = cross(x1(:,i),R'*x2(:,i));
+            M2(3*i-2:3*i, N+1) = -cross(x1(:,i),R'*T);
+        end
+    end
+    
+    function d = d_erstellen(M)
+        [~,~,V] = svd(M);
+        d = V(:,end);
+        d = d./d(end,1);
+    end
+    
+    function pos_num = count(d_cell)
+        count = find(d_cell>0);
+        pos_num = length(count);
+    end
+    ```
+
+- 3D Reconstruction
+
+    ```matlab
+    function [T, R, lambda, P1, camC1, camC2] = reconstruction(T1, T2, R1, R2, correspondences, K)
+        % *************** Preparation ***************
+        %% T,R的组合有4种情况，建立2个元组，分别对应表示这4种情况
+        T_cell = {T1, T2, T1, T2};
+        R_cell = {R1, R1, R2, R2};
+        %% 将特征点从4XN维的数组种读取出来
+        n = length(correspondences);
+        x1 = K\[correspondences(1:2,:); ones(1, n)];
+        x2 = K\[correspondences(3:4,:); ones(1, n)];
+        %% d_cell用于保存各个特征点的深度信息
+        n = size(correspondences,2);
+        d_cell = {zeros(n,2), zeros(n,2), zeros(n,2), zeros(n,2)};
+    	
+    	
+    	% *************** Reconstruction ***************
+        N = size(correspondences,2);
+        M1_R1T1 = M1_erstellen(R_cell{1}, T_cell{1}, N, x1, x2);
+        M1_R1T2 = M1_erstellen(R_cell{1}, T_cell{2}, N, x1, x2);
+        M1_R2T1 = M1_erstellen(R_cell{3}, T_cell{1}, N, x1, x2);
+        M1_R2T2 = M1_erstellen(R_cell{3}, T_cell{2}, N, x1, x2);
+        
+        M2_R1T1 = M2_erstellen(R_cell{1}, T_cell{1}, N, x1, x2);
+        M2_R1T2 = M2_erstellen(R_cell{1}, T_cell{2}, N, x1, x2);
+        M2_R2T1 = M2_erstellen(R_cell{3}, T_cell{1}, N, x1, x2);
+        M2_R2T2 = M2_erstellen(R_cell{3}, T_cell{2}, N, x1, x2);
+        
+        M1 = M1_R2T2;
+        M2 = M2_R2T2;
+        
+        d1_R1T1 = d_erstellen(M1_R1T1);
+        d1_R1T2 = d_erstellen(M1_R1T2);
+        d1_R2T1 = d_erstellen(M1_R2T1);
+        d1_R2T2 = d_erstellen(M1_R2T2);
+        
+        d2_R1T1 = d_erstellen(M2_R1T1);
+        d2_R1T2 = d_erstellen(M2_R1T2);
+        d2_R2T1 = d_erstellen(M2_R2T1);
+        d2_R2T2 = d_erstellen(M2_R2T2);
+        
+        d_cell = {[d1_R1T1(1:N,1) d2_R1T1(1:N,1)], [d1_R1T2(1:N,1) d2_R1T2(1:N,1)], [d1_R2T1(1:N,1) d2_R2T1(1:N,1)], [d1_R2T2(1:N,1) d2_R2T2(1:N,1)]};
+        % 创建一个数组pos_num()，分别计算不同R,T组合下的深度，需要都为正才是最终解。
+        pos_num(1) = count(d_cell{1});
+        pos_num(2) = count(d_cell{2});
+        pos_num(3) = count(d_cell{3});
+        pos_num(4) = count(d_cell{4});
+        % 波浪号作为函数输入\输出参数的占位符，表示忽略该参数。
+        % 当函数有多个输出，但某个输出值不需要时，可以将其用~代替。
+        % 正值最多的那一组就是我们要的R,T组合
+        [~, index] = max(pos_num);
+        T = T_cell{index};
+        R = R_cell{index};
+        % 各个特征点的深度
+        lambda = d_cell{index};    
+        
+    
+    	% *************** Calculation and visualization of the 3D points and the cameras ***************
+    	% 计算第一张图片的x1的世界坐标
+        lambda1 = [lambda(:,1), lambda(:,1),lambda(:,1)]; 
+        P1 = x1.*lambda1';
+        
+        for i = 1:N
+            scatter3(P1(1,i), P1(2,i), P1(3,i));
+            xlabel('X');
+            ylabel('Y');
+            zlabel('Z');
+            grid on
+            text(P1(1,i)+0.01, P1(2,i)+0.01, P1(3,i), num2str(i));
+            hold on
+        end
+        % 用第一个相机坐标cameraframe1的corners去计算第二个相机坐标cameraframe2
+        camC1 = [-0.2  0.2  0.2 -0.2;
+                  0.2  0.2 -0.2 -0.2;
+                  1    1    1    1  ];
+        camC2 = R\(camC1-T);
+        
+        plot3(camC1(1,:), camC1(2,:), camC1(3,:), 'b');
+        plot3(camC2(1,:), camC2(2,:), camC2(3,:), 'r');
+        
+        campos([43 -22 -87]);
+        camup([0 -1 0]);
+    end
+    ```
+
+### 4.3 Back Projection
+
+- The quality of the 3D reconstruction is going to be quantitatively determined via the error of the back projection into camera 2
+
+  ```matlab
+  function [repro_error, x2_repro] = backprojection(correspondences, P1, Image2, T, R, K)
+      % This function calculates the mean error of the back projection
+      % of the world coordinates P1 from image 1 in camera frame 2
+      % and visualizes the correct feature coordinates as well as the back projected ones.
+      P2 = R*P1+T; %Weltkoordinaten in Cameraframe 2,相机和相的移动是相反的
+      x2_berechnen = K*P2;
+      x2_repro = x2_berechnen./x2_berechnen(3,:);
+      imshow(Image2);
+      x2 = correspondences(3:4,:);
+      hold on
+      N = size(x2,2);
+      for i=1:N
+          plot(x2(1,i),x2(2,i),'o');
+          text(x2(1,i)+10, x2(2,i), num2str(i));
+          plot(x2_repro(1,i),x2_repro(2,i),'x');
+          text(x2_repro(1,i)+10, x2_repro(2,i), num2str(i));
+      end
+      
+      repro_error = (1/N)*sum(sqrt((sum((x2-x2_repro(1:2,:)).^2)')'));
+      
+  end
+  ```
+
+  
 
