@@ -159,33 +159,75 @@ https://numpy.org/doc/stable/
 
   Used to measure the goodness of the predictions(the network's performance)
 
-- Classification loss:
+### 1.1 Classification loss:
 
-  - Cross-Entropy loss 交叉熵损失函数
+  - **Cross-Entropy loss** 交叉熵损失函数(Maximum Likelihood Estimate)
 
     也叫做Softmax Loss，用于多分类中表示预测和真实分布之间的距离有多远。
 
-    $$ CE(\hat{y}, y) = \frac{1}{N} \sum_{i=1}^N \sum_{k=1}^{C} \Big[ -y_{ik} \log(\hat{y}_{ik}) \Big] $$
+    $$ CE(\hat{y}, y) = \frac{1}{N} \sum_{i=1}^N \sum_{k=1}^{C} \Big[ -y_{ik} \log(\hat{y}_{ik}) \Big]=-\frac{1}{N}\sum_{i=1}^Nlog(\frac{e^{S_{yi}}}{\Sigma_{k=1}^Ce^{S_k}}) $$
+
+    $L_i=-log(\frac{e^{S_{}yi}}{\Sigma_{k=1}^Ce^{S_k}}) $
 
     where:
     - $ N $ is again the number of samples
 
-    - $ C $ is the number of classes
+    - $ C $ is the number of classes有多少个分类对象
       - 当C=2，即binary cross-entropy(BCE)
     - $ \hat{y}_{ik} $ is the probability that the model assigns for the $k$'th class when the $i$'th sample is the input. 
     - $y_{ik} = 1 $ iff the true label of the $i$th sample is $k$ and 0 otherwise. This is called a [one-hot encoding](https://machinelearningmastery.com/why-one-hot-encode-data-in-machine-learning/).
+    - $\frac{e^{S_{}yi}}{\Sigma_{k=1}^Ce^{S_k}} $:即softmax function,表示每一个类的概率
+      - 分子是Exponential Operation：make sure probability > 0
+      - 分母是Normalization正则化：make sure probabilities sum up to 1.
+      - $s=f(x_i,\theta)$:Score function
+    - 为什么叫Softmax Loss:因为Output Layer 是Softmax function
 
-  - Loss function: Binary Cross-Entropy (BCE).用于二分类
+  -  **Binary Cross-Entropy** (BCE).用于二分类
 
     $$BCE(y,\hat{y}) =- y \cdot log(\hat y ) - (1- y) \cdot log(1-\hat y) $$
 
     - $y\in\mathbb{R}$ is the ground truth
     -  $\hat y\in\mathbb{R}$ is the predicted probability of the house being expensive.
+    -  相比于多分类用的Softmax，BCE用的Output Layer是Sigmoid function
+    
+  - **Hinge Loss**:Multiclass SVM Loss
 
-- Regression loss
+    $L=\frac{1}{N}\sum_{i=1}^NL_i$
 
-  - L1 loss: $L(y,\hat{y};\theta)=\frac{1}{n}\sum_i^n||y_i-\hat y_i||_1$
-  - MSE loss: $L(y,\hat{y};\theta)=\frac{1}{n}\sum_i^n||y_i-\hat{y}_i||_2^2$
+    $L_i=\sum_{k\neq y_i}max(0,s_k-s_{y_i}+1)$
+
+    - $s_k$：是不同class的分数
+    - $s_{y_i}$：是真实class的分数
+
+    理解：
+
+    - 相比Cross Entropy loss永远不可能等于0，Hinge Loss会saturate(=0),2个不同的模型的loss值都等于0时，就无法分辨哪个更好
+
+    -  实现了软间隔分类（这个Loss函数都可以做到）
+
+    - **保持了支持向量机解的稀疏性**
+
+      - **换用其他的Loss函数的话，SVM就不再是SVM了。**
+
+        **正是因为HingeLoss的零区域对应的正是非支持向量的普通样本，从而所有的普通样本都不参与最终超平面的决定，这才是支持向量机最大的优势所在，对训练样本数目的依赖大大减少，而且提高了训练效率。**
+
+### 1.2 Regression loss
+
+  - **L1 loss**: $L(y,\hat{y};\theta)=\frac{1}{n}\sum_i^n||y_i-\hat y_i||_1$
+    - Robust(Cost of outliers is linear)不容易受离异值影响
+    - Costly to optimize
+    - Optimum is the median
+  - **L2/MSE loss**: $L(y,\hat{y};\theta)=\frac{1}{n}\sum_i^n||y_i-\hat{y}_i||_2^2$
+    - Prone to outliers容易受离异值影响
+    - Computer efficient optimization
+    - Optimum is the mean
+
+### 1.3 Loss + Regularization正则化
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Full%20Loss.png?raw=true)
+
+- Full Loss = Data Loss + Reg Loss
+  - Data Loss: 即选择用cross Entropy还是Hinge function来计算$L_i$,然后所有样本的loss值相加取平均
 
 ## 2) 激活函数Activation Functions
 
@@ -224,7 +266,7 @@ $\sigma(x)=\frac{1}{(1+e^{-x})}$
 
   - 缺点：
     - It requires **computation of an exponent**, which need more compute resouce and makes the convergence of the network slower.
-    - **vanishing gradient**梯度消失：the neuro is saturated, because when it reaches its maximum or minimum value, the derivative will be equal to 0.$\sigma(x)(1-\sigma(x))$趋于0，因为sigmoid最小最大值为0和1。then the weights will not be updated
+    - **vanishing gradient**梯度消失：the neuro is saturated, because when it reaches its maximum or minimum value, the derivative will be equal to 0（也称为saturate饱和）.$\sigma(x)(1-\sigma(x))$趋于0，因为sigmoid最小最大值为0和1。then the weights will not be updated
     - **Not zero-centered function**:During update process, these weights are only allowed to move in one direction, i.e. positive or negative, at a time. This makes the loss function optimization harder.
 ### 2.2tanh
 
@@ -525,7 +567,66 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
 
 - Precision和Recall通常是一对矛盾的性能度量指标。一般来说，Precision越高时，Recall往往越低
 
-## 6) 数据集
+## 6) 参数的初始化
+
+- 初始化时权重Weights不能设置为如下三种
+  1. 都等于0 ：The hidden units are all going to compute the same function, gradients are going to be the same
+  2. 都是小随机数：Output become to zero，梯度消失vanishing gradient
+  3. 都是大随机数：Output saturated to -1 and 1，对于tanh,sigmoid同样会梯度消失
+
+### 6.1 Xavier Initialization
+
+- Xavier初始化的作者，Xavier Glorot，在[论文](https://links.jianshu.com/go?to=http%3A%2F%2Fproceedings.mlr.press%2Fv9%2Fglorot10a%2Fglorot10a.pdf)中提出一个洞见：激活值的方差是逐层递减的，这导致反向传播中的梯度也逐层递减。要解决梯度消失，就要避免激活值方差的衰减，最理想的情况是，每层的输出值（激活值）保持高斯分布。
+
+- 数学背景
+
+  - 期望Expectation：是度量一个随机变量取值的集中位置或平均水平的最基本的数字特征
+
+  - 方差Variance：是表示随机变量取值的分散性的一个数字特征
+
+    -  方差越大，说明随机变量的取值分布越不均匀，变化性越强
+    - 方差越小，说明随机变量的取值越趋近于均值，即期望值。
+
+  - 关系有：
+
+    - $E[X^2]=Var[X]+E[X]^2$
+
+    如果X,Y是独立的，那么：
+
+    - $Var[XY]=E[X^2Y^2]-E[XY]^2$
+    - $E[XY]=E[X]E[Y]$
+
+- Xavier Initialization
+  $$
+  \begin{align}
+  Var(s)&=Var(\sum_i^nw_ix_i)=\sum_i^nVar(w_ix_i)\\
+  &=\sum_i^n[E(w_i)]^2Var(x_i)+E[(x_i)]^2Var(w_i)+Var(x_i)Var(w_i)\\
+  &=\sum_i^nVar(x_i)Var(w_i)\\
+  &=n(Var(w)Var(x))
+  \end{align}
+  $$
+
+  - $n$：the number of input neurons for the layer of weights you want to initialized
+
+    注意n不是input Data$X\in R^{N\times D}$的N，对于第一层而言n=D
+
+  - 上面等式第二行$E(w_i)和E(x_i)$因为用到Gaussian with zero mean所以都是0
+
+  - 为了确保variance方差 of the output = input，即为了$Var(s)=Var(x)$
+
+    - $n(Var(w)Var(x))=Var(x)\Rightarrow Var(w)=\frac{1}{n}$
+
+
+### 6.2 Kaiming initialization
+
+- 相比Xavier:
+  - Xavier初始化的问题在于，它只适用于线性激活函数，但实际上，对于深层神经网络来说，线性激活函数是没有价值，神经网络需要非线性激活函数来构建复杂的非线性系统。今天的神经网络普遍使用relu激活函数。
+  - Kaiming初始化的发明人kaiming he，在[论文](https://arxiv.org/abs/1502.01852)中提出了针对relu的kaiming初始化。
+  - 因为relu会抛弃掉小于0的值，对于一个均值为0的data来说，这就相当于砍掉了一半的值，这样一来，均值就会变大，前面Xavier初始化公式中E(x)=mean=0的情况就不成立了。根据新公式的推导，最终得到新的rescale系数：$\sqrt\frac{2}{n}$
+- $Var(w)=\frac{2}{n}$
+  - $n$：the number of input neurons for the layer of weights you want to initialize
+
+## 7) 数据集
 
 - Training set('train')
 
@@ -568,7 +669,7 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
   - Ideal Training： Small gap between training and validation loss, and both
     go down at same rate (stable without fluctuations波动).
 
-## 7）一些训练技巧
+## 8）一些训练技巧
 
 1. Debug:
    1. Use train/validation/test curves
@@ -584,7 +685,7 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
    - Logit value见3.4，是没有正则化的值
    - Softmax后的值是正则了的值，见3.4
 
-## 8）整合成接口来调试
+## 9）整合成接口来调试
 
 1. 将所有的东西写成一个接口`solver`,只要输入参数就能计算不同的模型。**代码见2.10**
 
