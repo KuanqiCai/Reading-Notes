@@ -386,7 +386,7 @@ Tensor所有提供的[Operations](https://pytorch.org/docs/stable/torch.html#mat
 
   
 
-# 三、 Build Model
+# 三、Build Model
 
 - [TORCH.NN库](https://pytorch.org/docs/stable/nn.html#torch-nn)提供了所有用来的建立Neural Network的东西。
   -  [nn.Module](https://pytorch.org/docs/stable/generated/torch.nn.Module.html)是所有PyTorch模块Module的基类
@@ -452,3 +452,203 @@ Tensor所有提供的[Operations](https://pytorch.org/docs/stable/torch.html#mat
     y_pred = pred_probab.argmax(1)
     ```
 
+# 四、Autograd(Back Progagation)
+
+- `torch.autograd` supports automatic computation of gradient for any computational graph.
+  -  If we set the attribute `.requires_grad` of `torch.Tensor` as `True`, it tracks all operations applied on that tensor.
+  -  Once all the computations are finished, the function `.backward()` computes the gradients into the `Tensor.grad` variable
+  - 也可以自定义自己的反向传播，见[官网](https://pytorch.org/docs/stable/autograd.html#function)
+
+- 例子：
+
+  ```python
+  import torch
+  # 我们只需要定义模型，前向传播和损失函数
+  x = torch.ones(5)  # input tensor
+  y = torch.zeros(3)  # expected output
+  w = torch.randn(5, 3, requires_grad=True)
+  b = torch.randn(3, requires_grad=True)
+  z = torch.matmul(x, w)+b
+  loss = torch.nn.functional.binary_cross_entropy_with_logits(z, y)
+  # 反向传播PyTorch会自动帮我们算
+  loss.backward()
+  print(w.grad)
+  print(b.grad)
+  ```
+
+# 五、Optimization
+
+ Using gradient descent to optimize the parameters.
+
+- 代码(整合前面3个部分)
+
+  ```python
+  import torch
+  from torch import nn
+  from torch.utils.data import DataLoader
+  from torchvision import datasets
+  from torchvision.transforms import ToTensor, Lambda
+  
+  training_data = datasets.FashionMNIST(
+      root="data",
+      train=True,
+      download=True,
+      transform=ToTensor()
+  )
+  
+  test_data = datasets.FashionMNIST(
+      root="data",
+      train=False,
+      download=True,
+      transform=ToTensor()
+  )
+  
+  train_dataloader = DataLoader(training_data, batch_size=64)
+  test_dataloader = DataLoader(test_data, batch_size=64)
+  
+  class NeuralNetwork(nn.Module):
+      def __init__(self):
+          super(NeuralNetwork, self).__init__()
+          self.flatten = nn.Flatten()
+          self.linear_relu_stack = nn.Sequential(
+              nn.Linear(28*28, 512),
+              nn.ReLU(),
+              nn.Linear(512, 512),
+              nn.ReLU(),
+              nn.Linear(512, 10),
+          )
+  
+      def forward(self, x):
+          x = self.flatten(x)
+          logits = self.linear_relu_stack(x)
+          return logits
+  
+  model = NeuralNetwork()
+  
+  # 定义Hyperparameter
+  learning_rate = 1e-3
+  batch_size = 64
+  epochs = 5
+  ```
+
+- **Loss Function**
+
+  -  **Loss function** measures the degree of dissimilarity of obtained result to the target value, and it is the loss function that we want to minimize during training. 
+
+  - Common loss functions include [nn.MSELoss](https://pytorch.org/docs/stable/generated/torch.nn.MSELoss.html#torch.nn.MSELoss) (Mean Square Error) for regression tasks, and [nn.NLLLoss](https://pytorch.org/docs/stable/generated/torch.nn.NLLLoss.html#torch.nn.NLLLoss) (Negative Log Likelihood) for classification. [nn.CrossEntropyLoss](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss) combines `nn.LogSoftmax` and `nn.NLLLoss`.
+
+  - 初始化loss function: 
+
+    `loss_fn = nn.CrossEntropyLoss()`
+
+- **Optimizer**
+
+  - Optimization is the process of adjusting model parameters to reduce model error in each training step. **Optimization algorithms** define how this process is performed
+
+  - There are many [different optimizers](https://pytorch.org/docs/stable/optim.html) available in PyTorch such as ADAM and RMSProp, that work better for different kinds of models and data.
+
+  - 这里使用Stochastic Gradient Descent
+
+    `optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)`
+
+- **Optimization Loop**
+
+  Each iteration of the optimization loop is called an **epoch**.
+
+  Each epoch consists of two main parts:
+
+  - **The Train Loop** - iterate over the training dataset and try to converge to optimal parameters.
+  - **The Validation/Test Loop** - iterate over the test dataset to check if model performance is improving.
+
+  ```python
+  def train_loop(dataloader, model, loss_fn, optimizer):
+      size = len(dataloader.dataset)
+      for batch, (X, y) in enumerate(dataloader):
+          # Compute prediction and loss
+          # 计算输入的参数X,得到预测值
+          pred = model(X)
+          # 计算损失函数
+          loss = loss_fn(pred, y)
+  
+          # Backpropagation
+          ## 为了避免两次计算，重置模型参数的梯度
+          optimizer.zero_grad()
+          ## 反向传播计算每一个参数的梯度，PyTorch会粗存每一个gradients
+          loss.backward()
+          ## 根据gradient调整参数
+          optimizer.step()
+  
+          if batch % 100 == 0:
+              loss, current = loss.item(), batch * len(X)
+              print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+  
+  
+  def test_loop(dataloader, model, loss_fn):
+      size = len(dataloader.dataset)
+      num_batches = len(dataloader)
+      test_loss, correct = 0, 0
+  
+      with torch.no_grad():
+          for X, y in dataloader:
+              pred = model(X)
+              test_loss += loss_fn(pred, y).item()
+              correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+  
+      test_loss /= num_batches
+      correct /= size
+      print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+      
+  # 选择CE作为要用的损失函数
+  loss_fn = nn.CrossEntropyLoss()
+  # 选择要用的optimizer
+  optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+  # 训练模型
+  epochs = 10
+  for t in range(epochs):
+      print(f"Epoch {t+1}\n-------------------------------")
+      train_loop(train_dataloader, model, loss_fn, optimizer)
+      test_loop(test_dataloader, model, loss_fn)
+  print("Done!")
+  ```
+
+# 六、Save & Load Model
+
+```python
+import torch
+import torchvision.models as models
+```
+
+- 只保存模型参数：
+
+  ```python
+  model = models.vgg16(pretrained=True)
+  torch.save(model.state_dict(), 'model_weights.pth')
+  ```
+
+  读取模型参数
+
+  ```python
+  model = models.vgg16() # we do not specify pretrained=True, i.e. do not load default weights
+  model.load_state_dict(torch.load('model_weights.pth'))
+  model.eval()
+  ```
+
+  - 读取时要创建一个一样的model实例，但这里不用下载参数
+  - 第二步是，读取上面保存的参数
+  - `model.eval()`必须在model test前添加，否则有输入数据，即使不训练，它也会改变权值。它的作用是**不启用 Batch Normalization 和 Dropout**，设置他们为evaluation mode.
+
+- 保存整个模型
+
+  保存的模型参数实际上一个字典类型，通过key-value的形式来存储模型的所有参数
+
+  ```python
+  torch.save(model, 'model.pth')
+  ```
+
+  读取整个模型
+
+  ```python
+  model = torch.load('model.pth')
+  ```
+
+  
