@@ -437,7 +437,7 @@ return 0;
   - `roslaunch panda_moveit_config demo.launch`
   - `rosrun moveit_commander moveit_commander_cmdline.py`
 
-- 然后可在上面第二个shell中控制机器人
+- 然后可在上面第二个shell中控制机器
 
   - `use panda_arm`
 
@@ -476,10 +476,16 @@ return 0;
 
   The [RobotModel](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classmoveit_1_1core_1_1RobotModel.html) and [RobotState](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classmoveit_1_1core_1_1RobotState.html) classes are the core classes that give you access to a robot’s kinematics.用于计算运动学
 
+  相关类的方法都可以在以上网站查到
+
   - RobotModel:
+    - RobotModel 负责从 URDF、SRDF中抓取该手臂的几何参数，比如:杆件参数、关节参数..等等，
     - RobotModel contains the relationships between all links and joints including their joint limit properties as loaded from the URDF.
     - The RobotModel also separates the robot’s links and joints into planning groups defined in the SRDF
+    - [RobotModelLoader类](http://docs.ros.org/noetic/api/moveit_ros_planning/html/classrobot__model__loader_1_1RobotModelLoader.html)：获取模型。会从ros parameter server中读取机器人描述，并构建一个 [RobotModel](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classmoveit_1_1core_1_1RobotModel.html) 来使用
+      - 可以使用`rosparam list`、`rosparam get /robot_description`来查看内容
   - RobotState:
+    - RobotState 则是可以进行运动学上的操作。
     - RobotState contains information about the robot at a certain point in time, storing vectors of joint positions and optionally velocities and accelerations.
     - This information can be used to obtain kinematic information about the robot that depends on its current state, such as the Jacobian of an end effector. 
     - RobotState also contains helper functions for setting the arm location based on the end effector location (Cartesian pose) and for computing Cartesian trajectories.
@@ -506,122 +512,103 @@ ros::init(argc, argv, "robot_model_and_robot_state_tutorial");
 ros::AsyncSpinner spinner(1);
 spinner.start();
 
-// BEGIN_TUTORIAL
-// Start
-// ^^^^^
-// Setting up to start using the RobotModel class is very easy. In
-// general, you will find that most higher-level components will
-// return a shared pointer to the RobotModel. You should always use
-// that when possible. In this example, we will start with such a
-// shared pointer and discuss only the basic API. You can have a
-// look at the actual code API for these classes to get more
-// information about how to use more features provided by these
-// classes.
-//
-// We will start by instantiating a
-// `RobotModelLoader`_
-// object, which will look up
-// the robot description on the ROS parameter server and construct a
-// :moveit_core:`RobotModel` for us to use.
-//
-// .. _RobotModelLoader:
-//     http://docs.ros.org/noetic/api/moveit_ros_planning/html/classrobot__model__loader_1_1RobotModelLoader.html
+
+//********************** Start **********************
+// instantiate一个RobotModelLoader类来从urdf中读取模型。
+// 运行`rosparam list`、`rosparam get /robot_description`可以发现，读取的是panda_arm.urdf.xacro
 robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
+// 获得机器人模型RobotModel。其中RobotModelPtr的Ptr指的是指针类型。直接用RobotModel也可以（即不用指针）。
 const moveit::core::RobotModelPtr& kinematic_model = robot_model_loader.getModel();
+// 获得现在用的坐标系，运行后会发现是:world
 ROS_INFO("Model frame: %s", kinematic_model->getModelFrame().c_str());
 
-// Using the :moveit_core:`RobotModel`, we can construct a
-// :moveit_core:`RobotState` that maintains the configuration
-// of the robot. We will set all joints in the state to their
-// default values. We can then get a
-// :moveit_core:`JointModelGroup`, which represents the robot
-// model for a particular group, e.g. the "panda_arm" of the Panda
-// robot.
+// 得到上面Robotmodel模型 kinematic_model的配置configuration即kinematic_state.
+// RobotStatePtr指明一个指针类型的实例，new运算符是动态分配内存。
 moveit::core::RobotStatePtr kinematic_state(new moveit::core::RobotState(kinematic_model));
+// 将所有joints设置到默认位置0，如果0不在边界内，就设置为max+min的一半。
 kinematic_state->setToDefaultValues();
+// 得到一个特定关节组joint group的模型（这里是panda_arm组），即我们要控制哪些joint
 const moveit::core::JointModelGroup* joint_model_group = kinematic_model->getJointModelGroup("panda_arm");
-
+// 得到构建这个state的所有变量的名字
 const std::vector<std::string>& joint_names = joint_model_group->getVariableNames();
 
-// Get Joint Values
-// ^^^^^^^^^^^^^^^^
-// We can retrieve the current set of joint values stored in the state for the Panda arm.
+
+//********************** Get Joint Values **********************
+// We can retrieve得到 the current set of joint values stored in the state for the Panda arm.
 std::vector<double> joint_values;
+// 将指定组的joint的值复制给joint_values数组
 kinematic_state->copyJointGroupPositions(joint_model_group, joint_values);
 for (std::size_t i = 0; i < joint_names.size(); ++i)
 {
   ROS_INFO("Joint %s: %f", joint_names[i].c_str(), joint_values[i]);
 }
 
-// Joint Limits
-// ^^^^^^^^^^^^
-// setJointGroupPositions() does not enforce joint limits by itself, but a call to enforceBounds() will do it.
-/* Set one joint in the Panda arm outside its joint limit */
+
+//********************** Joint Limits **********************
 joint_values[0] = 5.57;
+// setJointGroupPositions(),无论如何都改变joint的值为新值。
 kinematic_state->setJointGroupPositions(joint_model_group, joint_values);
-
-/* Check whether any joint is outside its joint limits */
 ROS_INFO_STREAM("Current state is " << (kinematic_state->satisfiesBounds() ? "valid" : "not valid"));
-
-/* Enforce the joint limits for this state and check again*/
+// enforceBounds()，同样用来改变joint的值，但如果新值不在边界内，它会自动设置为最大值/最小值
 kinematic_state->enforceBounds();
 ROS_INFO_STREAM("Current state is " << (kinematic_state->satisfiesBounds() ? "valid" : "not valid"));
 
-// Forward Kinematics
-// ^^^^^^^^^^^^^^^^^^
-// Now, we can compute forward kinematics for a set of random joint
-// values. Note that we would like to find the pose of the
-// "panda_link8" which is the most distal link in the
-// "panda_arm" group of the robot.
-kinematic_state->setToRandomPositions(joint_model_group);
-const Eigen::Isometry3d& end_effector_state = kinematic_state->getGlobalLinkTransform("panda_link8");
 
-/* Print end-effector pose. Remember that this is in the model frame */
+//********************** Forward Kinematics **********************
+// 计算末端link应该到的pose
+// 将每个joint的值设置为边界内的任意值
+kinematic_state->setToRandomPositions(joint_model_group);
+// panda_link8"是机器人pada_arm最远端most distal的link
+// getGlobalLinkTransform()获得link的位姿pose
+const Eigen::Isometry3d& end_effector_state = kinematic_state->getGlobalLinkTransform("panda_link8");
+// Print end-effector pose. Remember that this is in the model frame 
+// 输出末端执行器的位姿（位移+旋转）
 ROS_INFO_STREAM("Translation: \n" << end_effector_state.translation() << "\n");
 ROS_INFO_STREAM("Rotation: \n" << end_effector_state.rotation() << "\n");
 
-// Inverse Kinematics
-// ^^^^^^^^^^^^^^^^^^
-// We can now solve inverse kinematics (IK) for the Panda robot.
-// To solve IK, we will need the following:
-//
-//  * The desired pose of the end-effector (by default, this is the last link in the "panda_arm" chain):
-//    end_effector_state that we computed in the step above.
-//  * The timeout: 0.1 s
-double timeout = 0.1;
-bool found_ik = kinematic_state->setFromIK(joint_model_group, end_effector_state, timeout);
 
-// Now, we can print out the IK solution (if found):
+//**********************Inverse Kinematics **********************
+// 每一次迭代/尝试attempt的时间
+double timeout = 0.1;
+// 计算逆动力学 
+// setFromIK()有14个重载，第一个参数是控制的关节组，第二个参数是最后一个link应该到的pose
+bool found_ik = kinematic_state->setFromIK(joint_model_group, end_effector_state, timeout);
+// 如果成功找到了逆动力学解，会返回1
 if (found_ik)
 {
+  // 看看逆解后每个关节joint的值
   kinematic_state->copyJointGroupPositions(joint_model_group, joint_values);
   for (std::size_t i = 0; i < joint_names.size(); ++i)
   {
     ROS_INFO("Joint %s: %f", joint_names[i].c_str(), joint_values[i]);
   }
 }
+// 如果没找到逆动力学解，会返回0
 else
 {
   ROS_INFO("Did not find IK solution");
 }
 
-// Get the Jacobian
-// ^^^^^^^^^^^^^^^^
+
+//********************** Get the Jacobian **********************
 // We can also get the Jacobian from the :moveit_core:`RobotState`.
 Eigen::Vector3d reference_point_position(0.0, 0.0, 0.0);
 Eigen::MatrixXd jacobian;
+// getJacobian()参照with reference to一个link的一个点，来计算一个关节组(参数1)的jocobian
+// Jacobian用于计算机器人中运动学的微分问题
 kinematic_state->getJacobian(joint_model_group,
                              kinematic_state->getLinkModel(joint_model_group->getLinkModelNames().back()),
                              reference_point_position, jacobian);
 ROS_INFO_STREAM("Jacobian: \n" << jacobian << "\n");
-// END_TUTORIAL
 
+    
+//********************** END_TUTORIAL **********************
 ros::shutdown();
 return 0;
 }
 ```
 
-## Launch File
+## Launch Fil
 
 ```xml
 <launch>
@@ -644,4 +631,480 @@ return 0;
 `rosrun moveit_ros_planning moveit_print_planning_model_info`
 
 # 五、Planning Scene
+
+- The [PlanningScene](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classplanning__scene_1_1PlanningScene.html) class provides the main interface that you will use for collision checking and constraint checking. 
+
+  用于检查碰撞和约束
+
+  - 但用[PlanningScene](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classplanning__scene_1_1PlanningScene.html) class 来实例化不是推荐的方式，更推荐的使用5.1的[PlanningSceneMonitor](http://docs.ros.org/noetic/api/moveit_ros_planning/html/classplanning__scene__monitor_1_1PlanningSceneMonitor.html)类来实例化。
+  - 这里只是演示 [PlanningScene](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classplanning__scene_1_1PlanningScene.html) 类
+
+- 例子中用到的碰撞检测：
+
+  - [CollisionRequest](http://docs.ros.org/noetic/api/moveit_core/html/cpp/structcollision__detection_1_1CollisionRequest.html)：碰撞检测请求
+  - [CollisionResult](http://docs.ros.org/noetic/api/moveit_core/html/cpp/structcollision__detection_1_1CollisionResult.html) ：碰撞检测结果
+  - [AllowedCollisionMatrix](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classcollision__detection_1_1AllowedCollisionMatrix.html) (ACM) ：提供了一种mechanism机制让我们忽略某些link的碰撞检测，即即使真的碰撞了也不报错。
+
+- 例子中用到的约束检测：
+
+  有两种：
+
+  - 来自 [KinematicConstrain](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classkinematic__constraints_1_1KinematicConstraint.html)类的：
+    - [JointConstraint](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classkinematic__constraints_1_1JointConstraint.html)
+    - [PositionConstraint](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classkinematic__constraints_1_1PositionConstraint.html)
+    - [OrientationConstraint](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classkinematic__constraints_1_1OrientationConstraint.html) 
+    - [VisibilityConstraint](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classkinematic__constraints_1_1VisibilityConstraint.html) 
+    - 用于设置这些constraint的函数定义在 [utils.h](http://docs.ros.org/noetic/api/moveit_core/html/cpp/utils_8h.html) file
+
+  - 用户自定义的Constraints。（通过callback()的方式）。即例子中15行的`bool stateFeasibilityTestExample`
+
+- [代码](https://github.com/ros-planning/moveit_tutorials/tree/master/doc/planning_scene)
+
+  ```c++
+  #include <ros/ros.h>
+  // MoveIt
+  #include <moveit/robot_model_loader/robot_model_loader.h>
+  #include <moveit/planning_scene/planning_scene.h>
+  #include <moveit/kinematic_constraints/utils.h>
+  
+  
+  //********************** stateFeasibilityTestExample **********************
+  // User defined constraints can also be specified to the PlanningScene
+  // class. This is done by specifying a callback using the
+  // setStateFeasibilityPredicate function. Here's a simple example of a
+  // user-defined callback that checks whether the "panda_joint1" of
+  // the Panda robot is at a positive or negative angle:
+  // 自定义一个关节joint的constraints/Feasibility可行性。如果可行就返回1，不可行就返回0.
+  bool stateFeasibilityTestExample(const moveit::core::RobotState& kinematic_state, bool /*verbose*/)
+  {
+    const double* joint_values = kinematic_state.getJointPositions("panda_joint1");
+    return (joint_values[0] > 0.0);
+  }
+  
+  
+  int main(int argc, char** argv)
+  {
+    ros::init(argc, argv, "panda_arm_kinematics");
+    ros::AsyncSpinner spinner(1);
+    spinner.start();
+  
+    //********************** Setup **********************
+    // 加载模型
+    robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
+    // 得到模型
+    const moveit::core::RobotModelPtr& kinematic_model = robot_model_loader.getModel();
+    // 创建一个PlanningScene类，注意这不推荐，更推荐使用PlanningSceneMonitor类
+    planning_scene::PlanningScene planning_scene(kinematic_model);
+  
+    
+    //********************** Collision Checking **********************
+    // 一、Self-collision checking
+    // ~~~~~~~~~~~~~~~~~~~~~~~
+    // 检查机器人是否会自己撞自己。
+    collision_detection::CollisionRequest collision_request;
+    collision_detection::CollisionResult collision_result;
+    // Self collision checking使用的是URDF中机器模型提供的collision mesh来检测。
+    planning_scene.checkSelfCollision(collision_request, collision_result);
+    ROS_INFO_STREAM("Test 1: Current state is " << (collision_result.collision ? "in" : "not in") << " self collision");
+  
+    // 二、Change the state
+    // ~~~~~~~~~~~~~~~~
+    // PlanningScene类的实例，保存着当前机器人的状态，读取并改变它。
+    moveit::core::RobotState& current_state = planning_scene.getCurrentStateNonConst();
+    // 设置机器人的状态为任意位置
+    current_state.setToRandomPositions();
+    // 在进行新的碰撞检测之前需要先清楚旧的碰撞请求
+    collision_result.clear();
+    planning_scene.checkSelfCollision(collision_request, collision_result);
+    ROS_INFO_STREAM("Test 2: Current state is " << (collision_result.collision ? "in" : "not in") << " self collision");
+  
+    // 三、Checking for a group
+    // ~~~~~~~~~~~~~~~~~~~~
+    // 检查机器人 手 这一个部分会不会和机器人其他部分相撞
+    collision_request.group_name = "hand";
+    // 设置机器人的状态为任意位置
+    current_state.setToRandomPositions();
+    // 在进行新的碰撞检测之前需要先清楚旧的碰撞请求
+    collision_result.clear();
+    planning_scene.checkSelfCollision(collision_request, collision_result);
+    ROS_INFO_STREAM("Test 3: Current state is " << (collision_result.collision ? "in" : "not in") << " self collision");
+  
+    // 四、Getting Contact Information
+    // ~~~~~~~~~~~~~~~~~~~~
+    // 将机器手调到一个边界内的位姿
+    std::vector<double> joint_values = { 0.0, 0.0, 0.0, -2.9, 0.0, 1.4, 0.0 };
+    const moveit::core::JointModelGroup* joint_model_group = current_state.getJointModelGroup("panda_arm");
+    current_state.setJointGroupPositions(joint_model_group, joint_values);
+    ROS_INFO_STREAM("Test 4: Current state is "
+                    << (current_state.satisfiesBounds(joint_model_group) ? "valid" : "not valid"));
+    // 获得机器人在给定配置下可能发生碰撞的信息
+    collision_request.contacts = true;
+    collision_request.max_contacts = 1000;
+    collision_result.clear();
+    planning_scene.checkSelfCollision(collision_request, collision_result);
+    ROS_INFO_STREAM("Test 5: Current state is " << (collision_result.collision ? "in" : "not in") << " self collision");
+    collision_detection::CollisionResult::ContactMap::const_iterator it;
+    for (it = collision_result.contacts.begin(); it != collision_result.contacts.end(); ++it)
+    {
+      ROS_INFO("Contact between: %s and %s", it->first.first.c_str(), it->first.second.c_str());
+    }
+  
+    // 五、Modifying the Allowed Collision Matrix
+    // ~~~~~~~~~~~~~~~~~~~~  
+    // 初始化要忽略碰撞的link矩阵，ACM
+    collision_detection::AllowedCollisionMatrix acm = planning_scene.getAllowedCollisionMatrix();
+    // 得到当前状态
+    moveit::core::RobotState copied_state = planning_scene.getCurrentState();
+    // 把当前碰撞的link都加入到矩阵ACM中去，用于忽略碰撞检测
+    collision_detection::CollisionResult::ContactMap::const_iterator it2;
+    for (it2 = collision_result.contacts.begin(); it2 != collision_result.contacts.end(); ++it2)
+    {
+      acm.setEntry(it2->first.first, it2->first.second, true);
+    }
+    collision_result.clear();
+    // 最后一个参数是我们要忽略碰撞检测的link矩阵
+    planning_scene.checkSelfCollision(collision_request, collision_result, copied_state, acm);
+    ROS_INFO_STREAM("Test 6: Current state is " << (collision_result.collision ? "in" : "not in") << " self collision");
+  
+    // 六、Full Collision Checking
+    // ~~~~~~~~~~~~~~~~~~~~~~~
+    // checkCollision()不止检测机器人自己撞不撞，也会检测它和环境有无碰撞
+    // checkCollision()不像checkSelfCollision(),他会填充pad机器人碰撞mesh
+    collision_result.clear();
+    planning_scene.checkCollision(collision_request, collision_result, copied_state, acm);
+    ROS_INFO_STREAM("Test 7: Current state is " << (collision_result.collision ? "in" : "not in") << " self collision");
+  
+  
+    //********************** Constraint Checking **********************
+    // 一、Checking Kinematic Constraints
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // 获得所有link的名字
+    std::string end_effector_name = joint_model_group->getLinkModelNames().back();
+    geometry_msgs::PoseStamped desired_pose;
+    desired_pose.pose.orientation.w = 1.0;
+    desired_pose.pose.position.x = 0.3;
+    desired_pose.pose.position.y = -0.185;
+    desired_pose.pose.position.z = 0.5;
+    desired_pose.header.frame_id = "panda_link0";
+    // constructGoalConstraints()相关的文档在utils.h中，上面有链接
+    // 为link组添加约束
+    moveit_msgs::Constraints goal_constraint =
+        kinematic_constraints::constructGoalConstraints(end_effector_name, desired_pose);
+    // 更新link的位姿
+    copied_state.setToRandomPositions();
+    copied_state.update();
+    // 用bool类型的方法来检测是否收到约束
+    bool constrained = planning_scene.isStateConstrained(copied_state, goal_constraint);
+    ROS_INFO_STREAM("Test 8: Random state is " << (constrained ? "constrained" : "not constrained"));
+    // 1.1：相比于上面的一个更高效的方法：
+    // 当我们像检查相同的约束over and over again一遍又一遍，我们可以首先创建KinematicConstraintSet类的实例
+    // 它会预处理ROS约束信息，并将其设置为quick processing快速处理
+    kinematic_constraints::KinematicConstraintSet kinematic_constraint_set(kinematic_model);
+    kinematic_constraint_set.add(goal_constraint, planning_scene.getTransforms());
+    bool constrained_2 = planning_scene.isStateConstrained(copied_state, kinematic_constraint_set);
+    ROS_INFO_STREAM("Test 9: Random state is " << (constrained_2 ? "constrained" : "not constrained"));
+    // 1.2： 1.1的另一种写法
+    kinematic_constraints::ConstraintEvaluationResult constraint_eval_result =
+        kinematic_constraint_set.decide(copied_state);
+    ROS_INFO_STREAM("Test 10: Random state is " << (constraint_eval_result.satisfied ? "constrained" : "not constrained"));
+  
+    // 二、User-defined constraints
+    // ~~~~~~~~~~~~~~~~~~~~~~~~
+    // 利用PlanningScene的setStateFeasibilityPredicate()方法，将某一个boll类型的callback函数作为约束
+    // stateFeasibilityTestExample是我们在最上面定义的boll类型的callback函数
+    planning_scene.setStateFeasibilityPredicate(stateFeasibilityTestExample);
+    // 用isStateFeasible()可以检测用户自定义约束
+    bool state_feasible = planning_scene.isStateFeasible(copied_state);
+    ROS_INFO_STREAM("Test 11: Random state is " << (state_feasible ? "feasible" : "not feasible"));
+    // 最强的是isStateValid()，碰撞/约束/用户自定义约束，三个都会检测
+    bool state_valid = planning_scene.isStateValid(copied_state, kinematic_constraint_set, "panda_arm");
+    ROS_INFO_STREAM("Test 12: Random state is " << (state_valid ? "valid" : "not valid"));
+  
+  
+    ros::shutdown();
+    return 0;
+  }
+  
+  ```
+
+## 5.1 Planning Scene Monitor
+
+- The [PlanningSceneMonitor](http://docs.ros.org/noetic/api/moveit_ros_planning/html/classplanning__scene__monitor_1_1PlanningSceneMonitor.html) is the recommended interface for maintaining an up-to-date planning scene.
+
+- 不同类的关系
+
+  - **RobotState**
+
+    - The [RobotState](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classmoveit_1_1core_1_1RobotState.html) is a snapshot简介 of a robot. It contains the [RobotModel](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classmoveit_1_1core_1_1RobotModel.html) and a set of joint values.
+
+  - **CurrentStateMonitor**
+
+    - The [CurrentStateMonitor](http://docs.ros.org/noetic/api/moveit_ros_planning/html/classplanning__scene__monitor_1_1CurrentStateMonitor.html) (CSM) can be thought of as a ROS wrapper包装 for the RobotState.
+    - It subscribes订阅 to a provided topic for [JointState](http://docs.ros.org/noetic/api/sensor_msgs/html/msg/JointState.html) messages that provide up-to-date最新的 sensor values for single degree of freedom actuators单自由度执行器, such as revolute旋转关节 or prismatic joints棱柱关节, and updates its internal RobotState with those joint values
+    - o maintain up-to-date transform information for links and other frames attached with multiple-degree-of-freedom joints多自由度关节(floating and planar joints.), the CSM stores a TF2 [Buffer](http://docs.ros.org/noetic/api/tf2_ros/html/c++/classtf2__ros_1_1Buffer.html)缓冲器 that uses a TF2 [TransformListener](http://docs.ros.org/noetic/api/tf2_ros/html/c++/classtf2__ros_1_1TransformListener.html) to set their transforms in its internal data.
+
+  - **Planning Scene**
+
+    - The [PlanningScene](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classplanning__scene_1_1PlanningScene.html) is a snapshot of the world that includes both the RobotState and any number of collision objects.
+    - The Planning Scene can be used for collision checking as well as getting information about the environment.
+
+  - **PlanningSceneMonitor**
+
+    - The [PlanningSceneMonitor](http://docs.ros.org/noetic/api/moveit_ros_planning/html/classplanning__scene__monitor_1_1PlanningSceneMonitor.html) wraps a PlanningScene with ROS interfaces for keeping the PlanningScene up to date.用ROS包装了下达到实时更新Planning Scene的目的。To access the PlanningSceneMonitor’s underlying PlanningScene, use the provided [LockedPlanningSceneRW](http://docs.ros.org/noetic/api/moveit_ros_planning/html/classplanning__scene__monitor_1_1LockedPlanningSceneRW.html) and [LockedPlanningSceneRO](http://docs.ros.org/noetic/api/moveit_ros_planning/html/classplanning__scene__monitor_1_1LockedPlanningSceneRO.html) classes.
+
+    - The PlanningSceneMonitor has the following objects对象, which have their own ROS interfaces for keeping sub-components of the planning scene up to date:
+
+      - A [CurrentStateMonitor](http://docs.ros.org/noetic/api/moveit_ros_planning/html/classplanning__scene__monitor_1_1CurrentStateMonitor.html) for tracking updates to the RobotState via a `robot_state_subscriber_` and a `tf_buffer_`, as well as a planning scene subscriber for listening to planning scene diffs from other publishers.
+
+      - An OccupancyMapMonitor for tracking updates to an OccupancyMap via ROS topics and services.
+
+    - The PlanningSceneMonitor has the following subscribers订阅者:
+
+      - `collision_object_subscriber_` - Listens to a provided topic for [CollisionObject](http://docs.ros.org/noetic/api/moveit_msgs/html/msg/CollisionObject.html) messages that might add, remove, or modify collision objects in the planning scene and passes them into its monitored planning scene
+
+      - `planning_scene_world_subscriber_` - Listens to a provided topic for [PlanningSceneWorld](http://docs.ros.org/noetic/api/moveit_msgs/html/msg/PlanningSceneWorld.html) messages that may contain collision object information and/or octomap information. This is useful for keeping planning scene monitors in sync同步
+
+      - `attached_collision_object_subscriber_` - Listens on a provided topic for [AttachedCollisionObject](http://docs.ros.org/noetic/api/moveit_msgs/html/msg/AttachedCollisionObject.html) messages that determine the attaching固定/detaching分离 of objects to links in the robot state.
+
+    - The PlanningSceneMonitor has the following services服务:
+
+      - `get_scene_service_` - Which is an optional service to get the full planning scene state.
+
+    - The PlanningSceneMonitor is initialized with:
+
+      - `startSceneMonitor` - Which starts the `planning_scene_subscriber_`,
+
+      - `startWorldGeometryMonitor` - Which starts the `collision_object_subscriber_`, the `planning_scene_world_subscriber_`, and the OccupancyMapMonitor,
+
+      - `startStateMonitor` - Which starts the CurrentStateMonitor and the `attached_collision_object_subscriber_`,
+
+      - `startPublishingPlanningScene` - Which starts another thread for publishing the entire planning scene on a provided topic for other PlanningSceneMonitors to subscribe to, and
+
+      - `providePlanningSceneService` - Which starts the `get_scene_service_`.
+
+- PlanningSceneInterface
+
+  - The [PlanningSceneInterface](http://docs.ros.org/noetic/api/moveit_ros_planning_interface/html/classmoveit_1_1planning__interface_1_1PlanningSceneInterface.html) is a useful class for publishing updates to a MoveGroup’s [PlanningSceneMonitor](http://docs.ros.org/noetic/api/moveit_ros_planning/html/classplanning__scene__monitor_1_1PlanningSceneMonitor.html) through a C++ API without creating your own subscribers and service clients. It may not work without MoveGroup or MoveItCpp.
+
+## 5.2 Planning Scene ROS API
+
+- 使用Planning Scene可以在world中添加或删除物体，固定attaching或分离detaching物体objects到机器人上
+
+- 运行：
+
+  - 第一个shell:`roslaunch panda_moveit_config demo.launch`
+  - 第二个shell:`roslaunch moveit_tutorials planning_scene_ros_api_tutorial.launch`
+
+- [代码](https://github.com/ros-planning/moveit_tutorials/tree/master/doc/planning_scene_ros_api)：
+
+  ```c++
+  #include <ros/ros.h>
+  #include <geometry_msgs/Pose.h>
+  
+  // MoveIt
+  #include <moveit_msgs/PlanningScene.h>
+  #include <moveit_msgs/AttachedCollisionObject.h>
+  #include <moveit_msgs/GetStateValidity.h>
+  #include <moveit_msgs/DisplayRobotState.h>
+  #include <moveit_msgs/ApplyPlanningScene.h>
+  
+  #include <moveit/robot_model_loader/robot_model_loader.h>
+  #include <moveit/robot_state/robot_state.h>
+  #include <moveit/robot_state/conversions.h>
+  
+  #include <moveit_visual_tools/moveit_visual_tools.h>
+  
+  int main(int argc, char** argv)
+  {
+    ros::init(argc, argv, "planning_scene_ros_api_tutorial");
+    ros::AsyncSpinner spinner(1);
+    spinner.start();
+  
+    ros::NodeHandle node_handle;
+    // BEGIN_TUTORIAL
+    //
+    // Visualization
+    // ^^^^^^^^^^^^^
+    // The package MoveItVisualTools provides many capabilities for visualizing objects, robots,
+    // and trajectories in RViz as well as debugging tools such as step-by-step introspection of a script.
+    moveit_visual_tools::MoveItVisualTools visual_tools("panda_link0");
+    visual_tools.deleteAllMarkers();
+  
+    // ROS API
+    // ^^^^^^^
+    // The ROS API to the planning scene publisher is through a topic interface
+    // using "diffs". A planning scene diff is the difference between the current
+    // planning scene (maintained by the move_group node) and the new planning
+    // scene desired by the user.
+    //
+    // Advertise the required topic
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    // We create a publisher and wait for subscribers.
+    // Note that this topic may need to be remapped in the launch file.
+    ros::Publisher planning_scene_diff_publisher = node_handle.advertise<moveit_msgs::PlanningScene>("planning_scene", 1);
+    ros::WallDuration sleep_t(0.5);
+    while (planning_scene_diff_publisher.getNumSubscribers() < 1)
+    {
+      sleep_t.sleep();
+    }
+    visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to start the demo");
+  
+    // Define the attached object message
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    // We will use this message to add or
+    // subtract the object from the world
+    // and to attach the object to the robot.
+    moveit_msgs::AttachedCollisionObject attached_object;
+    attached_object.link_name = "panda_hand";
+    /* The header must contain a valid TF frame*/
+    attached_object.object.header.frame_id = "panda_hand";
+    /* The id of the object */
+    attached_object.object.id = "box";
+  
+    /* A default pose */
+    geometry_msgs::Pose pose;
+    pose.position.z = 0.11;
+    pose.orientation.w = 1.0;
+  
+    /* Define a box to be attached */
+    shape_msgs::SolidPrimitive primitive;
+    primitive.type = primitive.BOX;
+    primitive.dimensions.resize(3);
+    primitive.dimensions[0] = 0.075;
+    primitive.dimensions[1] = 0.075;
+    primitive.dimensions[2] = 0.075;
+  
+    attached_object.object.primitives.push_back(primitive);
+    attached_object.object.primitive_poses.push_back(pose);
+  
+    // Note that attaching an object to the robot requires
+    // the corresponding operation to be specified as an ADD operation.
+    attached_object.object.operation = attached_object.object.ADD;
+  
+    // Since we are attaching the object to the robot hand to simulate picking up the object,
+    // we want the collision checker to ignore collisions between the object and the robot hand.
+    attached_object.touch_links = std::vector<std::string>{ "panda_hand", "panda_leftfinger", "panda_rightfinger" };
+  
+    // Add an object into the environment
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    // Add the object into the environment by adding it to
+    // the set of collision objects in the "world" part of the
+    // planning scene. Note that we are using only the "object"
+    // field of the attached_object message here.
+    ROS_INFO("Adding the object into the world at the location of the hand.");
+    moveit_msgs::PlanningScene planning_scene;
+    planning_scene.world.collision_objects.push_back(attached_object.object);
+    planning_scene.is_diff = true;
+    planning_scene_diff_publisher.publish(planning_scene);
+    visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
+  
+    // Interlude: Synchronous vs Asynchronous updates
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    // There are two separate mechanisms available to interact
+    // with the move_group node using diffs:
+    //
+    // * Send a diff via a rosservice call and block until
+    //   the diff is applied (synchronous update)
+    // * Send a diff via a topic, continue even though the diff
+    //   might not be applied yet (asynchronous update)
+    //
+    // While most of this tutorial uses the latter mechanism (given the long sleeps
+    // inserted for visualization purposes asynchronous updates do not pose a problem),
+    // it would is perfectly justified to replace the planning_scene_diff_publisher
+    // by the following service client:
+    ros::ServiceClient planning_scene_diff_client =
+        node_handle.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
+    planning_scene_diff_client.waitForExistence();
+    // and send the diffs to the planning scene via a service call:
+    moveit_msgs::ApplyPlanningScene srv;
+    srv.request.scene = planning_scene;
+    planning_scene_diff_client.call(srv);
+    // Note that this does not continue until we are sure the diff has been applied.
+    //
+    // Attach an object to the robot
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    // When the robot picks up an object from the environment, we need to
+    // "attach" the object to the robot so that any component dealing with
+    // the robot model knows to account for the attached object, e.g. for
+    // collision checking.
+    //
+    // Attaching an object requires two operations
+    //  * Removing the original object from the environment
+    //  * Attaching the object to the robot
+  
+    /* First, define the REMOVE object message*/
+    moveit_msgs::CollisionObject remove_object;
+    remove_object.id = "box";
+    remove_object.header.frame_id = "panda_hand";
+    remove_object.operation = remove_object.REMOVE;
+  
+    // Note how we make sure that the diff message contains no other
+    // attached objects or collisions objects by clearing those fields
+    // first.
+    /* Carry out the REMOVE + ATTACH operation */
+    ROS_INFO("Attaching the object to the hand and removing it from the world.");
+    planning_scene.world.collision_objects.clear();
+    planning_scene.world.collision_objects.push_back(remove_object);
+    planning_scene.robot_state.attached_collision_objects.push_back(attached_object);
+    planning_scene.robot_state.is_diff = true;
+    planning_scene_diff_publisher.publish(planning_scene);
+  
+    visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
+  
+    // Detach an object from the robot
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    // Detaching an object from the robot requires two operations
+    //  * Detaching the object from the robot
+    //  * Re-introducing the object into the environment
+  
+    /* First, define the DETACH object message*/
+    moveit_msgs::AttachedCollisionObject detach_object;
+    detach_object.object.id = "box";
+    detach_object.link_name = "panda_hand";
+    detach_object.object.operation = attached_object.object.REMOVE;
+  
+    // Note how we make sure that the diff message contains no other
+    // attached objects or collisions objects by clearing those fields
+    // first.
+    /* Carry out the DETACH + ADD operation */
+    ROS_INFO("Detaching the object from the robot and returning it to the world.");
+    planning_scene.robot_state.attached_collision_objects.clear();
+    planning_scene.robot_state.attached_collision_objects.push_back(detach_object);
+    planning_scene.robot_state.is_diff = true;
+    planning_scene.world.collision_objects.clear();
+    planning_scene.world.collision_objects.push_back(attached_object.object);
+    planning_scene.is_diff = true;
+    planning_scene_diff_publisher.publish(planning_scene);
+  
+    visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
+  
+    // Remove the object from the collision world
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    // Removing the object from the collision world just requires
+    // using the remove object message defined earlier.
+    // Note, also how we make sure that the diff message contains no other
+    // attached objects or collisions objects by clearing those fields
+    // first.
+    ROS_INFO("Removing the object from the world.");
+    planning_scene.robot_state.attached_collision_objects.clear();
+    planning_scene.world.collision_objects.clear();
+    planning_scene.world.collision_objects.push_back(remove_object);
+    planning_scene_diff_publisher.publish(planning_scene);
+    // END_TUTORIAL
+  
+    visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to end the demo");
+  
+    ros::shutdown();
+    return 0;
+  }
+  
+  ```
+
+  
+
+# 六、Motion Planning
+
+## 6.1 Motion Planning API
+
+## 6.2 Motion Planning Pipeline
 
