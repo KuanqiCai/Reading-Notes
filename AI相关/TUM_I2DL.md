@@ -1080,7 +1080,7 @@ class DataLoader:
 
 ```
 
-# 2.逻辑回归：判断房家贵/不贵
+# 2. 逻辑回归：判断房家贵/不贵
 
 ## 2.1加载库
 
@@ -1748,7 +1748,7 @@ class Solver(object):
   ```
 
 
-# 3.数据集CIFAR10分类
+# 3. 数据集CIFAR10分类
 
 ## 3.1加载库
 
@@ -2798,7 +2798,7 @@ def affine_backward(dout, cache):
   ```
 
 
-# 4.Cifar10分类：调参
+# 4. Cifar10分类：调参
 
 ## 4.1加载库
 
@@ -3572,5 +3572,403 @@ best_model, results = random_search(
 ########################################################################
 #                           END OF YOUR CODE                           #
 ########################################################################
+```
+
+# 5. 用PyTorch Lighhtning来Cifar10分类
+
+使用PyTorch Lightning可以方便的调用各种硬件资源以及调试程序。让我们专注于模型的改进。
+
+## 5.1 加载库
+
+```python
+import os
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, random_split
+import torchvision
+import torchvision.transforms as transforms
+%load_ext autoreload
+%autoreload 2
+
+# 使用GPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
+```
+
+## 5.2 使用TensorBoard调试
+
+Anaconda的shell中输入
+
+```
+tensorboard --logdir lightning_logs --port 6006
+```
+
+## 5.3 用PL定义模型
+
+### 5.3.1 数据加载
+
+PyTorch Lightning 提供 `LightningDataModule` 作为基类，来设置dataloaders数据加载.
+
+```python
+import pytorch_lightning as pl
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, random_split
+from torch.utils.data.sampler import SubsetRandomSampler, RandomSampler, SequentialSampler
+import torchvision
+import torchvision.transforms as transforms
+import numpy as np
+from tqdm import tqdm
+
+class CIFAR10DataModule(pl.LightningDataModule):
+    def __init__(self, hparams):
+        super().__init__()
+        self.opt = hparams
+        if 'loading_method' not in hparams.keys():
+            self.opt['loading_method'] = 'Image'
+        if 'num_workers' not in hparams.keys():
+            self.opt['num_workers'] = 2
+
+    def prepare_data(self, stage=None, CIFAR_ROOT="../datasets/cifar10"):
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+
+        # create dataset
+        CIFAR_ROOT = "../datasets/cifar10"
+        my_transform = None
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+        # 预处理数据（PyTorch的函数方法)
+        # transforms.Compose()建立一些预处理方法来处理数据
+        # transforms.ToTensor()讲图片或数组从(0,255)转为(0,1)的Tensor（归一化）
+        # transforms.Normalize(mean,std)用提供的平均数，标准差来去均值实现中心化的处理（标准化）
+        my_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean,std)
+        ])
+        
+        # Make sure to use a consistent transform for validation/test
+        train_val_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean, std)])
+
+        # Note: you can change the splits if you want :)
+        split = {
+            'train': 0.6,
+            'val': 0.2,
+            'test': 0.2
+        }
+        split_values = [v for k,v in split.items()]
+        assert sum(split_values) == 1.0
+        
+        ## 划分数据并进行数据预处理
+        if self.opt['loading_method'] == 'Image':
+            # Set up a full dataset with the two respective transforms
+            cifar_complete_augmented = torchvision.datasets.ImageFolder(root=CIFAR_ROOT, transform=my_transform)
+            cifar_complete_train_val = torchvision.datasets.ImageFolder(root=CIFAR_ROOT, transform=train_val_transform)
+
+            # Instead of splitting the dataset in the beginning you can also # split using a sampler. This is not better, but we wanted to show it off here as an example by using the default ImageFolder dataset :)
+
+            # First regular splitting which we did for you before
+            N = len(cifar_complete_augmented)        
+            num_train, num_val = int(N*split['train']), int(N*split['val'])
+            indices = np.random.permutation(N)
+            train_idx, val_idx, test_idx = indices[:num_train], indices[num_train:num_train+num_val], indices[num_train+num_val:]
+
+            # Now we can set the sampler via the respective subsets
+            train_sampler = SubsetRandomSampler(train_idx)
+            val_sampler = SubsetRandomSampler(val_idx)
+            test_sampler= SubsetRandomSampler(test_idx)
+            self.sampler = {"train": train_sampler, "val": val_sampler, "test": test_sampler}
+
+            # assign to use in dataloaders
+            self.dataset = {}
+            self.dataset["train"], self.dataset["val"], self.dataset["test"] = cifar_complete_augmented,\
+                cifar_complete_train_val, cifar_complete_train_val
+
+        elif self.opt['loading_method'] == 'Memory':
+            self.dataset = {}
+            self.sampler = {}
+
+            for mode in ['train', 'val', 'test']:
+                # Set transforms
+                if mode == 'train':
+                    transform = my_transform
+                else:
+                    transform = train_val_transform
+
+                self.dataset[mode] = MemoryImageFolderDataset(
+                    root = CIFAR_ROOT,
+                    transform = transform,
+                    mode = mode,
+                    split = split
+                )
+        else:
+            raise NotImplementedError("Wrong loading method")
+
+    def return_dataloader_dict(self, mode):
+        arg_dict = {
+            'batch_size': self.opt["batch_size"],
+            'num_workers': self.opt['num_workers'],
+            'persistent_workers': True,
+            'pin_memory': True
+        }
+        if self.opt['loading_method'] == 'Image':
+            arg_dict['sampler'] = self.sampler[mode]
+        elif self.opt['loading_method'] == 'Memory':
+            arg_dict['shuffle'] = True if mode == 'train' else False
+        return arg_dict
+
+    def train_dataloader(self):
+        arg_dict = self.return_dataloader_dict('train')
+        return DataLoader(self.dataset["train"], **arg_dict)
+
+    def val_dataloader(self):
+        arg_dict = self.return_dataloader_dict('val')
+        return DataLoader(self.dataset["val"], **arg_dict)
+    
+    def test_dataloader(self):
+        arg_dict = self.return_dataloader_dict('train')
+        return DataLoader(self.dataset["train"], **arg_dict)
+```
+
+- Dataloader
+
+   `DataLoader` class that is used to create `train_dataloader` and `val_dataloader`
+
+  ```python
+  import numpy as np
+  class DataLoader:
+      """
+      Dataloader Class
+      Defines an iterable batch-sampler over a given dataset
+      """
+      def __init__(self, dataset, batch_size=1, shuffle=False, drop_last=False):
+          """
+          :param dataset: dataset from which to load the data
+          :param batch_size: how many samples per batch to load
+          :param shuffle: set to True to have the data reshuffled at every epoch
+          :param drop_last: set to True to drop the last incomplete batch,
+              if the dataset size is not divisible by the batch size.
+              If False and the size of dataset is not divisible by the batch
+              size, then the last batch will be smaller.
+          """
+          self.dataset = dataset
+          self.batch_size = batch_size
+          self.shuffle = shuffle
+          self.drop_last = drop_last
+  
+      def __iter__(self):
+          def combine_batch_dicts(batch):
+              """
+              Combines a given batch (list of dicts) to a dict of numpy arrays
+              :param batch: batch, list of dicts
+                  e.g. [{k1: v1, k2: v2, ...}, {k1:, v3, k2: v4, ...}, ...]
+              :returns: dict of numpy arrays
+                  e.g. {k1: [v1, v3, ...], k2: [v2, v4, ...], ...}
+              """
+              batch_dict = {}
+              for data_dict in batch:
+                  for key, value in data_dict.items():
+                      if key not in batch_dict:
+                          batch_dict[key] = []
+                      batch_dict[key].append(value)
+              return batch_dict
+  
+          def batch_to_numpy(batch):
+              """Transform all values of the given batch dict to numpy arrays"""
+              numpy_batch = {}
+              for key, value in batch.items():
+                  numpy_batch[key] = np.array(value)
+              return numpy_batch
+  
+          if self.shuffle:
+              index_iterator = iter(np.random.permutation(len(self.dataset)))
+          else:
+              index_iterator = iter(range(len(self.dataset)))
+  
+          batch = []
+          for index in index_iterator:
+              batch.append(self.dataset[index])
+              if len(batch) == self.batch_size:
+                  yield batch_to_numpy(combine_batch_dicts(batch))
+                  batch = []
+  
+          if len(batch) > 0 and not self.drop_last:
+              yield batch_to_numpy(combine_batch_dicts(batch))
+  
+      def __len__(self):
+          length = None
+  
+          if self.drop_last:
+              length = len(self.dataset) // self.batch_size
+          else:
+              length = int(np.ceil(len(self.dataset) / self.batch_size))
+  
+          return length
+  ```
+
+### 5.3.2 神经网络结构
+
+PyTorch Lightning的神经网络模型是基于`pl.LightningModule`类来创建的
+
+根据[torch.nn](https://pytorch.org/docs/stable/nn.html)来定义我们的模型。
+
+根据[torch.optim](https://pytorch.org/docs/stable/optim.html)来定义我们的优化器
+
+```python
+class MyPytorchModel(pl.LightningModule):
+    
+    def __init__(self, hparams):
+        super().__init__()
+
+        # set hyperparams
+        self.save_hyperparameters(hparams)
+        ## 定义神经网络模型
+        self.model = None
+        self.model = nn.Sequential(
+            nn.Linear(self.hparams["input_size"],self.hparams["nn_hidden_Layer1"]),
+            nn.ReLU(),
+            nn.Linear(self.hparams["nn_hidden_Layer1"],self.hparams["num_classes"]),
+            nn.ReLU()
+        )
+
+    def forward(self, x):
+
+        # x.shape = [batch_size, 3, 32, 32] -> flatten the image first
+        x = x.view(x.shape[0], -1)
+
+        # feed x into model!
+        x = self.model(x)
+
+        return x
+    
+    def general_step(self, batch, batch_idx, mode):
+        images, targets = batch
+
+        # forward pass
+        out = self.forward(images)
+
+        # loss
+        loss = F.cross_entropy(out, targets)
+
+        preds = out.argmax(axis=1)
+        n_correct = (targets == preds).sum()
+        n_total = len(targets)
+        return loss, n_correct, n_total
+    
+    def general_end(self, outputs, mode):
+        # average over all batches aggregated during one epoch
+        avg_loss = torch.stack([x[mode + '_loss'] for x in outputs]).mean()
+        length = sum([x[mode + '_n_total'] for x in outputs])
+        total_correct = torch.stack([x[mode + '_n_correct'] for x in outputs]).sum().cpu().numpy()
+        acc = total_correct / length
+        return avg_loss, acc
+
+    def training_step(self, batch, batch_idx):
+        loss, n_correct, n_total = self.general_step(batch, batch_idx, "train")
+        self.log('loss',loss)
+        return {'loss': loss, 'train_n_correct':n_correct, 'train_n_total': n_total}
+
+    def validation_step(self, batch, batch_idx):
+        loss, n_correct, n_total = self.general_step(batch, batch_idx, "val")
+        self.log('val_loss',loss)
+        return {'val_loss': loss, 'val_n_correct':n_correct, 'val_n_total': n_total}
+    
+    def test_step(self, batch, batch_idx):
+        loss, n_correct, n_total = self.general_step(batch, batch_idx, "test")
+        return {'test_loss': loss, 'test_n_correct':n_correct, 'test_n_total': n_total}
+
+    def validation_epoch_end(self, outputs):
+        avg_loss, acc = self.general_end(outputs, "val")
+        self.log('val_loss',avg_loss)
+        self.log('val_acc',acc)
+        return {'val_loss': avg_loss, 'val_acc': acc}
+
+    def configure_optimizers(self):
+        optim = torch.optim.Adam(self.model.parameters(),self.hparams["learning_rate"], weight_decay=self.hparams['weight_decay'])
+        StepLR = torch.optim.lr_scheduler.MultiStepLR(optim, milestones=[30], gamma=0.5)
+        return optim
+
+    def getTestAcc(self, loader):
+        self.model.eval()
+        self.model = self.model.to(self.device)
+
+        scores = []
+        labels = []
+
+        for batch in tqdm(loader):
+            X, y = batch
+            X = X.to(self.device)
+            score = self.forward(X)
+            scores.append(score.detach().cpu().numpy())
+            labels.append(y.detach().cpu().numpy())
+
+        scores = np.concatenate(scores, axis=0)
+        labels = np.concatenate(labels, axis=0)
+
+        preds = scores.argmax(axis=1)
+        acc = (labels == preds).mean()
+        return preds, acc
+
+```
+
+
+
+## 5.4 调参
+
+```python
+from exercise_code.MyPytorchModel import MyPytorchModel, CIFAR10DataModule
+# make sure you have downloaded the Cifar10 dataset on root: "../datasets/cifar10", if not, please check exercise 03.
+hparams = {
+    "loading_method":"Memory",
+    "num_workers":1,
+    "input_size":3*3*32,
+    "batch_size":1000,
+    "learning_rate":5e-5,
+    "weight_decay":1e-3,
+    "nn_hidden_Layer1":1500,
+    "num_classes":10
+} 
+
+# Make sure you downloaded the CIFAR10 dataset already when using this cell
+# since we are showcasing the pytorch inhering ImageFolderDataset that
+# doesn't automatically download our data. Check exercise 3
+
+# If you want to switch to the memory dataset instead of image folder use
+# hparams["loading_method"] = 'Memory'
+# The default is hparams["loading_method"] = 'Image'
+# You will notice that it takes way longer to initialize a MemoryDataset
+# method because we have to load the data points into memory all the time.
+
+# You might get warnings below if you use too few workers. Pytorch uses
+# a more sophisticated Dataloader than the one you implemented previously.
+# In particular it uses multi processing to have multiple cores work on
+# individual data samples. You can enable more than workers (default=2)
+# via 
+# hparams['num_workers'] = 8
+
+# Set up the data module including your implemented transforms
+data_module = CIFAR10DataModule(hparams)
+data_module.prepare_data()
+# Initialize our model
+model = MyPytorchModel(hparams)
+```
+
+## 5.5训练
+
+使用pytorch_lightning的[trainer](https://pytorch-lightning.readthedocs.io/en/stable/common/trainer.html)
+
+```python
+import pytorch_lightning as pl
+trainer = None
+
+trainer = pl.Trainer(
+    max_epochs=2,
+    accelerator = 'gpu' 
+)
+
+trainer.fit(model, data_module)
 ```
 
