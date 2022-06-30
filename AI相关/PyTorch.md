@@ -1221,6 +1221,7 @@ class FashionMNISTDataModule(pl.LightningDataModule):
 
     def prepare_data(self):
         # Define the transform
+        ## transforms.Normalize(，)第一个参数是mean平均数,第二个参数是std标准差
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
         # Download the Fashion-MNIST dataset
         fashion_mnist_train_val = torchvision.datasets.FashionMNIST(root='../datasets', train=True, download=True, transform=transform)
