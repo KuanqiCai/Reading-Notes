@@ -669,7 +669,138 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
   - Ideal Training： Small gap between training and validation loss, and both
     go down at same rate (stable without fluctuations波动).
 
-## 8）一些训练技巧
+## 8) Data Augmentation
+
+- Data Pre-Processing
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Data%20pre_processing.png?raw=true)
+
+- Data Augmentation增长
+  - A classifier has to be invariant不变 to a wide variety of transformations变化
+  - Helping the classifier: synthesize合成 data simulating plausible似乎是真的 transformations
+  - 手段有：
+    - Flip翻转
+    - crop裁剪
+    - Random brightniess and contrast changes
+    - shear剪切(使倾斜)
+
+## 9) Regularization 正则化
+
+正则化的目的主要是防止过拟合overfitting，限制模型的复杂度。
+
+### 9.1 L2 regularization
+
+- 公式：$\theta_{k+1}=\theta_k-\epsilon\nabla_\theta(\theta_k,x,y)-\lambda\theta_k$
+
+  - $\epsilon$: Learning rate
+
+  - $\nabla_\theta$: Gradient
+
+  - $-\lambda\theta_k$: Gradient of L2-Regularization
+  - $1-\lambda$: Learning rate of weight decay衰减.(上面公式合并一下)
+
+- 用于penalize惩罚 large weights
+
+- 用于improve generalization泛化
+
+- Early Stopping
+
+### 9.3 Ensemble Methods集成学习
+
+  集成学习是一种训练思路，并不是某种具体的算法。它会挑选一些简单的基础模型进行组装，从而得到更好的效果。主要有2种：
+
+  - **Bagging**(bootstrap aggregating自助聚集的简写)：核心思路是民主
+    - Bagging 的思路是所有基础模型都一致对待，每个基础模型手里都只有一票。然后使用民主投票的方式得到最终的结果。
+    - **经过 bagging 得到的结果方差（variance）更小**。
+    - 具体过程：
+      1. 从原始样本集中抽取训练集。每轮从原始样本集中使用Bootstraping的方法抽取n个训练样本（在训练集中，有些样本可能被多次抽取到，而有些样本可能一次都没有被抽中）。共进行k轮抽取，得到k个训练集。（k个训练集之间是相互独立的）
+      2. 每次使用一个训练集得到一个模型，k个训练集共得到k个模型。（注：这里并没有具体的分类算法或回归方法，我们可以根据具体问题采用不同的分类或回归方法，如决策树、感知器等）
+      3. 对分类问题：将上步得到的k个模型采用投票的方式得到分类结果；对回归问题，计算上述模型的均值作为最后的结果。（所有模型的重要性相同）
+    - 在 bagging 的方法中，最广为熟知的就是随机森林了：bagging + 决策树 = 随机森林
+  - **Boosting**助推：核心思路是精英
+    - Boosting 和 bagging 最本质的差别在于他对基础模型不是一致对待的，而是经过不停的考验和筛选来挑选出「精英」，然后给精英更多的投票权，表现不好的基础模型则给较少的投票权，然后综合所有人的投票得到最终结果。
+    - **经过 boosting 得到的结果偏差（bias）更小**
+    - 具体过程：
+      1. 通过加法模型将基础模型进行线性的组合。
+      2. 每一轮训练都提升那些错误率小的基础模型权重，同时减小错误率高的模型权重。
+      3. 在每一轮改变训练数据的权值或概率分布，通过提高那些在前一轮被弱分类器分错样例的权值，减小前一轮分对样例的权值，来使得分类器对误分的数据有较好的效果。
+    - 在 boosting 的方法中，比较主流的有 [Adaboost](https://easyai.tech/ai-definition/adaboost/) 和 Gradient boosting 。
+
+### 9.3 Dropout
+
+- 在机器学习的模型中，如果模型的参数太多，而训练样本又太少，训练出来的模型很容易产生过拟合的现象。Dropout可以比较有效的缓解过拟合的发生，在一定程度上达到正则化的效果。
+
+- Dropout可以作为训练深度神经网络的一种trick供选择。在每个训练批次中，通过忽略一半的特征检测器（让一半的隐层节点值为0）Using half the network = half capacity，可以明显地减少过拟合现象。这种方式可以减少特征检测器（隐层节点）间的相互作用reducing co-adaptation between neurons，检测器相互作用是指某些检测器依赖其他检测器才能发挥作用。
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Dropout.png?raw=true)
+
+- 特征
+  - Usually does not work well when combined with batch-norm.
+  - Efficient regularization method, can be used with L2
+  - Training takes a bit longer, usually 1.5x
+  - But, can be used for uncertainty estimation
+- Monte Carlo dropout
+  - Neural networks are massively overconfident
+  - We can use dropout to make the softmax probabilities more calibrated校准的.
+  - Training: use dropout with a low p (0.1 or 0.2).
+  - Inference, run the same image multiple times (25- 100), and average the results.
+
+### 9.4 Batch normalization
+
+- Batch Normalization批标准化：
+
+  - Batch normalization 也可以被看做一个层面.用在fully connected or convolutional layers和 activation function之间。
+
+    先数据X -> 全连接层 -> Batch normalization -> 激励函数
+
+  - Batch normalization 的 batch 是批数据, 把数据分成小批小批进行 stochastic gradient descent. 而且在每批数据进行前向传递 forward propagation 的时候, 对每一层都进行 normalization 的处理,
+
+- 为什么需要Batch Normalization批标准化：
+
+  1. We know that normalizing input features can speed up learning, one intuition is that doing same thing for hidden layers should also work.
+  2. solve the problem of covariance shift样本点的变化
+     - Covariance shift: 假设x是属于特征空间的某一样本点，y是标签。covariate这个词，其实就是指这里的x。Covariance shift即样本点x的变化。
+     - Suppose you have trained your cat-recognizing network use black cat, but evaluate on colored cats, you will see data distribution changing(called covariance shift). 我们无法用只用黑猫训练的模型去预测五颜六色的猫，这时候就只能重新训练模型
+     - For a neural network, suppose input distribution is constant恒定, so output distribution of a certain hidden layer某个隐藏层的输出分布 should have been constant. But as the weights of that layer and previous layers changing in the training phase, the output distribution will change, this cause covariance shift from the perspective of layer after it从后面层的角度来看. Just like cat-recognizing network, the following need to re-train. To recover this problem, we use batch normal to force a zero-mean and one-variance distribution. It allow layer after it to learn independently from previous layers, and more **concentrate专注于 on its own task**, and so as to speed up the training process.
+  3. Batch normal as regularization(slightly)
+     - In batch normal, mean and variance is computed on mini-batch, which consist not too much samples. So the mean and variance contains noise. Just like dropout, it adds some noise to hidden layer's activation(dropout randomly multiply activation by 0 or 1). **This is an extra and slight effect, don't rely on it as a regularizer.**
+  4. 对于tanh激活函数，可以avoid vanishing gradient
+     - 没有 normalize 的数据 使用 tanh 激活以后, 激活值大部分都分布到了饱和阶段, 也就是大部分的激活值不是-1, 就是1, 而 normalize 以后, 大部分的激活值在每个分布区间都还有存在. 再将这个激活后的分布传递到下一层神经网络进行后续计算, 每个区间都有分布的这一种对于神经网络就会更加有价值.
+
+  
+
+- 公式：
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/batch%20normalization.png?raw=true)
+
+  - 用N个有D个特征的样本数据x,来计算平均值mean: $\mu$
+
+  - 基于平均值$\mu$,计算方差variance: $\sigma$
+
+  - 标准化的normalized input data: $\hat{x}$
+    $$
+    \hat{x}=\frac{x_{i,j}-\mu_j}{\sqrt{\sigma_j^2+\epsilon}}
+    $$
+
+    - $\hat{x}$也叫做unit gaussian
+    - 计算得到的是一个mini batch的$\hat{x}$
+
+  - 最后得到输出: $y_{i,j}=\gamma_j\hat{x}_{i,j}+\beta_j$
+
+    - $\gamma和\beta$：是我们要去训练的参数
+
+- Train vs Test
+
+  - Mean 和 Variace的获得：
+    - Train：通过mini-batch获得
+    - Test：没有足够的测试数据集，所以 by running an exponentially weighted averaged across training minibatches.
+
+## 10) Transfer Learning迁移学习
+
+- [迁移学习](https://www.zhihu.com/question/41979241)(Transfer learning) 
+  - 就是把已学训练好的模型参数迁移到新的模型来帮助新模型训练。考虑到大部分数据或任务是存在相关性的，所以通过迁移学习我们可以将已经学到的模型参数（也可理解为模型学到的知识）通过某种方式来分享给新模型从而加快并优化模型的学习效率不用像大多数网络那样从零学习（starting from scratch，tabula rasa）。
+
+## 11）一些训练技巧
 
 1. Debug:
    1. Use train/validation/test curves
@@ -685,7 +816,7 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
    - Logit value见3.4，是没有正则化的值
    - Softmax后的值是正则了的值，见3.4
 
-## 9）整合成接口来调试
+## 12）整合成接口来调试
 
 1. 将所有的东西写成一个接口`solver`,只要输入参数就能计算不同的模型。**代码见2.10**
 
