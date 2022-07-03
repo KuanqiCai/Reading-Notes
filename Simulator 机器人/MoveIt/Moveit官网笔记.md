@@ -1,3 +1,5 @@
+坐标轴：红绿蓝-》xyz
+
 # 各种用到的库/类汇总
 
 - [URDF](https://ros-planning.github.io/moveit_tutorials/doc/urdf_srdf/urdf_srdf_tutorial.html)
@@ -37,7 +39,11 @@
 
 - [moveit_msgs](http://docs.ros.org/en/lunar/api/moveit_msgs/html/index-msg.html)
 
-  
+- [ROS pluginlib](http://wiki.ros.org/pluginlib)
+
+- [InteractiveRobot](http://docs.ros.org/en/groovy/api/pr2_moveit_tutorials/html/classInteractiveRobot.html)
+
+- [URDF Examples](https://wiki.ros.org/urdf/Examples)
 
 # 一、使用RVIZ看Moveit
 
@@ -1396,4 +1402,395 @@ return 0;
   
 
 ## 6.2 Motion Planning Pipeline
+
+- 在 MoveIt 中，运动规划器motion planner被设置为规划路径plan path。 但是，有时我们可能希望对运动规划请求motion planning request进行预处理pre-process或对规划路径planned path进行后处理post process（例如，用于时间参数化time parameterization）。 在这种情况下，我们使用规划管道planning pipeline来将运动规划器与预处理pre-process和后处理post process阶段链接起来chain。 预处理和后处理阶段，称为计划请求适配器olanning request adapters，可以通过 ROS 参数服务器parameter server进行配置configure。
+
+- ***Planning Pipeline的主要作用就是，在 ROS 服务器中设置参数，在进行轨迹规划时，能够同时+自动进行前处理和后处理。\***
+
+- 在2个shell中运行
+
+  - roslaunch panda_moveit_config demo.launch
+  - roslaunch moveit_tutorials motion_planning_pipeline_tutorial.launch
+
+- 代码功能：
+
+  - The robot moves its right arm to the pose goal in front of it,
+  - The robot moves its right arm to the joint goal to the side,
+  - The robot moves its right arm back to the original pose goal in front of it,
+
+- [代码](https://github.com/ros-planning/moveit_tutorials/tree/master/doc/motion_planning_pipeline)
+
+  - 和Planner规划器一样，加载planning pipeline需要2个Object 
+
+    - [RobotModel](http://docs.ros.org/en/noetic/api/moveit_core/html/cpp/classmoveit_1_1core_1_1RobotModel.html): 通过实例化instantiating一个[RobotModelLoader](http://docs.ros.org/noetic/api/moveit_ros_planning/html/classrobot__model__loader_1_1RobotModelLoader.html) object来查看 robot description描述 on the ROS parameter server 并构建 RobotModel
+    - [PlanningScene](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classplanning__scene_1_1PlanningScene.html): 通过上面的RobotModel来构建PlanningScene
+
+  ```c++
+  #include <pluginlib/class_loader.h>
+  #include <ros/ros.h>
+  #include <moveit/robot_model_loader/robot_model_loader.h>
+  #include <moveit/robot_state/conversions.h>
+  #include <moveit/planning_pipeline/planning_pipeline.h>
+  #include <moveit/planning_interface/planning_interface.h>
+  #include <moveit/planning_scene_monitor/planning_scene_monitor.h>
+  #include <moveit/kinematic_constraints/utils.h>
+  #include <moveit_msgs/DisplayTrajectory.h>
+  #include <moveit_msgs/PlanningScene.h>
+  #include <moveit_visual_tools/moveit_visual_tools.h>
+  
+  int main(int argc, char** argv)
+  {
+    ros::init(argc, argv, "move_group_tutorial");
+    ros::AsyncSpinner spinner(1);
+    spinner.start();
+    ros::NodeHandle node_handle("~");
+  
+    //********************** Start **********************
+    // 创建RobotModelLoaderPtr实例，读取模型
+    robot_model_loader::RobotModelLoaderPtr robot_model_loader(new robot_model_loader::RobotModelLoader("robot_description"));
+    // 和6.1中不一样，这里用的是监视器PlanningSceneMonitorPtr来创建planningscene实例
+    planning_scene_monitor::PlanningSceneMonitorPtr psm(
+        new planning_scene_monitor::PlanningSceneMonitor(robot_model_loader));
+  
+    // Start the scene monitor (ROS topic-based)
+    // listen for planning scene messages on topic /XXX and apply them to the internal planning scene accordingly相应的
+    psm->startSceneMonitor();
+    // Start the OccupancyMapMonitor占用地图
+    // listens to changes of world geometry几何结构, collision objects, and (optionally) octomaps
+    // octomap是一种基于八叉树的三维地图创建工具
+    psm->startWorldGeometryMonitor();
+    // Start the current state monitor.
+    // listen to joint state updates as well as changes in attached collision objects and update the internal planning scene accordingly
+    psm->startStateMonitor();
+    // We can also use the RobotModelLoader to get a robot model which contains the robot's kinematic information
+    moveit::core::RobotModelPtr robot_model = robot_model_loader->getModel();
+  
+    // We can get the most up to date robot state from the PlanningSceneMonitor by locking锁住 the internal planning scene for reading. This lock锁 ensures that the underlying scene isn't updated while we are reading it's state锁保证了读状态时不会更新当前scene.
+    //  RobotState's are useful for computing the forward and inverse kinematics of the robot among many other uses 
+    moveit::core::RobotStatePtr robot_state(
+        new moveit::core::RobotState(planning_scene_monitor::LockedPlanningSceneRO(psm)->getCurrentState()));
+  
+    // 建立一个JointModelGroup实例来追踪当前机器人位姿和规划
+    // The Joint Model group is useful for dealing with one set of joints at a time such as a left arm or a end effector
+    const moveit::core::JointModelGroup* joint_model_group = robot_state->getJointModelGroup("panda_arm");
+  
+    // 创建PlanningPipeline的实例，它使用ROS parameter server来确定一系列的resquest adapters和planning plugin
+    planning_pipeline::PlanningPipelinePtr planning_pipeline(
+        new planning_pipeline::PlanningPipeline(robot_model, node_handle, "planning_plugin", "request_adapters"));
+  
+   
+    //********************** Visualization **********************
+    namespace rvt = rviz_visual_tools;
+    moveit_visual_tools::MoveItVisualTools visual_tools("panda_link0");
+    visual_tools.deleteAllMarkers();
+    // remote control（按钮或键盘控制输入）
+    visual_tools.loadRemoteControl();
+    // RViz provides many types of markers, in this demo we will use text, cylinders, and spheres
+    Eigen::Isometry3d text_pose = Eigen::Isometry3d::Identity();
+    text_pose.translation().z() = 1.75;
+    visual_tools.publishText(text_pose, "Motion Planning Pipeline Demo", rvt::WHITE, rvt::XLARGE);
+    // Batch publishing is used to reduce the number of messages being sent to RViz for large visualizations
+    visual_tools.trigger();
+    // We can also use visual_tools to wait for user input
+    visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to start the demo");
+  
+  
+    //********************** Pose Goal **********************
+    // 和6.1中一样设置pose goal
+    planning_interface::MotionPlanRequest req;
+    planning_interface::MotionPlanResponse res;
+    // 四元数位姿
+    geometry_msgs::PoseStamped pose;
+    pose.header.frame_id = "panda_link0";
+    pose.pose.position.x = 0.3;
+    pose.pose.position.y = 0.0;
+    pose.pose.position.z = 0.75;
+    pose.pose.orientation.w = 1.0;
+  
+    // A tolerance of 0.01 m is specified in position and 0.01 radians in orientation
+    // 设置容忍误差，3表示z轴
+    std::vector<double> tolerance_pose(3, 0.01);
+    std::vector<double> tolerance_angle(3, 0.01);
+  
+    // 利用kinematic_constraints设置约束条件
+    req.group_name = "panda_arm";
+    moveit_msgs::Constraints pose_goal =
+        kinematic_constraints::constructGoalConstraints("panda_link8", pose, tolerance_pose, tolerance_angle);
+    req.goal_constraints.push_back(pose_goal);
+  
+    // Before planning, we will need a Read Only lock on the planning scene so that it does not modify修改 the world representation描述 while planning
+    {
+      planning_scene_monitor::LockedPlanningSceneRO lscene(psm);
+      // Now, call the pipeline and check whether planning was successful. 
+      planning_pipeline->generatePlan(lscene, req, res);
+    }
+    // Check that the planning was successful 
+    if (res.error_code_.val != res.error_code_.SUCCESS)
+    {
+      ROS_ERROR("Could not compute plan successfully");
+      return 0;
+    }
+  
+    
+    //********************** Visualize the result **********************
+    ros::Publisher display_publisher =
+        node_handle.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
+    moveit_msgs::DisplayTrajectory display_trajectory;
+  
+    // Visualize the trajectory 
+    ROS_INFO("Visualizing the trajectory");
+    moveit_msgs::MotionPlanResponse response;
+    res.getMessage(response);
+    display_trajectory.trajectory_start = response.trajectory_start;
+    display_trajectory.trajectory.push_back(response.trajectory);
+    display_publisher.publish(display_trajectory);
+    visual_tools.publishTrajectoryLine(display_trajectory.trajectory.back(), joint_model_group);
+    visual_tools.trigger();
+    // Wait for user input
+    visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
+  
+  
+    //********************** Joint Space Goals **********************
+    /* First, set the state in the planning scene to the final state of the last plan */
+    robot_state = planning_scene_monitor::LockedPlanningSceneRO(psm)->getCurrentStateUpdated(response.trajectory_start);
+    robot_state->setJointGroupPositions(joint_model_group, response.trajectory.joint_trajectory.points.back().positions);
+    moveit::core::robotStateToRobotStateMsg(*robot_state, req.start_state);
+    // Now, setup a joint space goal
+    moveit::core::RobotState goal_state(*robot_state);
+    std::vector<double> joint_values = { -1.0, 0.7, 0.7, -1.5, -0.7, 2.0, 0.0 };
+    goal_state.setJointGroupPositions(joint_model_group, joint_values);
+    moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state, joint_model_group);
+    req.goal_constraints.clear();
+    req.goal_constraints.push_back(joint_goal);
+  
+    // Before planning, we will need a Read Only lock on the planning scene so that it does not modify the world representation while planning
+    {
+      planning_scene_monitor::LockedPlanningSceneRO lscene(psm);
+      // Now, call the pipeline and check whether planning was successful.
+      planning_pipeline->generatePlan(lscene, req, res);
+    }
+    // Check that the planning was successful
+    if (res.error_code_.val != res.error_code_.SUCCESS)
+    {
+      ROS_ERROR("Could not compute plan successfully");
+      return 0;
+    }
+    / /Visualize the trajectory
+    ROS_INFO("Visualizing the trajectory");
+    res.getMessage(response);
+    display_trajectory.trajectory_start = response.trajectory_start;
+    display_trajectory.trajectory.push_back(response.trajectory);
+    // Now you should see two planned trajectories in series
+    display_publisher.publish(display_trajectory);
+    visual_tools.publishTrajectoryLine(display_trajectory.trajectory.back(), joint_model_group);
+    visual_tools.trigger();
+    // Wait for user input
+    visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
+  
+      
+    //********************** Using a Planning Request Adapter **********************
+    // A planning request adapter allows us to specify a series of operations that should happen either before planning takes place or after the planning has been done on the resultant path合成路径
+  
+    // First, set the state in the planning scene to the final state of the last plan
+    robot_state = planning_scene_monitor::LockedPlanningSceneRO(psm)->getCurrentStateUpdated(response.trajectory_start);
+    robot_state->setJointGroupPositions(joint_model_group, response.trajectory.joint_trajectory.points.back().positions);
+    moveit::core::robotStateToRobotStateMsg(*robot_state, req.start_state);
+    // Now, set one of the joints slightly稍微 outside its upper limit
+    const moveit::core::JointModel* joint_model = joint_model_group->getJointModel("panda_joint3");
+    const moveit::core::JointModel::Bounds& joint_bounds = joint_model->getVariableBounds();
+    std::vector<double> tmp_values(1, 0.0);
+    tmp_values[0] = joint_bounds[0].min_position_ - 0.01;
+    robot_state->setJointPositions(joint_model, tmp_values);
+    req.goal_constraints.clear();
+    req.goal_constraints.push_back(pose_goal);
+  
+    // Before planning, we will need a Read Only lock on the planning scene so that it does not modify the world representation while planning
+    {
+      planning_scene_monitor::LockedPlanningSceneRO lscene(psm);
+      // Now, call the pipeline and check whether planning was successful.
+      planning_pipeline->generatePlan(lscene, req, res);
+    }
+    if (res.error_code_.val != res.error_code_.SUCCESS)
+    {
+      ROS_ERROR("Could not compute plan successfully");
+      return 0;
+    }
+    // Visualize the trajectory
+    ROS_INFO("Visualizing the trajectory");
+    res.getMessage(response);
+    display_trajectory.trajectory_start = response.trajectory_start;
+    display_trajectory.trajectory.push_back(response.trajectory);
+    // Now you should see three planned trajectories in series
+    display_publisher.publish(display_trajectory);
+    visual_tools.publishTrajectoryLine(display_trajectory.trajectory.back(), joint_model_group);
+    visual_tools.trigger();
+  
+    // Wait for user input 
+    visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to finish the demo");
+  
+    ROS_INFO("Done");
+    return 0;
+  }
+  ```
+
+  
+
+# 七、MoveIt Plugins
+
+## 7.1 Plugin
+
+- [ROS pluginlib](http://wiki.ros.org/pluginlib)的添加教程
+
+  两个必要的类：
+
+  1. Base class
+  2. plugin class:从base class继承而来
+
+- 检查plugin
+
+  ```
+  rospack plugins --attrib=plugin moveit_core
+  ```
+
+- 如何将一个新的motion planner作为plugin添加到MoveIt
+
+  - MoveIt中的Base class是`planning_interface`，任何新的planner plugin都要继承他。
+
+  - 接下创建一个plugin：linear interpolation planner(lerp)。它会规划joint space中的2个state之间的motion。
+
+  - 在moveit中添加新的planner的类之间的关系
+
+    ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/lerp_planner.png?raw=true)
+
+## 7.2 创建一个plugin的[代码](https://github.com/ros-planning/moveit_tutorials/tree/master/doc/creating_moveit_plugins/lerp_motion_planner/src)
+
+1. 在src中写`lerp_planner_manager.cpp`来override重写基类`planning_interface`的`PlnnerManager`类
+
+   - 在代码的最后通过`class_loader`的`CLASS_LOADER_REGISTER_CLASS`macro宏来将`LERPPlanPlannerManager`register注册为一个plugin
+
+     ```c++
+     CLASS_LOADER_REGISTER_CLASS(emptyplan_interface::EmptyPlanPlannerManager, planning_interface::PlannerManager);
+     ```
+
+2. 在src中写`lerp_planning_context.cpp`类来覆写积累`planning_interface`的`PlanningContext`类
+
+   - 这个类是用来定义solve method的
+
+   - 这里的响应函数response function定义在`moveit_msgs::MotionPlanDetailedResponse`
+
+   - `PlannerConfigurationSettings`可以用于传递planner-specific的参数
+
+   - 使用ROS param server从xx.yaml中也可以传递planner-specific的参数
+     - 代码使用`lerp_planning.yaml` in `panda_moveit_config` package
+
+3. 使用一个xml文件`emptyplan_interface_plugin_description.xml`描述description
+
+   ```xml
+   <library  path="libmoveit_emptyplan_planner_plugin">
+     <class name="emptyplan_interface/EmptyPlanPlanner" type="emptyplan_interface::EmptyPlanPlannerManager" base_class_type="planning_interface::PlannerManager">
+      <description>
+      </description>
+     </class>	
+   </library>
+   ```
+
+4. 在package.xml中添加如下代码将上面的xml文件p输出export到ROS Toolchain
+
+   ```xml
+   <export>
+      <moveit_core plugin="${prefix}/emptyplan_interface_plugin_description.xml"/>
+   </export
+   ```
+
+## 7.3 Plugin的使用
+
+- src文件中的[lerp_example](https://github.com/ros-planning/moveit_tutorials/blob/master/doc/creating_moveit_plugins/lerp_motion_planner/src/lerp_example.cpp)创建了一个node来使用上面的plugin
+
+## 7.4 Controller Manager Plugin
+
+- MoveIt controller managers, somewhat a misnomer多少有点词不达意, are the interfaces to your custom自定义 low level controllers. A better way to think of them are *controller interfaces*. For most use cases, the included [MoveItSimpleControllerManager](https://github.com/ros-planning/moveit/blob/master/moveit_plugins/moveit_simple_controller_manager) is sufficient足够 if your robot controllers already provide ROS actions for FollowJointTrajectory. If you use *ros_control*, the included [MoveItRosControlInterface](https://github.com/ros-planning/moveit/blob/master/moveit_plugins/moveit_ros_control_interface) is also ideal.
+
+  However, for some applications you might desire a more custom controller manager. An example template for starting your custom controller manager is provided [here](https://github.com/ros-planning/moveit_tutorials/blob/master/doc/controller_configuration/src/moveit_controller_manager_example.cpp).
+
+## 7.5 Example Constraint Sampler Plugin
+
+- Create a `ROBOT_moveit_plugins` package and within that a sub-folder for your `ROBOT_constraint_sampler` plugin. Modify the template provided by `ROBOT_moveit_plugins/ROBOT_moveit_constraint_sampler_plugin`
+
+- In your `ROBOT_moveit_config/launch/move_group.launch` file, within the `<node name="move_group">`, add the parameter:
+
+  ```
+  <param name="constraint_samplers" value="ROBOT_moveit_constraint_sampler/ROBOTConstraintSamplerAllocator"/>
+  ```
+
+- Now when you launch move_group, it should default to your new constraint sampler.
+
+# 八、Visualizing Collision
+
+- 运行：roslaunch moveit_tutorials visualizing_collisions_tutorial.launch
+- 主要使用[InteractiveRobot](http://docs.ros.org/en/groovy/api/pr2_moveit_tutorials/html/classInteractiveRobot.html)类
+
+# 九、Time Parameterization
+
+- MoveIt 目前主要是一个运动学kinematik运动规划框架framework——它规划关节或末端执行器的位置，但不规划速度或加速度。 然而，MoveIt 确实利用utilize后处理post process来对速度和加速度值的运动轨迹进行时间参数化。
+
+- 通常moveit设置的速度加速度来自robot’s URDF or `joint_limits.yaml`.
+
+  - Specific joint properties can be changed with the keys `max_position, min_position, max_velocity, max_acceleration`. 
+  - Joint limits can be turned on or off with the keys `has_velocity_limits`和` has_acceleration_limits`.
+
+- 在运行时runtime,也可以设置速度（最大速度的几分之几0-1）
+
+  -  you can set the two scaling factors as described in [MotionPlanRequest.msg](http://docs.ros.org/noetic/api//moveit_msgs/html/msg/MotionPlanRequest.html). 
+  - 也可以在[MoveIt MotionPlanning RViz plugin](https://ros-planning.github.io/moveit_tutorials/doc/quickstart_in_rviz/quickstart_in_rviz_tutorial.html)rviz中设置
+
+- 三种时间参数化算法：
+
+  - [Iterative Parabolic Time Parameterization](https://github.com/ros-planning/moveit/blob/master/moveit_core/trajectory_processing/src/iterative_time_parameterization.cpp)
+
+    - The Iterative Parabolic Time Parameterization algorithm is used by default in the [Motion Planning Pipeline](https://ros-planning.github.io/moveit_tutorials/doc/motion_planning_pipeline/motion_planning_pipeline_tutorial.html) as a Planning Request Adapter as documented in [this tutorial](https://ros-planning.github.io/moveit_tutorials/doc/motion_planning_pipeline/motion_planning_pipeline_tutorial.html#using-a-planning-request-adapter). Although the Iterative Parabolic Time Parameterization algorithm MoveIt uses has been used by hundreds of robots over the years, there is known [bug with it](https://github.com/ros-planning/moveit/issues/160).
+
+  - [Iterative Spline Parameterization](https://github.com/ros-planning/moveit/blob/master/moveit_core/trajectory_processing/src/iterative_spline_parameterization.cpp)
+
+    - The Iterative Spline Parameterization algorithm was merged with [PR 382](https://github.com/ros-planning/moveit/pull/382) as an approach to deal with these issues. While preliminary experiments are very promising, we are waiting for more feedback from the community before replacing the Iterative Parabolic Time Parameterization algorithm completely.
+
+  - [Time-optimal Trajectory Generation](https://github.com/ros-planning/moveit/blob/master/moveit_core/trajectory_processing/src/time_optimal_trajectory_generation.cpp)
+
+    - Time-optimal Trajectory Generation introduced in PRs [#809](https://github.com/ros-planning/moveit/pull/809) and [#1365](https://github.com/ros-planning/moveit/pull/1365) produces trajectories with very smooth and continuous velocity profiles. The method is based on fitting path segments to the original trajectory and then sampling new waypoints from the optimized path. This is different from strict time parameterization methods as resulting waypoints may divert from the original trajectory within a certain tolerance. As a consequence, additional collision checks might be required when using this method.
+
+      Open Source Feedback
+
+# 十、Planning with Approximated Constraint Manifolds
+
+近似约束流行的规划，即设置一个constraint Database来约束规划路径，见[教程](https://ros-planning.github.io/moveit_tutorials/doc/planning_with_approximated_constraint_manifolds/planning_with_approximated_constraint_manifolds_tutorial.html)
+
+# 十一、Pick and Place
+
+- 2个shell
+  - roslaunch panda_moveit_config demo.launch
+  - rosrun moveit_tutorials pick_place_tutorial
+- [教程](https://ros-planning.github.io/moveit_tutorials/doc/pick_place/pick_place_tutorial.html)
+- [代码](https://github.com/ros-planning/moveit_tutorials/tree/master/doc/pick_place)
+
+
+
+# 十二、URDF和SRDF
+
+## 12.1 URDF
+
+- [URDF ROS Wiki Page](http://www.ros.org/wiki/urdf) - The URDF ROS Wiki page is the source of most information about the URDF.
+- [URDF Tutorials](http://www.ros.org/wiki/urdf/Tutorials) - Tutorials for working with the URDF.
+- [SOLIDWORKS URDF Plugin](http://www.ros.org/wiki/sw_urdf_exporter) - A plugin that lets you generate a URDF directly from a SOLIDWORKS model.
+- [URDF Examples](https://wiki.ros.org/urdf/Examples)
+
+## 12.2 SRDF
+
+- SRDF是对URDF的补充
+
+## 12.3 [MoveIt Setup Assistant](https://ros-planning.github.io/moveit_tutorials/doc/setup_assistant/setup_assistant_tutorial.html)
+
+- 用于生成SRDF
+
+# 十三、Perception Pipeline
+
+- [教程](https://ros-planning.github.io/moveit_tutorials/doc/perception_pipeline/perception_pipeline_tutorial.html)
 
