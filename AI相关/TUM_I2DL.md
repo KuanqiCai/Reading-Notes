@@ -3730,7 +3730,7 @@ print(device)
 
 ## 5.2 使用TensorBoard调试
 
-Anaconda的shell中输入
+Anaconda的shell中输
 
 ```
 tensorboard --logdir lightning_logs --port 6006
@@ -4102,4 +4102,346 @@ trainer = pl.Trainer(
 
 trainer.fit(model, data_module)
 ```
+
+# 6.Autoencoder for MNIST in PyTorch Lightning
+
+## 6.1 加载库
+
+```python
+# 魔法函数
+%load_ext autoreload
+%autoreload 2
+%matplotlib inline
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+import torch
+from torchvision import transforms
+import pytorch_lightning as pl
+from exercise_code.image_folder_dataset import ImageFolderDataset
+from pytorch_lightning.loggers import TensorBoardLogger
+torch.manual_seed(42)
+# 使用GPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
+# 使用TensorBoard调参
+%load_ext tensorboard
+%tensorboard --logdir lightning_logs --port 6006
+```
+
+## 6.2下载数据集
+
+```python
+# 图像预处理(PyTorch)
+transform = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5,),(0.5,))
+])
+
+i2dl_exercises_path = os.path.dirname(os.path.abspath(os.getcwd()))
+mnist_root = os.path.join(i2dl_exercises_path, "datasets", "mnist")
+
+# 下载带标签的数据集
+train = ImageFolderDataset(root=mnist_root,images='train_images.pt',labels='train_labels.pt',force_download=False,verbose=True,transform=transform)
+val = ImageFolderDataset(root=mnist_root,images='val_images.pt',labels='val_labels.pt',force_download=False,verbose=True,transform=transform)
+test = ImageFolderDataset(root=mnist_root,images='test_images.pt',labels='test_labels.pt',force_download=False,verbose=True,transform=transform)
+
+# 下载不带标签的数据集
+# We also set up the unlabeled images which we will use later
+unlabeled_train = ImageFolderDataset(root=mnist_root,images='unlabeled_train_images.pt',force_download=False,verbose=True,transform=transform)
+unlabeled_val = ImageFolderDataset(root=mnist_root,images='unlabeled_val_images.pt',force_download=False,verbose=True,transform=transform)
+```
+
+- 看几个图片，看图片和label是否配对
+
+  ```python
+  plt.rcParams['figure.figsize'] = (6,6) # Make the figures a bit bigger
+  
+  for i in range(9):
+      image = np.array(train[i][0].squeeze()) # get the image of the data sample
+      label = train[i][1] # get the label of the data sample
+      plt.subplot(3,3,i+1)
+      plt.imshow(image, cmap='gray', interpolation='none')
+      plt.title("Class {}".format(label))
+      
+  plt.tight_layout()
+  print('The shape of our greyscale images: ', image.shape)
+  ```
+
+
+## 6.3 一个简单的分类器
+
+用于分类图片是0-9中的某一个数字
+
+```python
+class Classifier(pl.LightningModule):
+
+    def __init__(self, hparams, encoder, train_set=None, val_set=None, test_set=None):
+        super().__init__()
+        # set hyperparams
+        self.save_hyperparameters(hparams, ignore=['encoder'])
+        self.encoder = encoder
+        self.model = nn.Identity()
+        self.data = {'train': train_set,
+                     'val': val_set,
+                     'test': test_set}
+        self.model = nn.Sequential(
+            nn.Linear(20,self.hparams["hidden_size_2"]),
+            nn.LeakyReLU(),
+            nn.Linear(self.hparams["hidden_size_2"],self.hparams["output_size"]),
+        )
+
+    def forward(self, x):
+        # 这里的变量都是pytorch的tensor类型
+        # 先调用encoder类来将图片有意义的地方提取出来
+        x = self.encoder(x)
+        # 再调用classifier来区分数字
+        x = self.model(x)
+        return x
+
+    def general_step(self, batch, batch_idx, mode):
+        # 获得样本和标签，tensor类型
+        images, targets = batch
+        # tensor.shape()返回tensor的形状
+        # tensor.view()把数据变形成nxm的数据，-1表示这个位置由其他位置的的数字推断而出。
+        # 例：一个tensor是2X3的，排成一维就是tensor.view(1,6),排成3x2就是tensor.view(3,2)
+        # 这里images.shape[0]就是n个样本，第二个-1自动推断出D个特征
+        flattened_images = images.view(images.shape[0], -1)
+        # forward pass
+        out = self.forward(flattened_images)
+        # loss
+        loss = F.cross_entropy(out, targets)
+        preds = out.argmax(axis=1)
+        n_correct = (targets == preds).sum()
+        return loss, n_correct
+
+    def general_end(self, outputs, mode):
+        # average over all batches aggregated during one epoch
+        avg_loss = torch.stack([x[mode + '_loss'] for x in outputs]).mean()
+        total_correct = torch.stack(
+            [x[mode + '_n_correct'] for x in outputs]).sum().cpu().numpy()
+        acc = total_correct / len(self.data[mode])
+        return avg_loss, acc
+
+    def training_step(self, batch, batch_idx):
+        loss, n_correct = self.general_step(batch, batch_idx, "train")
+        self.log("train_loss_cls", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss, n_correct = self.general_step(batch, batch_idx, "val")
+        return {'val_loss': loss, 'val_n_correct': n_correct}
+
+    def test_step(self, batch, batch_idx):
+        loss, n_correct = self.general_step(batch, batch_idx, "test")
+        return {'test_loss': loss, 'test_n_correct': n_correct}
+
+    def validation_end(self, outputs):
+        avg_loss, acc = self.general_end(outputs, "val")
+        self.log("val_loss", avg_loss)
+        self.log("val_acc", acc)
+
+    def train_dataloader(self):
+        return torch.utils.data.DataLoader(self.data['train'], shuffle=True, batch_size=self.hparams['batch_size'])
+
+    def val_dataloader(self):
+        return torch.utils.data.DataLoader(self.data['val'], batch_size=self.hparams['batch_size'])
+
+    def test_dataloader(self):
+        return torch.utils.data.DataLoader(self.data['test'], batch_size=self.hparams['batch_size'])
+
+    def configure_optimizers(self):
+        optim = torch.optim.Adam(self.model.parameters(),self.hparams["learning_rate"],weight_decay = self.hparams['weight_decay'])
+        return optim
+
+    def getAcc(self, loader=None):
+        self.eval()
+        self = self.to(self.device)
+
+        if not loader:
+            loader = self.test_dataloader()
+
+        scores = []
+        labels = []
+
+        for batch in loader:
+            X, y = batch
+            X = X.to(self.device)
+            flattened_X = X.view(X.shape[0], -1)
+            score = self.forward(flattened_X)
+            scores.append(score.detach().cpu().numpy())
+            labels.append(y.detach().cpu().numpy())
+
+        scores = np.concatenate(scores, axis=0)
+        labels = np.concatenate(labels, axis=0)
+
+        preds = scores.argmax(axis=1)
+        acc = (labels == preds).mean()
+        return preds, acc
+```
+
+## 6.4 Autoencoder
+
+图片需要认为label后才能用于训练，这会花费大量的人力。一种解决方式是Data Augmentation
+
+另一种方法是：**transfer learning**
+
+- 首先我们用没有标记过的图片来训练Encoder-Decoder。这样encoder的神经网络就具备了用低维度latent space来表示原图像的能力
+
+  1. Encoder:
+     - The `encoder`'s task is to extract meaningful information out of our input so that the classifier can make a proper decision.
+
+  2. Decoder:
+     - 将encoder中压缩的图片，再还原成原图
+  3. 因为是没有标记过的图片所以我们的loss function需要改成mean squared error between our input pixels and output pixels.
+     - 其实就是对比原图和还原图
+
+- 接着我们再用标记过的图片来训练Encoder-Decoder。这样encoder神经网络的权重我们就可以直接使用上面的权重，只需要训练classifier的权重了
+
+### 6.4.1 Encoder
+
+```python
+class Encoder(nn.Module):
+
+    def __init__(self, hparams, input_size=28 * 28, latent_dim=20):
+        super().__init__()
+
+        # set hyperparams
+        self.latent_dim = latent_dim
+        self.input_size = input_size
+        self.hparams = hparams
+        self.encoder = None
+
+        self.encoder = nn.Sequential(
+            nn.Linear(self.input_size,self.hparams["hidden_size"]),
+            nn.LeakyReLU(),
+            nn.Linear(self.hparams["hidden_size"],latent_dim)
+        )
+
+    def forward(self, x):
+        # feed x into encoder!
+        return self.encoder(x)
+```
+
+### 6.4.2 Decoder
+
+```python
+class Decoder(nn.Module):
+
+    def __init__(self, hparams, latent_dim=20, output_size=28 * 28):
+        super().__init__()
+
+        # set hyperparams
+        self.hparams = hparams
+        self.decoder = None
+
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim,self.hparams["hidden_size"]),
+            nn.LeakyReLU(),
+            nn.Linear(self.hparams["hidden_size"],output_size)
+        )
+
+    def forward(self, x):
+        # feed x into decoder!
+        return self.decoder(x)
+```
+
+### 6.4.3 AutoEncoder
+
+```python
+class Autoencoder(pl.LightningModule):
+
+    def __init__(self, hparams, encoder, decoder, train_set, val_set):
+        super().__init__()
+        # set hyperparams
+        self.save_hyperparameters(hparams, ignore=['encoder', 'decoder'])
+
+        # Define models
+        self.encoder = encoder
+        self.decoder = decoder
+        self.train_set = train_set
+        self.val_set = val_set
+
+    def forward(self, x):
+        reconstruction = None
+        x = self.encoder(x)
+        reconstruction = self.decoder(x)
+        return reconstruction
+
+    def general_step(self, batch, batch_idx, mode):
+        images = batch
+        flattened_images = images.view(images.shape[0], -1)
+
+        # forward pass
+        reconstruction = self.forward(flattened_images)
+
+        # loss
+        loss = F.mse_loss(reconstruction, flattened_images)
+
+        return loss, reconstruction
+
+    def general_end(self, outputs, mode):
+        # average over all batches aggregated during one epoch
+        avg_loss = torch.stack([x[mode + '_loss'] for x in outputs]).mean()
+        return avg_loss
+
+    def training_step(self, batch, batch_idx):
+        loss, _ = self.general_step(batch, batch_idx, "train")
+        self.log("train_loss_ae", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        images = batch
+        flattened_images = images.view(images.shape[0], -1)
+
+        reconstruction = self.forward(flattened_images)
+        loss = F.mse_loss(reconstruction, flattened_images)
+
+        reconstruction = reconstruction.view(
+            reconstruction.shape[0], 28, 28).cpu().numpy()
+        images = np.zeros((len(reconstruction), 3, 28, 28))
+        for i in range(len(reconstruction)):
+            images[i, 0] = reconstruction[i]
+            images[i, 2] = reconstruction[i]
+            images[i, 1] = reconstruction[i]
+        self.logger.experiment.add_images(
+            'reconstructions', images, self.current_epoch, dataformats='NCHW')
+        return loss
+
+    def train_dataloader(self):
+        return torch.utils.data.DataLoader(self.train_set, shuffle=True, batch_size=self.hparams['batch_size'])
+
+    def val_dataloader(self):
+        return torch.utils.data.DataLoader(self.val_set, batch_size=self.hparams['batch_size'])
+
+    def configure_optimizers(self):
+
+        optim = None
+        self.model = nn.Sequential(self.encoder,self.decoder)
+        # optim = torch.optim.SGD(self.model.parameters(), self.hparams["learning_rate"], momentum=0.9)
+        optim = torch.optim.Adam(self.model.parameters(),self.hparams["learning_rate"],weight_decay = self.hparams['weight_decay'])
+        return optim
+
+    def getReconstructions(self, loader=None):
+        self.eval()
+        self = self.to(self.device)
+
+        if not loader:
+            loader = self.val_dataloader()
+
+        reconstructions = []
+
+        for batch in loader:
+            X = batch
+            X = X.to(self.device)
+            flattened_X = X.view(X.shape[0], -1)
+            reconstruction = self.forward(flattened_X)
+            reconstructions.append(
+                reconstruction.view(-1, 28, 28).cpu().detach().numpy())
+
+        return np.concatenate(reconstructions, axis=0)
+```
+
+
 
