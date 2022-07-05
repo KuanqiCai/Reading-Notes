@@ -1,30 +1,34 @@
 坐标轴：红绿蓝-》xyz
 
+# MovIt工程架构
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/moveit%20frame.png?raw=true)
+
+MoveIt 的核心节点（node）为**move_group**，外围的几个部分分别为：**ROS Param Server**， **Robot Controllers**， **Robot 3D Sensors**， **User Interface**， **Robot Sensors**
+
+- **ROS Param Server**：这部分载入的是用户定义的模型文件（xacro或urdf）和一些配置文件。（重要）
+- **Robot Controllers**： 这部分可以看做是和真正的机器人部分（硬件控制接口）打交道的部分，即运动规划的数据由此发给机器人驱动部分，后续会详细讲解。（重要）
+- **Robot 3D Sensors**： 这部分作用是载入RGB-D相机或激光雷达等获得的点云数据用于机械手的抓取或避障等。
+- **User Interface**：     这部分是用户接口，MoveIt提供一系列的API供用户完成自定义的功能，这里主要。（重要）
+- **Robot Sensors**：    这部分是接收机械臂的传感器数据，然后预估出机器人的状态并发布。
+
 # 各种用到的库/类汇总
 
 - [URDF](https://ros-planning.github.io/moveit_tutorials/doc/urdf_srdf/urdf_srdf_tutorial.html)
+- [URDF Examples](https://wiki.ros.org/urdf/Examples)
 - [MoveGroup](http://docs.ros.org/indigo/api/moveit_ros_planning_interface/html/classmoveit_1_1planning__interface_1_1MoveGroup.html)
-
 - [moveit_commander](http://wiki.ros.org/moveit_commander) 
-
 - [RobotModel](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classmoveit_1_1core_1_1RobotModel.html) 
-
 - [RobotState](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classmoveit_1_1core_1_1RobotState.html)
-
 - [PlanningScene](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classplanning__scene_1_1PlanningScene.html) 
-
 - [PlanningSceneMonitor](http://docs.ros.org/noetic/api/moveit_ros_planning/html/classplanning__scene__monitor_1_1PlanningSceneMonitor.html)
-
 - [PlanningContext](http://docs.ros.org/en/indigo/api/moveit_core/html/classplanning__interface_1_1PlanningContext.html#af3d95dd741609c58847bd312b8b033e0)
-
 - [Planning_interface](http://docs.ros.org/en/indigo/api/moveit_core/html/namespaceplanning__interface.html)
-
 - 碰撞
 
   - [CollisionRequest](http://docs.ros.org/noetic/api/moveit_core/html/cpp/structcollision__detection_1_1CollisionRequest.html)：碰撞检测请求
   - [CollisionResult](http://docs.ros.org/noetic/api/moveit_core/html/cpp/structcollision__detection_1_1CollisionResult.html) ：碰撞检测结果
   - [AllowedCollisionMatrix](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classcollision__detection_1_1AllowedCollisionMatrix.html) (ACM) 
-
 - 约束，都来自 [KinematicConstrain](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classkinematic__constraints_1_1KinematicConstraint.html)类：
 
   - [JointConstraint](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classkinematic__constraints_1_1JointConstraint.html)
@@ -32,18 +36,12 @@
   - [OrientationConstraint](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classkinematic__constraints_1_1OrientationConstraint.html) 
   - [VisibilityConstraint](http://docs.ros.org/noetic/api/moveit_core/html/cpp/classkinematic__constraints_1_1VisibilityConstraint.html) 
   - 用于设置这些constraint的函数定义在 [utils.h](http://docs.ros.org/noetic/api/moveit_core/html/cpp/utils_8h.html) file
-
 - [moveit_visual_tools](http://docs.ros.org/en/kinetic/api/moveit_visual_tools/html/classmoveit__visual__tools_1_1MoveItVisualTools.html)
 
   - [rviz_visual_tools](http://docs.ros.org/en/kinetic/api/rviz_visual_tools/html/classrviz__visual__tools_1_1RvizVisualTools.html)
-
 - [moveit_msgs](http://docs.ros.org/en/lunar/api/moveit_msgs/html/index-msg.html)
-
 - [ROS pluginlib](http://wiki.ros.org/pluginlib)
-
 - [InteractiveRobot](http://docs.ros.org/en/groovy/api/pr2_moveit_tutorials/html/classInteractiveRobot.html)
-
-- [URDF Examples](https://wiki.ros.org/urdf/Examples)
 
 # 一、使用RVIZ看Moveit
 
