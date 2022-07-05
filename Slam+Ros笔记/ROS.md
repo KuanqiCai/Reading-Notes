@@ -1,5 +1,17 @@
 # ROS基础
 
+## *一些使用技巧
+
+- 查看是否安装了某个包
+
+  比如要查看是否安装了`joint_state_publisher`
+
+  ```shell
+  rospack list | grep 'joint_state_publisher'
+  ```
+
+- 
+
 ## *catkin的一些操作
 
 - 编译的抽象程度,高到低
