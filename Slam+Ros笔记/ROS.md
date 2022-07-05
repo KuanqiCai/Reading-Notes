@@ -2564,3 +2564,10 @@ int main(int argc, char** argv){
 
 ##   4.[Octomap](http://wiki.ros.org/octomap)
 
+
+
+# ROS TF2的使用
+
+- [TF2](http://wiki.ros.org/tf2)与[TF](http://wiki.ros.org/tf)的比较
+  - TF2已经替换了TF，TF2是TF的超集
+  - TF2 实现效率更高，比如在:TF2 的静态坐标实现、TF2 坐标变换监听器中的 Buffer 实现等
