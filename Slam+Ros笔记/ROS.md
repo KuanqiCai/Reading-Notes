@@ -494,7 +494,7 @@ int main(int argc, char **argv)
     
       `$ rosrun --prefix 'gdb -ex run --args' pkg_name node_name`
 
-### 用roslaunch启动多个节点
+### 用[roslaunch](http://wiki.ros.org/roslaunch/XML#if_and_unless_attributes)启动多个节点
 
 用法：`$ roslaunch [package] [filename.launch]`
 
@@ -551,6 +551,32 @@ launch文件包含的标签
 <group>   		<!--设定命名空间-->
 </launch>    	<!--根标签-->
 ```
+
+- 所有的标签都可以使用if,unless
+
+  ```xml
+  <arg name="corrupt_state_estimate" default="true" />
+  <!--如果参数corrupt_state_estimate值为真则执行-->
+  <param if="$(arg corrupt_state_estimate)" name="drift_rw_factor" value="0.03"/>
+  <!--如果参数corrupt_state_estimate值为假则执行-->
+  <param unless="$(arg corrupt_state_estimate)" name="drift_rw_factor" value="0.0"/>
+  ```
+
+  一个用处：加载不同的yaml文件
+
+  ```xml
+  <launch>
+    <arg name="robot" default="true"/>
+    <group if="$(arg robot)">
+      <node ns = "***"  pkg="***" type="***.py" name ="***" output="screen"/>
+          <rosparam command="load" file="$(find path)/config.yaml" />
+    </group>
+    <group unless="$(arg robot)">
+      <node ns = "***"  pkg="***" type="***.py" name ="***" output="screen"/>
+          <rosparam command="load" file="$(find path)/***.yaml" />
+    </group>
+  </launch>
+  ```
 
 ### 转换roslaunch和rosrun
 
@@ -2297,15 +2323,244 @@ int main(int argc, char** argv){
     nh.getParam("/custom_prefix/number_float", number_to_get);
     ```
   
-    
+# ROS图像处理工具
+
+## 1. cv_bridge
+
+- [cv_bridge](http://wiki.ros.org/cv_bridge)用来在sensor_msgs/Image和numpy两种格式之间进行转换，使OpenCV能够处理Topic中的图像数据。
+
+## 2. image_transport
+
+- [image_transport](http://wiki.ros.org/image_transport)可以将Image数据重新转发到新的topic中，其输入可以是Topic、图片、视频
+
+[Depth_image_proc](http://wiki.ros.org/depth_image_proc)
+
+## 3. image_pipeline
+
+  [image_pipeline](http://wiki.ros.org/image_pipeline)是ROS的图像处理工具包，包括以下几个部分：
+
+### 3.1 camera_calibration
+
+- [camera_calibration](http://wiki.ros.org/camera_calibration)：摄像头标定包
+
+### 3.2 image_proc
+
+- [image_proc](http://wiki.ros.org/image_proc)：图像校正包。主要用来处理rgb图片，提供node、nodelet两种运行方式。
+- image_proc 还提供了四个nodelet：
+  - debayer：将image转换成灰度、彩色两个版本并输出
+  - rectify：校正图像
+  - crop_decimate：图像抽样，即将图像的像素减小
+  - resize：调整图像大小
+
+### 3.3 stereo_image_proc
+
+- [stereo_image_proc](http://wiki.ros.org/stereo_image_proc)：处理双目相机
+
+### 3.4 image_view和stereo_view
+
+- [image/stereo_view](http://wiki.ros.org/image_view)：可视化
+
+### 3.5 depth_image_proc
+
+[depth_image_proc](http://wiki.ros.org/depth_image_proc)：处理深度相机，主要用来处理深度图像，其所有的功能通过**nodelet**来提供：
+
+所有的nodelets全都支持 standard floating point depth images and OpenNI-specific uint16 depth image。所以在使用OpenNI相机时，可以使用unit16raw topics来节省cpu cycles循环。
+
+- 可以生成depth images的技术：
+
+  - The [Kinect](http://wiki.ros.org/openni_kinect) and related devices
+  - Traditional stereo cameras
+  - Time-of-flight cameras
   
-    
+- [一个演示](http://wiki.ros.org/openni_launch)：
+
+  实现了将raw depth/RGB/IR streams 转化为convert to depth images, disparity images, and (registered) point clouds.
+
+#### 3.5.1**convert_metric**：
+
+量测值变换，将raw unit16 depth image从mm转为float depth image的m为。
+
+- Subscribed Topics: 
+
+  - `image_raw` ([sensor_msgs/Image](http://docs.ros.org/en/api/sensor_msgs/html/msg/Image.html))
+
+    `uint16` depth image in mm, the native OpenNI format.
+- Published Topics: 
+
+  - `image` ([sensor_msgs/Image](http://docs.ros.org/en/api/sensor_msgs/html/msg/Image.html))
+
+    `float` depth image in m, the recommended format for processing in ROS.
+
+#### 3.5.2**disparity**：
+
+将深度图重变为disparity格式（disparity是一种视差图，可以通过双目相机生成）
+
+- Subscribed Topics有2个：
+
+  - `left/image_rect` ([sensor_msgs/Image](http://docs.ros.org/en/api/sensor_msgs/html/msg/Image.html))
+
+    Rectified修正的 depth image.
+
+  - `right/camera_info` ([sensor_msgs/CameraInfo](http://docs.ros.org/en/api/sensor_msgs/html/msg/CameraInfo.html))
+
+    Camera calibration and metadata. Must contain the baseline, which conventionally is encoded in the right camera P matrix.
+
+- Published Topics:
+
+  - `left/disparity` ([stereo_msgs/DisparityImage](http://docs.ros.org/en/api/stereo_msgs/html/msg/DisparityImage.html))
+
+    Disparity image (inversely相反的 related to depth), for interop交互 with stereo processing nodes. For all other purposes use depth images instead.
+
+- Parameters
+
+  - `min_range` (`double`, default: 0.0)
+
+    Minimum detectable可察觉的 distance.
+
+  - `max_range` (`double`, default: +Inf)
+
+     Maximum detectable distance.
+
+  - `delta_d` (`double`, default: 0.125)
+
+     Smallest allowed disparity increment,视察增量 which relates to the achievable depth range resolution分辨率. Defaults to 1/8 pixel.
+
+  - `queue_size` (`int`, default: 5)
+
+     Size of message queue for synchronizing同时 subscribed topics.
+
+#### 3.5.3**point_cloud_xyz**：
+
+将深度图转换成xyz点云图像
+
+- Subscribed Topics
+
+  - `camera_info` ([sensor_msgs/CameraInfo](http://docs.ros.org/en/api/sensor_msgs/html/msg/CameraInfo.html))
+
+    Camera calibration and metadata.
+
+  - `image_rect` ([sensor_msgs/Image](http://docs.ros.org/en/api/sensor_msgs/html/msg/Image.html))
+
+    Rectified depth image
+
+- Published Topics
+
+  - `points` ([sensor_msgs/PointCloud2](http://docs.ros.org/en/api/sensor_msgs/html/msg/PointCloud2.html))
+
+    XYZ point cloud. If using [PCL](http://wiki.ros.org/pcl_ros), subscribe as `PointCloud<PointXYZ>`.
+
+- Parameters
+
+  - `queue_size` (`int`, default: 5)
+
+    Size of message queue for synchronizing subscribed topics.
+
+
+#### 3.5.4**point_cloud_xyzrgb**：
+
+将深度图和RGB合成，并转换成xyzrgb点云图像
+
+- Subscribed Topics
+
+  - `rgb/camera_info` ([sensor_msgs/CameraInfo](http://docs.ros.org/en/api/sensor_msgs/html/msg/CameraInfo.html))
+
+    Camera calibration and metadata.
+
+  - `rgb/image_rect_color` ([sensor_msgs/Image](http://docs.ros.org/en/api/sensor_msgs/html/msg/Image.html))
+
+    Rectified校正过的 color image.
+
+  - `depth_registered/image_rect` ([sensor_msgs/Image](http://docs.ros.org/en/api/sensor_msgs/html/msg/Image.html))
+
+    Rectified depth image, registered to the RGB camera.
+
+- Published Topics
+
+  - `depth_registered/points` ([sensor_msgs/PointCloud2](http://docs.ros.org/en/api/sensor_msgs/html/msg/PointCloud2.html))
+
+    XYZRGB point cloud. If using [PCL](http://wiki.ros.org/pcl_ros), subscribe as `PointCloud<PointXYZRGB>`.
+
+- Parameters
+
+  - `queue_size` (`int`, default: 5)
+
+    Size of message queue for synchronizing subscribed topics.
+
+
+#### 3.5.5**register**：
+
+将深度相机的frame-id变换到另一个坐标系中。
+
+- Subscribed Topics
+
+  - `rgb/camera_info` ([sensor_msgs/CameraInfo](http://docs.ros.org/en/api/sensor_msgs/html/msg/CameraInfo.html))
+
+     RGB camera calibration and metadata.
+
+  - `depth/camera_info` ([sensor_msgs/CameraInfo](http://docs.ros.org/en/api/sensor_msgs/html/msg/CameraInfo.html))
+
+     Depth camera calibration and metadata.
+
+  - `depth/image_rect` ([sensor_msgs/Image](http://docs.ros.org/en/api/sensor_msgs/html/msg/Image.html))
+
+     Rectified depth image.
   
+- Published Topics
+
+  - `depth_registered/camera_info` ([sensor_msgs/CameraInfo](http://docs.ros.org/en/api/sensor_msgs/html/msg/CameraInfo.html))
+
+     Camera calibration and metadata. Same as `rgb/camera_info` but time-synced to `depth_registered/image_rect`.
+
+  - `depth_registered/image_rect` ([sensor_msgs/Image](http://docs.ros.org/en/api/sensor_msgs/html/msg/Image.html))
+
+     Reprojected depth image in the RGB camera frame.
   
-  
-  
-  
-  
-  
-  
+- Parameters
+
+  - `queue_size` (`int`, default: 5)
+
+    Size of message queue for synchronizing subscribed topics.
+
+- Required tf Transforms
+
+  - /depth_optical_frame` → `/rgb_optical_frame
+
+    The transform between the depth and RGB camera optical frames as specified in the headers of the subscribed topics (rendered表现 here as `/depth_optical_frame` and `/rgb_optical_frame`).
+
+### 3.6 Nodelet
+
+- 参考：
+  - [知乎](https://zhuanlan.zhihu.com/p/37537823)
+  - [官网](http://wiki.ros.org/nodelet)
+
+- Nodelet提供了一种方法，可以在同一台计算机上，在同一个进程内，运行多个算法，且在进程内消息传递时**不产生复制成本（zero copy)**。在一个node里面，roscpp利用指针传递可以实现在publish和subscribe调用时的零拷贝。为了实现相似的效果，多个nodelets允许将多个类动态加载到同一个node里，同时还提供独立的命名空间，从而使得这些nodelets尽管运行在同一个进程里，但却仍然像单独的node一样工作。也就实现了“在一个进程（node）里运行多个nodelet”的效果。
+
+  因此，大通量数据流可能包含多个nodelet，此时若将他们加载到同一个进程里，就可以避免数据拷贝和网络传输。从而在**传输大量数据时避免了传输耗时长的问题**。
+
+- 大多数图像相关包都支持node和nodelet两种模式，使用下面节点查看系统中所有可以用nodelet的包
+
+  ```
+  rosrun nodelet declared_nodelets
+  ```
+
+- [运行一个Nodelet](http://wiki.ros.org/nodelet/Tutorials/Running%20a%20nodelet)
+
+### 3.7执行所需的launch file
+
+例子：运行一个 'point_cloud_xyz'  nodelet
+
+```xml
+<launch>
+  <node pkg="nodelet" type="nodelet" name="nodelet_manager" args="manager" />
+
+  <node pkg="nodelet" type="nodelet" name="nodelet1"
+        args="load depth_image_proc/point_cloud_xyz nodelet_manager">
+    <remap from="camera_info" to="/camera/depth/camera_info"/>
+    <remap from="image_rect" to="/camera/depth/image_rect_raw"/>
+    <remap from="points" to="/camera/depth/points"/>
+  </node>
+</launch>
+```
+
+##   4.[Octomap](http://wiki.ros.org/octomap)
 
