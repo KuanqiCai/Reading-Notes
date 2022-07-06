@@ -2583,3 +2583,25 @@ int main(int argc, char** argv){
 - [TF2](http://wiki.ros.org/tf2)与[TF](http://wiki.ros.org/tf)的比较
   - TF2已经替换了TF，TF2是TF的超集
   - TF2 实现效率更高，比如在:TF2 的静态坐标实现、TF2 坐标变换监听器中的 Buffer 实现等
+
+# 模型的建立
+
+见MoveIt笔记
+
+# ROS Controller
+
+[参考](https://www.guyuehome.com/890)
+
+- [ros_control](http://wiki.ros.org/ros_control)就是ROS为用户提供的应用与机器人之间的中间件，包含一系列控制器接口、传动装置接口、硬件接口、控制器工具箱等等，可以帮助机器人应用快速落地，提高开发效率。
+
+  流程图为：
+
+  ![](http://wiki.ros.org/ros_control?action=AttachFile&do=get&target=gazebo_ros_control.png)
+
+  可以看到有5个功能包
+
+  1. [Controller Manager](http://wiki.ros.org/controller_manager)：每个机器人可能有多个controller，所以这里有一个控制器管理器的概念，提供一种通用的接口来管理不同的controller。controller manager的输入就是ROS上层应用的输出。
+  2. [Controller](http://wiki.ros.org/ros_controllers?distro=noetic)：controller可以完成每个joint的控制，请求下层的硬件资源，并且提供了PID控制器，读取硬件资源接口中的状态，在发布控制命令。
+  3. Hardware Rescource：为上下两层提供硬件资源的接口。
+  4. [hardware_interface](https://github.com/ros-controls/ros_control/wiki/hardware_interface)：硬件抽象层和硬件直接打交道，通过write和read方法来完成硬件的操作，这一层也包含关节限位、力矩转换、状态转换等功能。
+  5. Real Robot：实际的机器人上也需要有自己的嵌入式控制器，接收到命令后需要反映到执行器上，比如接收到位置1的命令后，那就需要让执行器快速、稳定的到达位置1。
