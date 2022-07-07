@@ -822,6 +822,135 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
 
 2. `solver`调用的模型model，我们也要写成一个函数，来方便调用调参。**代码见4.3**
 
+# *.CNN卷积神经网络
+
+Convolutional Neural Networks
+
+- 为什么处理图片时要用卷积层来代替fc全连接层
+
+  比如一个5X5的图片，3个RGB通道，那么一个神经元就需要75个权重Weights。如果1个全连接层有1000个神经元，那1层就要算75000个权重！！！更何况图片不可能只有5X5那么小。所以用全连接层来训练图片是impractical的
+
+- Convolutions vs Fully-Connected
+
+  - In contrast to fully-connected layers, we want to restrict限制 the degrees of freedom
+    - FC is somewhat brute force
+    - Convolutions are structured
+  - Sliding window to with the same filter parameters to extract提取 image features
+    - Concept观念 of weight sharing
+    - Extract same features independent of location
+
+## Image Filter
+
+每一个核给成出一个不一样的图片过滤器
+
+- Edge detection:
+  $$
+  \left[
+   \begin{matrix}
+     -1 & -1 & -1 \\
+     -1 & 8 & -1 \\
+     -1 & -1 & -1
+    \end{matrix}
+    \right]
+  $$
+
+- Box Mean
+  $$
+  \frac{1}{9}\left[
+   \begin{matrix}
+     1 & 1 & 1 \\
+     1 & 1 & 1 \\
+     1 & 1 & 1
+    \end{matrix}
+    \right]
+  $$
+
+- Sharpen
+  $$
+  \left[
+   \begin{matrix}
+     0 & -1 & 0 \\
+     -1 & 5 & -1 \\
+     0 & -1 & 0
+    \end{matrix}
+    \right]
+  $$
+
+- Gaussian blur
+  $$
+  \frac{1}{16}\left[
+   \begin{matrix}
+     1 & 2 & 1 \\
+     2 & 4 & 2 \\
+     1 & 2 & 1
+    \end{matrix}
+    \right]
+  $$
+
+## Convolution Layers: 
+
+- Padding填充(图片四周填充一圈值)
+
+  - Why padding
+    - Sizes get small too quickly
+    - corner pixel is only used once
+  - 最常用的是填充0
+
+- Dimensions:
+
+  N=7：图片是7X7X3   （X3是RGB通道）
+
+  F=3：过滤器是3X3X3 （最后X3要和输入对应）
+
+  S=1/2/3：stride过滤器前进的格子数
+
+  - 如果输入时32X32X3，用5个5X5X3的过滤器，那么过滤后输出是28x28x5。(注意最后X5和过滤的个数一致)，接着如果对28x28x5还要过滤，就要用5x5x5的过滤器了。
+  - padding的圈数应该是：$p=\frac{F-1}{2}$
+  - Padding后再过滤后的维度是：$(\left[\frac{N+2P-F}{S}\right]+1)\times(\left[\frac{N+2P-F}{S}\right]+1)$
+
+## Pooling Layer池化层
+
+- 与卷积层对比：
+
+  - Conv Layer = feature extraction
+    - Computes a feature in a given region
+  - Pooling Layer = feature selection
+    - Picks the strongest activation in a region
+
+- Dimension:
+
+  - Input is a volume of size $W_{in}\times H_{in}\times D_{in}$   宽，高，深度 
+  - 2个超参数
+    - Spatial filter extent F
+    - Stride S
+  - Input is a volume of size $W_{out}\times H_{out}\times D_{out}$
+    - $W_{out}=\frac{W_{in}-F}{S}+1$
+    - $H_{out}=\frac{H_{in}-F}{S}+1$
+    - $D_{out}=D_{in}$
+
+- 类型：
+
+  - Max Pooling
+
+    ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Max%20Pooling.png?raw=true)
+
+  - Average Pooling
+
+    ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Average%20Pooling.png?raw=true)
+
+## CNN Prototype
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/CNN%20Prototype.png?raw=true)
+
+- 可见最后会用一层Fully connected layer
+  - 用卷积层得出的特征features来做最终的决定
+  - 一般1或2层全连接层
+
+## Receptive Field感受野
+
+- 感受野是指特征图上的某个点能看到的输入图像的区域,即特征图上的点是由输入图像中感受野大小区域的计算得到的
+- 神经元感受野的值越大表示其能接触到的原始图像范围就越大，也意味着它可能蕴含更为全局，语义层次更高的特征；相反，值越小则表示其所包含的特征越趋向局部和细节。因此**感受野的值可以用来大致判断每一层的抽象层次**
+
 # 1. 数据预处理
 
 ## 1.1加载库
