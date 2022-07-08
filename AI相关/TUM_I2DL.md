@@ -705,6 +705,19 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
 
 - Early Stopping
 
+### 9.2 Max Norm Regularization
+
+Regularization technique that constrains weights of network (directly) 
+
+Hyperparameter:$r\in\mathbb{R}>0$
+$$
+w=\begin{cases}
+w \quad \quad if\ ||w||_2\leq r\\
+r\frac{w}{||w||_2} \ otherwise
+\end{cases}\\
+||w||_2=\sqrt{w_1^2+w_2^2+\cdots+w_n^2}
+$$
+
 ### 9.3 Ensemble Methods集成学习
 
   集成学习是一种训练思路，并不是某种具体的算法。它会挑选一些简单的基础模型进行组装，从而得到更好的效果。主要有2种：
@@ -726,7 +739,7 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
       3. 在每一轮改变训练数据的权值或概率分布，通过提高那些在前一轮被弱分类器分错样例的权值，减小前一轮分对样例的权值，来使得分类器对误分的数据有较好的效果。
     - 在 boosting 的方法中，比较主流的有 [Adaboost](https://easyai.tech/ai-definition/adaboost/) 和 Gradient boosting 。
 
-### 9.3 Dropout
+### 9.4 Dropout
 
 - 在机器学习的模型中，如果模型的参数太多，而训练样本又太少，训练出来的模型很容易产生过拟合的现象。Dropout可以比较有效的缓解过拟合的发生，在一定程度上达到正则化的效果。
 
@@ -745,7 +758,7 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
   - Training: use dropout with a low p (0.1 or 0.2).
   - Inference, run the same image multiple times (25- 100), and average the results.
 
-### 9.4 Batch normalization
+### 9.5 Batch normalization
 
 - Batch Normalization批标准化：
 
@@ -799,6 +812,7 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
 
 - [迁移学习](https://www.zhihu.com/question/41979241)(Transfer learning) 
   - 就是把已学训练好的模型参数迁移到新的模型来帮助新模型训练。考虑到大部分数据或任务是存在相关性的，所以通过迁移学习我们可以将已经学到的模型参数（也可理解为模型学到的知识）通过某种方式来分享给新模型从而加快并优化模型的学习效率不用像大多数网络那样从零学习（starting from scratch，tabula rasa）。
+- Pytorch关于Transfer Learning的[教程](https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html)
 
 ## 11）一些训练技巧
 
@@ -838,6 +852,9 @@ Convolutional Neural Networks
   - Sliding window to with the same filter parameters to extract提取 image features
     - Concept观念 of weight sharing
     - Extract same features independent of location
+  - Output size:
+    - Fully-Connected layer: One layer of neurons, independent
+    - Convolutional Layer: Neurons arranged排列 in 3 dimensions
 
 ## Image Filter
 
@@ -950,6 +967,25 @@ Convolutional Neural Networks
 
 - 感受野是指特征图上的某个点能看到的输入图像的区域,即特征图上的点是由输入图像中感受野大小区域的计算得到的
 - 神经元感受野的值越大表示其能接触到的原始图像范围就越大，也意味着它可能蕴含更为全局，语义层次更高的特征；相反，值越小则表示其所包含的特征越趋向局部和细节。因此**感受野的值可以用来大致判断每一层的抽象层次**
+
+## Spatial Batch Normalization
+
+一般的batch normalization见9.5。
+
+- BatchNorm for convolutional NN = spatial batchnorm
+
+  - Input size$(N,C,W,H)\rightarrow(N,C,H\times W)$
+  - Compute minibatch mean and variance across N, W, H (i.e. we compute mean/var for each channel C))
+
+- Other Normalizations
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Normalizations.png?raw=true)
+
+## Dropout for convolutional layers
+
+全连接层是随机不激活某一个unit,但卷积层是三维结构的，这么做并不能提升性能。
+
+所以Spatial Dropout randomly sets entire feature maps to zero
 
 # 1. 数据预处理
 
