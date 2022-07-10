@@ -4610,3 +4610,198 @@ class Autoencoder(pl.LightningModule):
 
 
 
+# 7.Facial Keypoint Detection
+
+## 7.1加载库
+
+```python
+import os
+import matplotlib.pyplot as plt
+import torch
+from torch.utils.data import DataLoader
+from torchvision import transforms
+from exercise_code.data.facial_keypoints_dataset import FacialKeypointsDataset
+from exercise_code.networks.keypoint_nn import (
+    DummyKeypointModel,
+    KeypointModel
+)
+from exercise_code.util import (
+    show_all_keypoints,
+    save_model,
+)
+from exercise_code.tests import test_keypoint_nn
+
+%matplotlib inline
+plt.rcParams['figure.figsize'] = (10.0, 8.0) # set default size of plots
+plt.rcParams['image.interpolation'] = 'nearest'
+plt.rcParams['image.cmap'] = 'gray'
+
+# for auto-reloading external modules
+# see http://stackoverflow.com/questions/1907993/autoreload-of-modules-in-ipython
+%load_ext autoreload
+%autoreload 2
+
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
+```
+
+## 7.2加载数据集
+
+```python
+download_url = 'https://vision.in.tum.de/webshare/g/i2dl/facial_keypoints.zip'
+i2dl_exercises_path = os.path.dirname(os.path.abspath(os.getcwd()))
+data_root = os.path.join(i2dl_exercises_path, "datasets", "facial_keypoints")
+train_dataset = FacialKeypointsDataset(
+    train=True,
+    transform=transforms.ToTensor(),
+    root=data_root,
+    download_url=download_url
+)
+val_dataset = FacialKeypointsDataset(
+    train=False,
+    transform=transforms.ToTensor(),
+    root=data_root,
+)
+
+print("Number of training samples:", len(train_dataset))
+print("Number of validation samples:", len(val_dataset))
+```
+
+上面用到的FacialKeypointsDataset()
+
+```python
+class FacialKeypointsDataset(BaseDataset):
+    """Dataset for facial keypoint detection"""
+    def __init__(self, *args, train=True, transform=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        file_name = "training.csv" if train else "val.csv"
+        csv_file = os.path.join(self.root_path, file_name)
+        self.key_pts_frame = pd.read_csv(csv_file)
+        self.key_pts_frame.dropna(inplace=True)
+        self.key_pts_frame.reset_index(drop=True, inplace=True)
+        self.transform = transform
+
+    @staticmethod
+    def _get_image(idx, key_pts_frame):
+        img_str = key_pts_frame.loc[idx]['Image']
+        img = np.array([
+            int(item) for item in img_str.split()
+        ]).reshape((96, 96))
+        return np.expand_dims(img, axis=2).astype(np.uint8)
+
+    @staticmethod
+    def _get_keypoints(idx, key_pts_frame, shape=(15, 2)):
+        keypoint_cols = list(key_pts_frame.columns)[:-1]
+        key_pts = key_pts_frame.iloc[idx][keypoint_cols].values.reshape(shape)
+        key_pts = (key_pts.astype(np.float) - 48.0) / 48.0
+        return torch.from_numpy(key_pts).float()
+
+    def __len__(self):
+        return self.key_pts_frame.shape[0]
+
+    def __getitem__(self, idx):
+        image = self._get_image(idx, self.key_pts_frame)
+        keypoints = self._get_keypoints(idx, self.key_pts_frame)
+        if self.transform:
+            image = self.transform(image)
+        return {'image': image, 'keypoints': keypoints}
+```
+
+Each sample in our dataset is a dict `{"image": image, "keypoints": keypoints}`, where
+ * `image` is a [0-1]-normalized gray-scale image of size 96x96, represented by a torch tensor of shape (CxHxW) with C=1, H=96, W=96
+    <img style="float: right;" src='https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/key_pts_expl.png?raw=true' width=50% height=50%/>
+ * `keypoints` is the list of K facial keypoints, stored in a torch tensor of shape (Kx2). We have K=15 keypoints that stand for:
+   * keypoints[0]: Center of the left eye
+   * keypoints[1]: Center of the right eye
+   * keypoints[2]: Left eye inner corner
+   * keypoints[3]: Left eye outer corner
+   * keypoints[4]: Right eye inner corner
+   * keypoints[5]: Right eye outer corner
+   * keypoints[6]: Left eyebrow inner end
+   * keypoints[7]: Left eyebrow outer end
+   * keypoints[8]: Right eyebrow inner end
+   * keypoints[9]: Right eyebrow outer end
+   * keypoints[10]: Nose tip
+   * keypoints[11]: Mouth left corner
+   * keypoints[12]: Mouth right corner
+   * keypoints[13]: Mouth center top lip
+   * keypoints[14]: Mouth center bottom lip
+   
+
+Each individual facial keypoint is represented by two coordinates (x,y) that specify the horizontal and vertical location of the keypoint respectively. All keypoint values are normalized to [-1,1], such that:
+   * (x=-1,y=-1) corresponds to the top left corner, 
+   * (x=-1,y=1) to the bottom left corner,
+   * (x=1,y=-1) to the top right corner,
+   * (x=1,y=1) to the bottom right corner,
+   * and (x=0,y=0) to the center of the image.
+
+显示关键点和图片的储存信息：
+
+```python
+#--------------显示图片信息--------------
+image, keypoints = train_dataset[0]["image"], train_dataset[0]["keypoints"]
+print("Shape of the image:", image.size())
+print("Smallest value in the image:", torch.min(image))
+print("Largest value in the image:", torch.max(image))
+print(image)
+#--------------显示关键点信息--------------
+keypoints = train_dataset[0]["keypoints"]
+print(keypoints)
+#--------------任取几张图片，显示图片上所有的关键点--------------
+def show_all_keypoints(image, keypoints, pred_kpts=None):
+    """Show image with predicted keypoints"""
+    image = (image.clone() * 255).view(96, 96).cpu()
+    plt.imshow(image, cmap='gray')
+
+    if pred_kpts is not None:
+      pred_kpts = pred_kpts.cpu()
+      
+    keypoints = (keypoints.clone() * 48 + 48).cpu()
+    plt.scatter(keypoints[:, 0], keypoints[:, 1], s=200, marker='.', c='m')
+    if pred_kpts is not None:
+        pred_kpts = pred_kpts.clone() * 48 + 48
+        plt.scatter(pred_kpts[:, 0], pred_kpts[:, 1], s=200, marker='.', c='r')
+    plt.show()
+def show_keypoints(dataset, num_samples=3):
+    for i in range(num_samples):
+        image = dataset[i]["image"]
+        key_pts = dataset[i]["keypoints"]
+        show_all_keypoints(image, key_pts)
+show_keypoints(train_dataset)
+```
+
+## 7.3 模型：
+
+facial keypoint detection task可以被看做一个回归regression问题，目标是预测对应于15个面部关键点位置的30个不同值。
+
+### 7.3.1 Loss and Metrics
+
+使用Mean Squared Error[均方误差](https://zh.wikipedia.org/wiki/%E5%9D%87%E6%96%B9%E8%AF%AF%E5%B7%AE)来评价模型。
+
+```python
+# pytorch已经定义好了均方误差
+loss_fn = torch.nn.MSELoss()
+for i in range(3):
+    image = train_dataset[i]["image"]
+    keypoints = train_dataset[i]["keypoints"]
+    predicted_keypoints = torch.squeeze(dummy_model(image)).view(15,2)
+    loss = loss_fn(keypoints, predicted_keypoints)
+    print("Loss on image %d:" % i, loss)
+    
+def evaluate_model(model, dataset):
+    model.eval()
+    model.to(device)
+    criterion = torch.nn.MSELoss()
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+    loss = 0
+    for batch in dataloader:
+        image, keypoints = batch["image"].to(device), batch["keypoints"].to(device)
+        predicted_keypoints = model(image).view(-1,15,2).to(device)
+        loss += criterion(
+            torch.squeeze(keypoints),
+            torch.squeeze(predicted_keypoints)
+        ).item()
+    return 1.0 / (2 * (loss/len(dataloader)))
+
+print("Score of the Dummy Model:", evaluate_model(dummy_model, val_dataset))
+```
+
