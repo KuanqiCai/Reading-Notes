@@ -274,7 +274,7 @@ $ echo $ROS_PACKAGE_PATH
   	
   	例子：`rosls roscpp_tutorials`
 
- ## $$节点node和节点管理器master
+ ## 节点node和节点管理器master
 
 一个包里可以有多个可执行文件，可执行文件在运行之后就成了一个进程process，这个进程在ROS中就叫做节点。
 
@@ -506,6 +506,9 @@ int main(int argc, char **argv)
     
       `$ rosrun --prefix 'gdb -ex run --args' pkg_name node_name`
 
+
+
+## Roslaunch的使用 
 ### 用[roslaunch](http://wiki.ros.org/roslaunch/XML#if_and_unless_attributes)启动多个节点
 
 用法：`$ roslaunch [package] [filename.launch]`
@@ -548,21 +551,54 @@ int main(int argc, char **argv)
 
 8. 使用`$ rqt_graph`查看节点关系.
 
-launch文件包含的标签
+### Launch file的写法
 
-```xml
-<launch>    	<!--根标签-->
-<node>    		<!--需要启动的node及其参数-->
-<include>    	<!--包含其他launch-->
-<machine>    	<!--指定运行的机器-->
-<env-loader>    <!--设置环境变量-->
-<param>    		<!--定义参数到参数服务器-->
-<rosparam>    	<!--启动yaml文件参数到参数服务器-->
-<arg>    		<!--定义变量-->
-<remap>    		<!--设定参数映射-->
-<group>   		<!--设定命名空间-->
-</launch>    	<!--根标签-->
-```
+- 例子：
+
+  ```xml
+  <!--launch tag说明这个文件是一个launch file-->
+  <launch>
+      <!--这里开始2个命名空间为turtlesim1/2的group，都用名字为sim的turtlesim节点-->
+      <group ns="turtlesim1">
+      	<node pkg="turtlesim" name="sim" type="turtlesim_node"/>
+      </group>
+      <group ns="turtlesim2">
+          <node pkg="turtlesim" name="sim" type="turtlesim_node"/>
+      </group>
+      <!--这里开始一个叫mimic并有2个话题input/output的节点，这里会把节点顺序变为turtlesim1->mimic-> turtlesim2-->
+      <node pkg="turtlesim" name="mimic" type="mimic">
+          <remap from="input" to="turtlesim1/turtle1"/>
+          <remap from="output" to="turtlesim2/turtle1"/>
+      </node>
+  </launch>
+  ```
+
+- <remap>标签
+
+  作用
+  
+  1. 针对publisher自己发布的主题：**改变自己发布主题的名字**
+     - from=“source_topic”: 节点中原来发布的主题名字
+     - to=“target_topic”: 重映射的目标名字
+  2. 针对subscriber别人发布的主题：**改变别人发布主题的名字为自己要订阅的主题名字**
+     - from=“target_topic”: 节点中要订阅的主题名字
+     - to=“source_topic”: 别人发布的主题名字
+  
+- launch文件包含的标签
+
+    ```xml
+    <launch>    	<!--根标签-->
+    <node>    		<!--需要启动的node及其参数-->
+    <include>    	<!--包含其他launch-->
+    <machine>    	<!--指定运行的机器-->
+    <env-loader>    <!--设置环境变量-->
+    <param>    		<!--定义参数到参数服务器-->
+    <rosparam>    	<!--启动yaml文件参数到参数服务器-->
+    <arg>    		<!--定义变量-->
+    <remap>    		<!--设定参数映射-->
+    <group>   		<!--设定命名空间-->
+    </launch>    	<!--根标签-->
+    ```
 
 - 所有的标签都可以使用if,unless
 
