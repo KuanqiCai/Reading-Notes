@@ -565,11 +565,18 @@ int main(int argc, char **argv)
       <group ns="turtlesim2">
           <node pkg="turtlesim" name="sim" type="turtlesim_node"/>
       </group>
+      
       <!--这里开始一个叫mimic并有2个话题input/output的节点，这里会把节点顺序变为turtlesim1->mimic-> turtlesim2-->
       <node pkg="turtlesim" name="mimic" type="mimic">
           <remap from="input" to="turtlesim1/turtle1"/>
           <remap from="output" to="turtlesim2/turtle1"/>
       </node>
+      
+      <!--使用配置好的rviz-->
+      <!--需要先配置好后，点击file->save config as-->
+      <node pkg="rviz" type="rviz" name="rviz" args="-d $(find turtlesim)/config/rviz/show_mycar.rviz" />
+      
+      
   </launch>
   ```
 
@@ -1343,8 +1350,11 @@ $ cd -
   # 比如设置为Warn,则会得到Warn,Error,Fatal的消息
   ```
 
+## $$[ROS Bags](http://wiki.ros.org/rosbag)
 
-## $$ROS Bags
+在 ROS 系统中，可以使用 bag 文件来保存和恢复系统的运行状态，比如录制雷达和相机话题的 bag 包，然后回放用来进行联合外参标定。
+
+[知乎](https://zhuanlan.zhihu.com/p/151444739)
 
 - A bag is a format for storing message data
 
@@ -2624,7 +2634,9 @@ int main(int argc, char** argv){
 
 见MoveIt笔记
 
-# ROS Controller
+
+# ROS控制
+## 1. ROS Controller
 
 [参考](https://www.guyuehome.com/890)
 
@@ -2641,3 +2653,1330 @@ int main(int argc, char** argv){
   3. Hardware Rescource：为上下两层提供硬件资源的接口。
   4. [hardware_interface](https://github.com/ros-controls/ros_control/wiki/hardware_interface)：硬件抽象层和硬件直接打交道，通过write和read方法来完成硬件的操作，这一层也包含关节限位、力矩转换、状态转换等功能。
   5. Real Robot：实际的机器人上也需要有自己的嵌入式控制器，接收到命令后需要反映到执行器上，比如接收到位置1的命令后，那就需要让执行器快速、稳定的到达位置1。
+
+## 2. Arbotix控制器
+
+- 简介：
+
+  [arbotix](http://wiki.ros.org/arbotix)是一款控制电机、舵机的控制板，并提供了ROS功能包。他可以驱动真实的arbotix控制板，也可以在rviz中仿真。它还提供一个差速控制器，通过接受速度控制指令更新机器人的 joint 状态，从而帮助我们实现机器人在 rviz 中的运动。这个差速控制器在 arbotix_python 程序包中，完整的 arbotix 程序包还包括多种控制器，分别对应 dynamixel 电机、多关节机械臂以及不同形状的夹持器。
+
+  使用`sudo apt-get install ros-<<VersionName()>>-arbotix`
+
+- 例子：
+
+  控制下面URDF,SRDF和Xacro中4.5的小车
+
+  - 在config文件夹中创建argbotix_control.yaml
+
+    ```
+    # 该文件是控制器配置,一个机器人模型可能有多个控制器，比如: 底盘、机械臂、夹持器(机械手)....
+    # 因此，根 name 是 controller
+    controllers: {
+       # 单控制器设置
+       base_controller: {
+              #类型: 差速控制器
+           type: diff_controller,
+           #参考坐标
+           base_frame_id: base_footprint, 
+           #两个轮子之间的间距
+           base_width: 0.2,
+           #控制频率
+           ticks_meter: 2000, 
+           #PID控制参数，使机器人车轮快速达到预期速度
+           Kp: 12, 
+           Kd: 12, 
+           Ki: 0, 
+           Ko: 50, 
+           #加速限制
+           accel_limit: 1.0 
+        }
+    }
+    
+    ```
+
+  - 在4.5中的.launch文件中加下面代码
+
+    ```
+    <node name="arbotix" pkg="arbotix_python" type="arbotix_driver" output="screen">
+         <rosparam file="$(find mobile_robot)/config/argbotix_control.yaml" command="load" />
+         <param name="sim" value="true" />
+    </node>
+    
+    ```
+
+  - 在rviz中添加TF和Odometry
+
+  - 使用`cmd_vel`控制小车运动
+
+    ```shell
+    rostopic pub -r 10 /cmd_vel geometry_msgs/Twist '{linear: {x: 0.2, y: 0, z: 0}, angular: {x: 0, y: 0, z: 0.5}}'
+    ```
+
+# URDF，SRDF和 Xacro
+
+## 1 URDF
+
+- 一些学习网站
+
+  - [URDF ROS Wiki Page](http://www.ros.org/wiki/urdf) - The URDF ROS Wiki page is the source of most information about the URDF.
+
+  - [URDF Tutorials](http://www.ros.org/wiki/urdf/Tutorials) - Tutorials for working with the URDF.
+
+  - [SOLIDWORKS URDF Plugin](http://www.ros.org/wiki/sw_urdf_exporter) - A plugin that lets you generate a URDF directly from a SOLIDWORKS model.
+
+  - [URDF Examples](https://wiki.ros.org/urdf/Examples)
+
+### 1.0如何rviz显示urdf
+- [展示一个urdf](https://blog.csdn.net/xuehuafeiwu123/article/details/60764997)(urdf_tutorial)
+
+  ```shell
+  # 输入绝对路径
+  $ roslaunch urdf_tutorial display.launch model:=/opt/ros/noetic/share/urdf_tutorial/urdf/01-myfirst.urdf
+  # 也可以直接寻找，不管shell在什么路径下使用都可以
+  $ roslaunch urdf_tutorial display.launch model:='$(find urdf_tutorial)/urdf/01-myfirst.urdf'
+  ```
+
+  - 用到的launch file:
+
+    至少需要包含3个节点
+
+  ```xml
+  <launch>
+      <arg name="model" default="$(find urdf_tutorial)/urdf/01-myfirst.urdf"/>
+      <!--专门在 rviz 中使用的。可以显示各关节的滑动条。-->
+      <arg name="gui" default="true" />
+      <arg name="rvizconfig" default="$(find urdf_tutorial)/rviz/urdf.rviz" />
+  	
+      <!--第一个：加载urdf模型-->
+      <!--如果error13：禁止读取。将command改成textfile可解决-->
+      <param name="robot_description" command="$(find xacro)/xacro $(arg model)" />
+      
+      <!--第二个：joint_ state_publisher用于读取机器人模型中的参数，并发布一系列的变换矩阵组成机器人的 tf 树。-->
+      <node if="$(arg gui)" name="joint_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" />
+      <node unless="$(arg gui)" name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+      
+      <!--第三个：robot_ state_publisher 发出机器人的状态-->>
+      <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+      
+      <!--打开rviz设置文件-->
+      <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
+  
+  </launch>
+  ```
+
+### 1.1Fixed joint Robot
+
+- 一个只有固定joint的机器人
+
+  - mesh的使用见代码180行
+
+    mesh文件一般分2种：
+
+    - <.dae> 格式的，主要用来显示模型
+    -  <.stl > 格式的,主要用来进行碰撞检测。
+
+    可以用各种三维制图软件来生成。如果不进行碰撞检测，完全可以用圆柱体、长方体等常见形状来代替。只要质量、质心、惯量矩阵等设置正确，运动学和动力学仿真没有任何问题。显示模型的形状只是为了好看，而其设置的属性才是根本。
+
+  ```xml
+  <?xml version="1.0"?>
+  <!--机器人的名字时visual-->
+  <robot name="visual">
+      <!--定义三种不同的颜色-->
+      <!--可以添加texture纹理，用一张图来作物体的表面-->
+      <material name="blue">
+          <color rgba="0 0 0.8 1"/>
+      </material>
+  
+      <material name="black">
+          <color rgba="0 0 0 1"/>
+      </material>
+  
+      <material name="white">
+          <color rgba="1 1 1 1"/>
+      </material>
+  
+      <!--定义一个名为base_link的link-->
+      <link name="base_link">
+          <!--下面是可以看到的部分-->
+          <visual>
+              <!--几何性质-->
+              <geometry>
+                  <!--一个长0.6米，半径为0.2米的圆柱-->
+                  <cylinder length="0.6" radius="0.2"/>
+              </geometry>
+              <!--用到上面自定义的材料-->
+              <material name="blue"/>
+          </visual>
+      </link>
+  
+      <link name="right_leg">
+          <visual>
+              <geometry>
+                  <!--这里的几何是一个长宽高为如下的盒子-->
+                  <box size="0.6 0.1 0.2"/>
+              </geometry>
+              <!--相对于自己的origin原点的位移和旋转-->
+              <!--rpy表示roll,pitch,yaw-->
+              <origin rpy="0 1.57075 0" xyz="0 0 -0.3"/>
+              <material name="white"/>
+          </visual>
+      </link>
+      <!--连接2个link需要用到joint,fixed表示这是个不能动的关节-->
+      <joint name="base_to_right_leg" type="fixed">
+          <parent link="base_link"/>
+          <child link="right_leg"/>
+          <!--表示child link的原点origin相对于parent link的origin偏移了xyz-->
+          <origin xyz="0 -0.22 0.25"/>
+      </joint>
+  
+      <link name="right_base">
+          <visual>
+              <geometry>
+                  <box size="0.4 0.1 0.1"/>
+              </geometry>
+              <material name="white"/>
+          </visual>
+      </link>
+      <joint name="right_base_joint" type="fixed">
+          <parent link="right_leg"/>
+          <child link="right_base"/>
+          <origin xyz="0 0 -0.6"/>
+      </joint>
+  
+      <link name="right_front_wheel">
+          <visual>
+              <origin rpy="1.57075 0 0" xyz="0 0 0"/>
+              <geometry>
+                  <cylinder length="0.1" radius="0.035"/>
+              </geometry>
+              <material name="black"/>
+              <origin rpy="0 0 0" xyz="0 0 0"/>
+          </visual>
+      </link>
+      <joint name="right_front_wheel_joint" type="fixed">
+          <parent link="right_base"/>
+          <child link="right_front_wheel"/>
+          <origin rpy="0 0 0" xyz="0.133333333333 0 -0.085"/>
+      </joint>
+  
+      <link name="right_back_wheel">
+          <visual>
+              <origin rpy="1.57075 0 0" xyz="0 0 0"/>
+              <geometry>
+                  <cylinder length="0.1" radius="0.035"/>
+              </geometry>
+              <material name="black"/>
+          </visual>
+      </link>
+      <joint name="right_back_wheel_joint" type="fixed">
+          <parent link="right_base"/>
+          <child link="right_back_wheel"/>
+          <origin rpy="0 0 0" xyz="-0.133333333333 0 -0.085"/>
+      </joint>
+  
+      <link name="left_leg">
+          <visual>
+              <geometry>
+                  <box size="0.6 0.1 0.2"/>
+              </geometry>
+              <origin rpy="0 1.57075 0" xyz="0 0 -0.3"/>
+              <material name="white"/>
+          </visual>
+      </link>
+      <joint name="base_to_left_leg" type="fixed">
+          <parent link="base_link"/>
+          <child link="left_leg"/>
+          <origin xyz="0 0.22 0.25"/>
+      </joint>
+  
+      <link name="left_base">
+          <visual>
+              <geometry>
+                  <box size="0.4 0.1 0.1"/>
+              </geometry>
+              <material name="white"/>
+          </visual>
+      </link>
+      <joint name="left_base_joint" type="fixed">
+          <parent link="left_leg"/>
+          <child link="left_base"/>
+          <origin xyz="0 0 -0.6"/>
+      </joint>
+  
+      <link name="left_front_wheel">
+          <visual>
+              <origin rpy="1.57075 0 0" xyz="0 0 0"/>
+              <geometry>
+                  <cylinder length="0.1" radius="0.035"/>
+              </geometry>
+              <material name="black"/>
+          </visual>
+      </link>
+      <joint name="left_front_wheel_joint" type="fixed">
+          <parent link="left_base"/>
+          <child link="left_front_wheel"/>
+          <origin rpy="0 0 0" xyz="0.133333333333 0 -0.085"/>
+      </joint>
+  
+      <link name="left_back_wheel">
+          <visual>
+              <origin rpy="1.57075 0 0" xyz="0 0 0"/>
+              <geometry>
+                  <cylinder length="0.1" radius="0.035"/>
+              </geometry>
+              <material name="black"/>
+          </visual>
+      </link>
+      <joint name="left_back_wheel_joint" type="fixed">
+          <parent link="left_base"/>
+          <child link="left_back_wheel"/>
+          <origin rpy="0 0 0" xyz="-0.133333333333 0 -0.085"/>
+      </joint>
+  
+      <joint name="gripper_extension" type="fixed">
+          <parent link="base_link"/>
+          <child link="gripper_pole"/>
+          <origin rpy="0 0 0" xyz="0.19 0 0.2"/>
+      </joint>
+      <link name="gripper_pole">
+          <visual>
+              <geometry>
+                  <cylinder length="0.2" radius="0.01"/>
+              </geometry>
+              <origin rpy="0 1.57075 0 " xyz="0.1 0 0"/>
+          </visual>
+      </link>
+  
+      <joint name="left_gripper_joint" type="fixed">
+          <origin rpy="0 0 0" xyz="0.2 0.01 0"/>
+          <parent link="gripper_pole"/>
+          <child link="left_gripper"/>
+      </joint>
+  
+      <link name="left_gripper">
+          <visual>
+              <origin rpy="0.0 0 0" xyz="0 0 0"/>
+              <geometry>
+                  <!--通过mesh来秒速一些复杂图形-->
+                  <!--通过package://NAME_OF_PACKAGE/path notation来调用-->
+                  <mesh filename="package://urdf_tutorial/meshes/l_finger.dae"/>
+              </geometry>
+          </visual>
+      </link>
+  
+      <joint name="left_tip_joint" type="fixed">
+          <parent link="left_gripper"/>
+          <child link="left_tip"/>
+      </joint>
+      <link name="left_tip">
+          <visual>
+              <origin rpy="0.0 0 0" xyz="0.09137 0.00495 0"/>
+              <geometry>
+                  <mesh filename="package://urdf_tutorial/meshes/l_finger_tip.dae"/>
+              </geometry>
+          </visual>
+      </link>
+      <joint name="right_gripper_joint" type="fixed">
+          <origin rpy="0 0 0" xyz="0.2 -0.01 0"/>
+          <parent link="gripper_pole"/>
+          <child link="right_gripper"/>
+      </joint>
+  
+      <link name="right_gripper">
+          <visual>
+              <origin rpy="-3.1415 0 0" xyz="0 0 0"/>
+              <geometry>
+                  <mesh filename="package://urdf_tutorial/meshes/l_finger.dae"/>
+              </geometry>
+          </visual>
+      </link>
+      <joint name="right_tip_joint" type="fixed">
+          <parent link="right_gripper"/>
+          <child link="right_tip"/>
+      </joint>
+  
+      <link name="right_tip">
+          <visual>
+              <origin rpy="-3.1415 0 0" xyz="0.09137 0.00495 0"/>
+              <geometry>
+                  <mesh filename="package://urdf_tutorial/meshes/l_finger_tip.dae"/>
+              </geometry>
+          </visual>
+      </link>
+  
+      <link name="head">
+          <visual>
+              <geometry>
+              <!--这里的几何图形是一个圆球-->
+              <sphere radius="0.2"/>
+                  </geometry>
+              <material name="white"/>
+          </visual>
+      </link>
+      <joint name="head_swivel" type="fixed">
+          <parent link="base_link"/>
+          <child link="head"/>
+          <origin xyz="0 0 0.3"/>
+      </joint>
+  
+      <link name="box">
+          <visual>
+              <geometry>
+                  <box size="0.08 0.08 0.08"/>
+              </geometry>
+              <material name="blue"/>
+          </visual>
+      </link>
+      <joint name="tobox" type="fixed">
+          <parent link="head"/>
+          <child link="box"/>
+          <origin xyz="0.1814 0 0.1414"/>
+      </joint>
+  </robot>
+  ```
+
+### 1.2 Flexible joint Robot
+
+1.1中所有的joint都是固定不能动的,现在要revise修改为可动的。
+
+- 修改头和身体之间的joint，轮子与脚之间的joint的类型为**continuous**
+
+  ```xml
+  <!--头和身体-->
+  <!--continuous可以让两个link饶某个轴随意的旋转-->
+  <joint name="head_swivel" type="continuous">
+      <parent link="base_link"/>
+      <child link="head"/>
+      <!--定义旋转轴为z轴-->
+      <axis xyz="0 0 1"/>
+      <origin xyz="0 0 0.3"/>
+  </joint>
+  <!--有四个轮子，下面为其中一个和他的脚-->
+  <joint name="left_back_wheel_joint" type="continuous">
+      <!--定义旋转轴为y轴-->
+      <axis rpy="0 0 0" xyz="0 1 0"/>
+      <parent link="left_base"/>
+      <child link="left_back_wheel"/>
+      <origin rpy="0 0 0" xyz="-0.133333333333 0 -0.085"/>
+  </joint>
+  ```
+
+- 修改Gripper夹子的joint类型为**revolute**
+
+  ```xml
+  <!--有2个夹子，一左一右，都需要改成revolute-->
+  <!--revolute可以像continuous一样饶轴旋转，但他们有严格strict的限制，需要limit标签-->
+  <joint name="left_gripper_joint" type="revolute">
+      <!--定义旋转轴为z轴-->
+      <axis xyz="0 0 1"/>
+      <!--定义上下限(radians弧度制)，定义最大速度和力-->
+      <limit effort="1000.0" lower="0.0" upper="0.548" velocity="0.5"/>
+      <origin rpy="0 0 0" xyz="0.2 0.01 0"/>
+      <parent link="gripper_pole"/>
+      <child link="left_gripper"/>
+  </joint>
+  ```
+
+- 修改Gripper夹子的手臂的joint类型为**prismatic**
+
+  ```xml
+  <!--prismatic可以沿着某个轴运动-->
+  <joint name="gripper_extension" type="prismatic">
+      <parent link="base_link"/>
+      <child link="gripper_pole"/>
+      <!--定义上下限(meter米)，定义最大速度和力-->
+      <limit effort="1000.0" lower="-0.38" upper="0" velocity="0.5"/>
+      <origin rpy="0 0 0" xyz="0.19 0 0.2"/>
+  </joint>
+  ```
+
+- 其他类型的joint
+
+  - **planar joint**：相对于prismatic只能沿着一个轴的移动，k而一再平面正交方向上平移或旋转
+  - **floating joint**：浮动关节，可以进行平移和旋转运动
+
+- Specify指定 the pose
+
+  当我们在rviz中拖动joint的控制滚条，会进行如下操作
+
+  1. [joint_state_publisher](https://wiki.ros.org/joint_state_publisher)会parse语法分析URDF并找到所有的可移动joint和他们的限制limit
+  2. 接着joint_state_publisher会将控制滚条的值以[sensor_msgs/JointState](http://docs.ros.org/en/api/sensor_msgs/html/msg/JointState.html)msg发送
+  3. 这个msg会被[robot_state_publisher](https://wiki.ros.org/robot_state_publisher)用来计算不同部分之间的移动transforms.
+  4. 最后生成的变化树resulting transform tree被用来在rviz中显示所有的形状shapes。
+
+### 1.3 Physical and Collision Properties
+
+- [Here is the new urdf](https://raw.githubusercontent.com/ros/urdf_tutorial/master/urdf/07-physics.urdf) with collision and physical properties.
+
+- Collision:
+
+  用于碰撞检测
+
+  ```xml
+  <link name="base_link">
+      <visual>
+          <geometry>
+          	<cylinder length="0.6" radius="0.2"/>
+          </geometry>
+          <material name="blue"/>
+      </visual>
+      <collision>
+          <geometry>
+          	<cylinder length="0.6" radius="0.2"/>
+          </geometry>
+      </collision>
+  </link>
+  ```
+
+  - collison和visual同级，是link的直接subelement
+  - 和visual一样，设置碰撞检测的形状
+  - 虽然现实中碰撞和可见图形是一致的，但在如下两种场景，应该用更简单的碰撞几何来替代：
+    - Quicker Processing：因为碰撞计算更复杂，所以如果需要节省计算资源，可以使用简单的geometries几何来代替复杂的collision elements
+    - Safe Zones：有些sensitive equipment敏感部件，我们不希望任何东西与他碰撞。比如机器人的头部，我们就可以把头的碰撞几何设置为一个包围它的圆柱，以防任何东西太靠近他的头部。
+
+- Physical Properties
+
+  为了正确的properly模拟，需要link有相关的物理性质
+
+  ```xml
+  <link name="base_link">
+      <visual>
+          <geometry>
+          	<cylinder length="0.6" radius="0.2"/>
+          </geometry>
+          <material name="blue"/>
+      </visual>
+      <collision>
+          <geometry>
+          	<cylinder length="0.6" radius="0.2"/>
+          </geometry>
+      </collision>
+      <inertial>
+          <!--质量单位是kilograms-->
+          <mass value="10"/>
+          <!--rotational inertia matrix旋转惯量矩阵，是一个symmetrical对称矩阵-->
+          <!--如果不确定，可以用ixx/iyy/izz=1e-3 or smaller作为默认值，这是对于一个中型尺寸的link而言的(比如一个0.1m长，0.6kg的盒子)-->
+          <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+      </inertial>
+  </link>  
+  
+  ```
+
+  - inertial和collision,visual一样，都是link的直接subelement
+
+  - Contact Coefficients
+
+    - mu - [Friction coefficient](https://simple.wikipedia.org/wiki/Coefficient_of_friction)摩擦系数
+    - kp - [Stiffness coefficient](https://en.wikipedia.org/wiki/Stiffness)弹性系数
+    - kd - [Dampening coefficient](https://en.wikipedia.org/wiki/Damping_ratio#Definition)阻尼系数
+
+  - Joint Dynamics
+
+    关节移动由joint的dynamics tag定义，有2个attribute属性：
+
+    1. friction - The physical static friction静态摩擦. For prismatic平移关节 joints, the units are Newtons. For 旋转关节revolving joints, the units are Newton meters.
+    2. damping - The physical damping value阻尼值. For prismatic joints, the units are Newton seconds per meter. For revolving joints, Newton meter seconds per radian
+
+  - Jonit 的其他一些[tag](https://wiki.ros.org/urdf/XML/joint)
+
+    - safety_controller(optional)
+    - mimic(optional)
+    - dynamics(optional)
+    - calibration(optional)
+  
+### 1.4 URDF 工具
+
+  安装命令:`sudo apt install liburdfdom-tools`
+
+- `check_urdf`命令可以检查复杂的 urdf 文件是否存在语法问题
+
+  使用：`check_urdf urdf文件`
+
+- `urdf_to_graphiz`命令可以查看 urdf 模型结构，显示不同 link 的层级关系
+
+  使用：`urdf_to_graphiz urdf文件`
+
+  会在当前目录下生成pdf文件
+
+## 2 SRDF
+
+- SRDF是对URDF的补充
+
+## 3 [MoveIt Setup Assistant](https://ros-planning.github.io/moveit_tutorials/doc/setup_assistant/setup_assistant_tutorial.html)
+
+- 用于生成SRDF
+
+## 4 [Xacro](http://wiki.ros.org/xacro)
+
+[Xacro](https://wiki.ros.org/xacro)名字由来： macro宏 language for XML
+
+- 相比urdf提供了如下三种特性，帮忙降低模型开发难度并降低了模型描述的复杂度
+
+  - Constants常值
+
+  - Simple Math数学计算
+
+  - Macros宏
+
+### 4.1 如何使用 Xacro
+
+- 通常的使用如下：
+
+  写好Xacro后，先将xacro转化为urdf，再使用。
+
+​		转换命令：`rosrun xacro xacro model.xacro > model.urdf `
+
+- 也可以直接在launch file中自动生成urdf，但这会花费更多的时间来启动节点
+
+    ```xml
+    <param name="robot_description" command="xacro '$(find pr2_description)/robots/pr2.urdf.xacro'" />
+    ```
+
+- 在xml文件的开头需要
+
+    ```xml
+    <?xml version="1.0"?>
+    <!--根标签：必须指明xmlns:xacro-->
+    <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="firefighter">
+        ...
+    </robot>
+    ```
+
+### 4.2 Constants
+
+```xml
+<!--使用xacro的语法必须要用xacro:，其他的都和urdf一样-->
+<xacro:property name="width" value="0.2" />
+<xacro:property name="bodylen" value="0.6" />
+<link name="base_link">
+    <visual>
+        <geometry>
+            <cylinder radius="${width}" length="${bodylen}"/>
+        </geometry>
+        <material name="blue"/>
+    </visual>
+    <collision>
+        <geometry>
+            <cylinder radius="${width}" length="${bodylen}"/>
+        </geometry>
+    </collision>
+</link>
+```
+
+- 相比于urdf，xacro可以设置常值，这样一些不同部件但相同的固定的参数如长度，宽度就可以统一设置成一个constant,之后要调整也很方便。
+
+- 我们还能自动组合constants
+
+  ```xml
+  <xacro:property name=”robotname” value=”marvin” />
+  <link name=”${robotname}s_leg” />
+  <!--上面2行等价于下面-->
+  <link name=”marvins_leg” />
+  ```
+
+### 4.3 Math
+
+xacaro也支持简单的数学计算,
+
+```xml
+<cylinder radius="${wheeldiam/2}" length="0.1"/>
+<origin xyz="${reflect*(width+.02)} 0 0.25" />
+```
+
+- 所有的数学计算，数据类型都是floats
+
+### 4.4 Macros
+
+#### 1. Simple Macro
+
+```xml
+<!--定义宏结构-->
+<xacro:macro name="default_origin">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+</xacro:macro>
+<!--调用定义过的宏-->
+<xacro:default_origin />
+<!--上面6行等价于-->
+<origin rpy="0 0 0" xyz="0 0 0"/>
+```
+
+#### 2. Parameterized Macro
+
+- 把一个参数传入xacro macro 中
+
+  ```xml
+  <!--定义宏结构-->
+  <xacro:macro name="default_inertial" params="mass">
+      <inertial>
+              <mass value="${mass}" />
+              <inertia ixx="1.0" ixy="0.0" ixz="0.0"
+                   iyy="1.0" iyz="0.0"
+                   izz="1.0" />
+      </inertial>
+  </xacro:macro>
+  <!--调用定义过的宏-->
+  <xacro:default_inertial mass="10"/>
+  ```
+
+- 也可以传入一个block parameter
+
+  ```xml
+  <!--定义宏结构-->
+  <!--如果是一个block parameter，需要再parameter名字前加上*asterisk号-->
+  <xacro:macro name="blue_shape" params="name *shape">
+      <link name="${name}">
+          <visual>
+              <geometry>
+                  <!--使用xacro:insert_block来插入-->
+                  <xacro:insert_block name="shape" />
+              </geometry>
+              <material name="blue"/>
+          </visual>
+          <collision>
+              <geometry>
+                  <xacro:insert_block name="shape" />
+              </geometry>
+          </collision>
+      </link>
+  </xacro:macro>
+  <!--调用定义过的宏,并给与块结构-->
+  <xacro:blue_shape name="base_link">
+      <cylinder radius=".42" length=".01" />
+  </xacro:blue_shape>
+  ```
+
+#### 3. 实际使用:Leg Macro
+
+```xml
+<xacro:macro name="leg" params="prefix reflect">
+    <link name="${prefix}_leg">
+        <visual>
+            <geometry>
+                <box size="${leglen} 0.1 0.2"/>
+            </geometry>
+            <origin xyz="0 0 -${leglen/2}" rpy="0 ${pi/2} 0"/>
+            <material name="white"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="${leglen} 0.1 0.2"/>
+            </geometry>
+            <origin xyz="0 0 -${leglen/2}" rpy="0 ${pi/2} 0"/>
+        </collision>
+        <xacro:default_inertial mass="10"/>
+    </link>
+
+    <joint name="base_to_${prefix}_leg" type="fixed">
+        <parent link="base_link"/>
+        <child link="${prefix}_leg"/>
+        <origin xyz="0 ${reflect*(width+.02)} 0.25" />
+    </joint>
+    <!-- A bunch of stuff cut -->
+</xacro:macro>
+<!--定义一遍宏，创建2个腿-->
+<!--第一个参数prefix定义了创建的是哪条腿-->
+<!--第二个参数reflect用于计算origin，即腿的位置-->
+<xacro:leg prefix="right" reflect="1" />
+<xacro:leg prefix="left" reflect="-1" />
+```
+
+### 4.5 多xacro组合
+
+机器人模型由多部件组成，可以将不同组件设置进单独文件，最终通过文件包含实现组件的拼装。
+
+- 一个小车例子：
+  - 首先编写底盘，摄像头和雷达的 xacro 文件。
+  - 然后再编写一个组合文件，组合底盘、摄像头与雷达。
+  - 最后，通过 launch 文件启动 Rviz 并显示模型
+
+#### 4.5.1 地盘xacro
+
+```xml
+<!--
+    使用 xacro 优化 URDF 版的小车底盘实现：
+
+    实现思路:
+    1.将一些常量、变量封装为 xacro:property
+      比如:PI 值、小车底盘半径、离地间距、车轮半径、宽度 ....
+    2.使用 宏 封装驱动轮以及支撑轮实现，调用相关宏生成驱动轮与支撑轮
+
+-->
+<!-- 根标签，必须声明 xmlns:xacro -->
+<robot name="my_base" xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <!-- 封装变量、常量 -->
+    <xacro:property name="PI" value="3.141"/>
+    <!-- 宏:黑色设置 -->
+    <material name="black">
+        <color rgba="0.0 0.0 0.0 1.0" />
+    </material>
+    <!-- 底盘属性 -->
+    <xacro:property name="base_footprint_radius" value="0.001" /> <!-- base_footprint 半径  -->
+    <xacro:property name="base_link_radius" value="0.1" /> <!-- base_link 半径 -->
+    <xacro:property name="base_link_length" value="0.08" /> <!-- base_link 长 -->
+    <xacro:property name="earth_space" value="0.015" /> <!-- 离地间距 -->
+
+    <!-- 底盘 -->
+    <link name="base_footprint">
+      <visual>
+        <geometry>
+          <sphere radius="${base_footprint_radius}" />
+        </geometry>
+      </visual>
+    </link>
+
+    <link name="base_link">
+      <visual>
+        <geometry>
+          <cylinder radius="${base_link_radius}" length="${base_link_length}" />
+        </geometry>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <material name="yellow">
+          <color rgba="0.5 0.3 0.0 0.5" />
+        </material>
+      </visual>
+    </link>
+
+    <joint name="base_link2base_footprint" type="fixed">
+      <parent link="base_footprint" />
+      <child link="base_link" />
+      <origin xyz="0 0 ${earth_space + base_link_length / 2 }" />
+    </joint>
+
+    <!-- 驱动轮 -->
+    <!-- 驱动轮属性 -->
+    <xacro:property name="wheel_radius" value="0.0325" /><!-- 半径 -->
+    <xacro:property name="wheel_length" value="0.015" /><!-- 宽度 -->
+    <!-- 驱动轮宏实现 -->
+    <xacro:macro name="add_wheels" params="name flag">
+      <link name="${name}_wheel">
+        <visual>
+          <geometry>
+            <cylinder radius="${wheel_radius}" length="${wheel_length}" />
+          </geometry>
+          <origin xyz="0.0 0.0 0.0" rpy="${PI / 2} 0.0 0.0" />
+          <material name="black" />
+        </visual>
+      </link>
+
+      <joint name="${name}_wheel2base_link" type="continuous">
+        <parent link="base_link" />
+        <child link="${name}_wheel" />
+        <origin xyz="0 ${flag * base_link_radius} ${-(earth_space + base_link_length / 2 - wheel_radius) }" />
+        <axis xyz="0 1 0" />
+      </joint>
+    </xacro:macro>
+    <xacro:add_wheels name="left" flag="1" />
+    <xacro:add_wheels name="right" flag="-1" />
+    <!-- 支撑轮 -->
+    <!-- 支撑轮属性 -->
+    <xacro:property name="support_wheel_radius" value="0.0075" /> <!-- 支撑轮半径 -->
+
+    <!-- 支撑轮宏 -->
+    <xacro:macro name="add_support_wheel" params="name flag" >
+      <link name="${name}_wheel">
+        <visual>
+            <geometry>
+                <sphere radius="${support_wheel_radius}" />
+            </geometry>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <material name="black" />
+        </visual>
+      </link>
+
+      <joint name="${name}_wheel2base_link" type="continuous">
+          <parent link="base_link" />
+          <child link="${name}_wheel" />
+          <origin xyz="${flag * (base_link_radius - support_wheel_radius)} 0 ${-(base_link_length / 2 + earth_space / 2)}" />
+          <axis xyz="1 1 1" />
+      </joint>
+    </xacro:macro>
+
+    <xacro:add_support_wheel name="front" flag="1" />
+    <xacro:add_support_wheel name="back" flag="-1" />
+
+</robot>
+
+```
+
+#### 4.5.2 摄像头xacro
+
+```xml
+<!-- 摄像头相关的 xacro 文件 -->
+<robot name="my_camera" xmlns:xacro="http://wiki.ros.org/xacro">
+    <!-- 摄像头属性 -->
+    <xacro:property name="camera_length" value="0.01" /> <!-- 摄像头长度(x) -->
+    <xacro:property name="camera_width" value="0.025" /> <!-- 摄像头宽度(y) -->
+    <xacro:property name="camera_height" value="0.025" /> <!-- 摄像头高度(z) -->
+    <xacro:property name="camera_x" value="0.08" /> <!-- 摄像头安装的x坐标 -->
+    <xacro:property name="camera_y" value="0.0" /> <!-- 摄像头安装的y坐标 -->
+    <xacro:property name="camera_z" value="${base_link_length / 2 + camera_height / 2}" /> <!-- 摄像头安装的z坐标:底盘高度 / 2 + 摄像头高度 / 2  -->
+
+    <!-- 摄像头关节以及link -->
+    <link name="camera">
+        <visual>
+            <geometry>
+                <box size="${camera_length} ${camera_width} ${camera_height}" />
+            </geometry>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+            <material name="black" />
+        </visual>
+    </link>
+
+    <joint name="camera2base_link" type="fixed">
+        <parent link="base_link" />
+        <child link="camera" />
+        <origin xyz="${camera_x} ${camera_y} ${camera_z}" />
+    </joint>
+</robot>
+
+```
+
+#### 4.5.3 雷达xacro
+
+```xml
+<!--
+    小车底盘添加雷达
+-->
+<robot name="my_laser" xmlns:xacro="http://wiki.ros.org/xacro">
+
+    <!-- 雷达支架 -->
+    <xacro:property name="support_length" value="0.15" /> <!-- 支架长度 -->
+    <xacro:property name="support_radius" value="0.01" /> <!-- 支架半径 -->
+    <xacro:property name="support_x" value="0.0" /> <!-- 支架安装的x坐标 -->
+    <xacro:property name="support_y" value="0.0" /> <!-- 支架安装的y坐标 -->
+    <xacro:property name="support_z" value="${base_link_length / 2 + support_length / 2}" /> <!-- 支架安装的z坐标:底盘高度 / 2 + 支架高度 / 2  -->
+
+    <link name="support">
+        <visual>
+            <geometry>
+                <cylinder radius="${support_radius}" length="${support_length}" />
+            </geometry>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+            <material name="red">
+                <color rgba="0.8 0.2 0.0 0.8" />
+            </material>
+        </visual>
+    </link>
+
+    <joint name="support2base_link" type="fixed">
+        <parent link="base_link" />
+        <child link="support" />
+        <origin xyz="${support_x} ${support_y} ${support_z}" />
+    </joint>
+
+
+    <!-- 雷达属性 -->
+    <xacro:property name="laser_length" value="0.05" /> <!-- 雷达长度 -->
+    <xacro:property name="laser_radius" value="0.03" /> <!-- 雷达半径 -->
+    <xacro:property name="laser_x" value="0.0" /> <!-- 雷达安装的x坐标 -->
+    <xacro:property name="laser_y" value="0.0" /> <!-- 雷达安装的y坐标 -->
+    <xacro:property name="laser_z" value="${support_length / 2 + laser_length / 2}" /> <!-- 雷达安装的z坐标:支架高度 / 2 + 雷达高度 / 2  -->
+
+    <!-- 雷达关节以及link -->
+    <link name="laser">
+        <visual>
+            <geometry>
+                <cylinder radius="${laser_radius}" length="${laser_length}" />
+            </geometry>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+            <material name="black" />
+        </visual>
+    </link>
+
+    <joint name="laser2support" type="fixed">
+        <parent link="support" />
+        <child link="laser" />
+        <origin xyz="${laser_x} ${laser_y} ${laser_z}" />
+    </joint>
+</robot>
+
+```
+
+#### 4.5.4 组合xacro
+
+将上面3个组装起来
+
+```xml
+<!-- 组合小车底盘与摄像头与雷达 -->
+<robot name="my_car_camera" xmlns:xacro="http://wiki.ros.org/xacro">
+    <xacro:include filename="my_base.urdf.xacro" />
+    <xacro:include filename="my_camera.urdf.xacro" />
+    <xacro:include filename="my_laser.urdf.xacro" />
+</robot>
+```
+
+#### 4.5.5 launch file
+
+```xml
+<launch>
+    <param name="robot_description" command="$(find xacro)/xacro $(find demo01_urdf_helloworld)/urdf/xacro/my_base_camera_laser.urdf.xacro" />
+
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find demo01_urdf_helloworld)/config/helloworld.rviz" />
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen" />
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen" />
+    <node pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" name="joint_state_publisher_gui" output="screen" />
+
+</launch>
+
+```
+
+
+
+## 5 Using URDF in Gazebo
+
+### 5.1官网教程
+
+[代码例子](https://github.com/ros/urdf_sim_tutorial)
+
+#### 5.1.1 launch file
+
+运行：`roslaunch urdf_sim_tutorial 13-diffdrive.launch`
+
+一共有2个launch file:
+
+1. 13-diffdrive.launch
+
+    ```xml
+    <launch>
+        <!--读取模型-->
+        <arg name="model" default="$(find urdf_sim_tutorial)/urdf/13-diffdrive.urdf.xacro"/>
+        <!--加载rviz配置文件-->
+        <arg name="rvizconfig" default="$(find urdf_tutorial)/rviz/urdf.rviz" />
+        <!--启动另一个launch file,用于启动gazebo-->
+        <include file="$(find urdf_sim_tutorial)/launch/gazebo.launch">
+        <arg name="model" value="$(arg model)" />
+        </include>
+        
+        <!--按上面加载的rviz配置来打开rviz-->
+        <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" />
+        
+        <!--读取四个yaml.分别用于不同的控制器(ns:命名空间)-->
+        <!--yaml里存放的参数会传递给ROS parameter space然后发送给gazebo进行控制-->
+        <rosparam command="load"
+                file="$(find urdf_sim_tutorial)/config/joints.yaml"
+                ns="r2d2_joint_state_controller" />
+        <rosparam command="load"
+                file="$(find urdf_sim_tutorial)/config/head.yaml"
+                ns="r2d2_head_controller" />
+        <rosparam command="load"
+                file="$(find urdf_sim_tutorial)/config/gripper.yaml"
+                ns="r2d2_gripper_controller" />
+        <rosparam command="load"
+                file="$(find urdf_sim_tutorial)/config/diffdrive.yaml"
+                ns="r2d2_diff_drive_controller" />
+        
+    	<!--使用controller_manage将上面4个命名空间(ns)传入gazebo-->
+        <node name="r2d2_controller_spawner" pkg="controller_manager" type="spawner"
+        args="r2d2_joint_state_controller
+              r2d2_head_controller
+              r2d2_gripper_controller
+              r2d2_diff_drive_controller
+              --shutdown-timeout 3"/>
+        
+    	<!--rqt_robot_steering是rqt_robot_plugins提供的包-->
+        <!--rqt_robot_steering提供了一个GUI Plugin用于驾驶机器人-->
+        <node name="rqt_robot_steering" pkg="rqt_robot_steering" type="rqt_robot_steering">
+            <!--rqt_robot_steering发送的topic-->
+        	<param name="default_topic" value="/r2d2_diff_drive_controller/cmd_vel"/>
+        </node>
+    </launch>
+    ```
+
+2. gazobo.launch
+
+   ```xml
+   <launch>
+   
+       <!-- these are the arguments you can pass this launch file, for example paused:=true -->
+       <arg name="paused" default="false"/>
+       <arg name="use_sim_time" default="true"/>
+       <arg name="gui" default="true"/>
+       <arg name="headless" default="false"/>
+       <arg name="debug" default="false"/>
+       <arg name="model" default="$(find urdf_tutorial)/urdf/08-macroed.urdf.xacro"/>
+   
+       <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
+       <include file="$(find gazebo_ros)/launch/empty_world.launch">
+           <arg name="debug" value="$(arg debug)" />
+           <arg name="gui" value="$(arg gui)" />
+           <arg name="paused" value="$(arg paused)"/>
+           <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+           <arg name="headless" value="$(arg headless)"/>
+       </include>
+       
+   	<!--读取模型-->
+       <param name="robot_description" command="$(find xacro)/xacro $(arg model)" />
+   
+       <!-- push robot_description to factory and spawn robot in gazebo -->
+       <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
+       args="-z 1.0 -unpause -urdf -model robot -param robot_description" respawn="false" output="screen" />
+   	
+       <!--发送机器人状态-->
+       <node pkg="robot_state_publisher" type="robot_state_publisher"  name="robot_state_publisher">
+       	<param name="publish_frequency" type="double" value="30.0" />
+       </node>
+   
+   </launch>
+   ```
+   
+#### 5.1.2 yaml file
+
+第一个type:"xx"，表明用的是哪个控制器。具体见[ros_controllers](http://wiki.ros.org/ros_controllers?distro=noetic)和[ros_control](http://wiki.ros.org/ros_control?distro=noetic)
+
+   1. joints.yaml
+   
+      ```yaml
+      # The joint state controller handles publishing transforms for any moving joints
+      type: "joint_state_controller/JointStateController"
+      publish_rate: 50
+      ```
+   
+   2. head.yaml
+   
+      ```yaml
+      type: "position_controllers/JointPositionController"
+      joint: head_swivel
+      ```
+   
+   3. gripper.yaml
+   
+      ```yaml
+      type: "position_controllers/JointGroupPositionController"
+      joints:
+       - gripper_extension
+       - left_gripper_joint
+       - right_gripper_joint
+      ```
+   
+   4. diffdrive.yam
+   
+      ```yaml
+      type: "diff_drive_controller/DiffDriveController"
+      publish_rate: 50
+      
+      left_wheel: ['left_front_wheel_joint', 'left_back_wheel_joint']
+      right_wheel: ['right_front_wheel_joint', 'right_back_wheel_joint']
+      
+      wheel_separation: 0.44
+      
+      # Odometry covariances for the encoder output of the robot. These values should
+      # be tuned to your robot's sample odometry data, but these values are a good place
+      # to start
+      pose_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.03]
+      twist_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.03]
+      
+      # Top level frame (link) of the robot description
+      base_frame_id: base_link
+      
+      # Velocity and acceleration limits for the robot
+      linear:
+        x:
+          has_velocity_limits    : true
+          max_velocity           : 0.2   # m/s
+          has_acceleration_limits: true
+          max_acceleration       : 0.6   # m/s^2
+      angular:
+        z:
+          has_velocity_limits    : true
+          max_velocity           : 2.0   # rad/s
+          has_acceleration_limits: true
+          max_acceleration       : 6.0   # rad/s^2
+      ```
+
+#### 5.1.3 xacro
+
+[整体的xacro](https://github.com/ros/urdf_sim_tutorial/blob/master/urdf/13-diffdrive.urdf.xacro)很长，大部分和12.1中类似，下面是和gazebo和ros下的一些改动
+
+- 添加Gazebo Plugin
+
+  297-302行。用于连接gazebo和ros
+
+  ```xml
+  <gazebo>
+      <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      	<robotNamespace>/</robotNamespace>
+      </plugin>
+  </gazebo>
+  ```
+
+- Transmission传动
+
+  对于每一个non-fixed joint都需要设置一个transmission。他会告诉gazebo要让不同的joint做什么.
+
+  下面每一个joint的name都必须和[整体的xacro](https://github.com/ros/urdf_sim_tutorial/blob/master/urdf/13-diffdrive.urdf.xacro)定义的joint名字一致
+
+  1. head joint
+
+     265-273行。控制头旋转
+
+     ```xml
+     <transmission name="head_swivel_trans">
+         <type>transmission_interface/SimpleTransmission</type>
+         <actuator name="$head_swivel_motor">
+         	<mechanicalReduction>1</mechanicalReduction>
+         </actuator>
+         <!--joint名字和254行保持一致-->
+         <joint name="head_swivel">
+             <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+         </joint>
+     </transmission>
+     ```
+
+  2. Wheel joint
+
+     83-91行。控制轮子转动
+
+     ```xml
+     <transmission name="${prefix}_${suffix}_wheel_trans">
+         <type>transmission_interface/SimpleTransmission</type>
+         <actuator name="${prefix}_${suffix}_wheel_motor">
+         	<mechanicalReduction>1</mechanicalReduction>
+         </actuator>
+         <!--joint名字和64行配对-->
+         <joint name="${prefix}_${suffix}_wheel_joint">
+         	<hardwareInterface>VelocityJointInterface</hardwareInterface>
+         </joint>
+     </transmission>
+     ```
+
+     
+
+### 5.2 URDF与Gazebo基本流程
+
+#### 5.2.1 创建功能包，导入依赖项
+
+创建新功能包，导入依赖包: urdf、xacro、gazebo_ros、gazebo_ros_control、gazebo_plugins
+
+```xml
+<!--如果不导入这些包-->
+<!--也可以在urdf中写入,见5.1.3-->
+<gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+    	<robotNamespace>/</robotNamespace>
+    </plugin>
+</gazebo>
+```
+
+#### 5.2.2 编写URDF
+
+注意， 当 URDF 需要与 Gazebo 集成时，和 Rviz 有明显区别:
+
+1. 必须使用 collision 标签，因为既然是仿真环境，那么必然涉及到碰撞检测，collision 提供碰撞检测的依据。
+
+2. 必须使用 inertial 标签，此标签标注了当前机器人某个刚体部分的惯性矩阵，用于一些力学相关的仿真计算。
+
+3. 颜色设置，也需要重新使用 gazebo 标签标注，因为之前的颜色设置为了方便调试包含透明度，仿真环境下没有此选项。
+
+```xml
+<!-- 
+    创建一个机器人模型(盒状即可)，显示在 Gazebo 中 
+-->
+
+<robot name="mycar">
+    <link name="base_link">
+        <visual>
+            <geometry>
+                <box size="0.5 0.2 0.1" />
+            </geometry>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+            <material name="yellow">
+                <color rgba="0.5 0.3 0.0 1" />
+            </material>
+        </visual>
+        
+        
+        
+        <!--1. 必须要有碰撞检测标签-->
+        <!--如果机器人link是标准的几何体形状，和link的 visual 属性设置一致即可。-->
+        <collision>
+            <geometry>
+                <box size="0.5 0.2 0.1" />
+            </geometry>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+        </collision>
+        
+        
+        
+        <!--2. 必须要有惯性（物理性质）标签-->
+        <!--
+			需要注意的是，原则上，除了 base_footprint外，
+			机器人的每个刚体部分都需要设置惯性矩阵，且惯性矩阵必须经计算得出。
+
+			如果随意定义刚体部分的惯性矩阵，
+			那么可能会导致机器人在Gazebo中出现抖动，移动等现象。
+		-->
+        <inertial>
+            <origin xyz="0 0 0" />
+            <mass value="6" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+        </inertial>       
+        <!--2.1 球体的惯性矩阵 -->
+        <xacro:macro name="sphere_inertial_matrix" params="m r">
+            <inertial>
+                <mass value="${m}" />
+                <inertia ixx="${2*m*r*r/5}" ixy="0" ixz="0"
+                    iyy="${2*m*r*r/5}" iyz="0" 
+                    izz="${2*m*r*r/5}" />
+            </inertial>
+        </xacro:macro>
+        <!--2.2 圆柱的惯性矩阵 -->
+		<xacro:macro name="cylinder_inertial_matrix" params="m r h">
+            <inertial>
+                <mass value="${m}" />
+                <inertia ixx="${m*(3*r*r+h*h)/12}" ixy = "0" ixz = "0"
+                    iyy="${m*(3*r*r+h*h)/12}" iyz = "0"
+                    izz="${m*r*r/2}" /> 
+            </inertial>
+       	 </xacro:macro>
+         <!--2.3 立方体的惯性矩阵 -->
+         <xacro:macro name="Box_inertial_matrix" params="m l w h">
+            <inertial>
+                <mass value="${m}" />
+                <inertia ixx="${m*(h*h + l*l)/12}" ixy = "0" ixz = "0"
+                    iyy="${m*(w*w + l*l)/12}" iyz= "0"
+                    izz="${m*(w*w + h*h)/12}" />
+            </inertial>
+          </xacro:macro>
+  
+    </link>
+    
+    
+    
+    <!--3. gazebo自带的材料标签-->
+    <gazebo reference="base_link">
+        <material>Gazebo/Black</material>
+    </gazebo>
+    
+
+</robot>
+
+```
+
+#### 5.2.3启动gazebo并显示模型
+
+```xml
+<launch>
+
+    <!-- 将 Urdf 文件的内容加载到参数服务器 -->
+    <param name="robot_description" textfile="$(find demo02_urdf_gazebo)/urdf/urdf01_helloworld.urdf" />
+
+    <!-- 启动 Gazebo 的仿真环境，当前环境为空环境 -->
+    <!-- 参考5.1.1可以给空环境设置各种参数-->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch" />
+
+    <!-- 在 gazebo 中显示机器人模型 -->
+    <!-- 
+        在 Gazebo 中加载一个机器人模型，该功能由 gazebo_ros 下的 spawn_model 提供:
+        -urdf 加载的是 urdf 文件
+        -model mycar 模型名称是 mycar
+        -param robot_description 从参数 robot_description 中载入模型
+        -x 模型载入的 x 坐标
+        -y 模型载入的 y 坐标
+        -z 模型载入的 z 坐标
+	-->
+    <node pkg="gazebo_ros" type="spawn_model" name="model" args="-urdf -model mycar -param robot_description"  />
+    
+</launch>
+
+```
+
