@@ -513,10 +513,21 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
 1. Newton’s Method牛顿法
    - BFGS and L-BFGS，Gauss-Newton，Levenberg，Levenberg-Marquardt
    - 牛顿法doesn’t work well for minibatches，适用于全数据集处理
+   - Mathematical View：牛顿法有着Faster convergence in terms of number of iterations
+     - 但是：Approximating近似 the inverse Hessian is highly computationally costly, not
+       feasible可行的 for high-dimensional datasets.
 2. Conjugate Gradien共轭梯度法
 3. coordinate descent坐标下降法
 
+### 3.7什么是一阶矩和二阶矩
 
+- 中心距：对于正整数k，如果E(X)存在，且$E\{[X-E(X)]^k\}$<∞，则称$E\{[X-E(X)]^k\}$为随机变量X的k阶中心矩
+
+- 一阶矩就是期望值，换句话说就是平均数。
+  - 一阶矩只有一阶非中心矩，因为一阶中心矩永远等于零。
+- 二阶(非中心)矩就是对变量的平方求期望
+  - 二阶中心矩就是对随机变量与均值(期望)的差的平方求期望
+  - 为什么要用平方，因为如果序列中有负数就会产生较大波动，而平方运算就好像对序列添加了绝对值，这样更能体现偏离均值的范围
 
 ## 4) Learning Rate
 
@@ -550,6 +561,8 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
   | ---------------------------------- | ---------------- | ---------------- |
   | 1                                  | True & Positive  | False & Positive |
   | 0                                  | False & Negative | True & Negative  |
+
+  - True/False指预测对了没有，positive/negative指预测的结果
 
   - $精准度precision=\frac{True\ Positive}{True\ Positive+False\ Positive}$
 
@@ -669,26 +682,22 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
   - Ideal Training： Small gap between training and validation loss, and both
     go down at same rate (stable without fluctuations波动).
 
-## 8) Data Augmentation
+## 8) 关于过拟合
 
-- Data Pre-Processing
+- **过拟合的原因：**
+  - 训练集数据太少，很容易就过拟合了。
+  - 训练集测试集的数据分布不一致，这点很容易被忽略。比如有的算法要求数据集符合高斯分布，训练集也满足条件，但是上线以后线上数据分布发生了变化，效果肯定不会太好。
+  - 模型本身特别复杂。比如树模型，如果树的棵数太多，深度太大，也很容易就过拟合。
+- **解决方案**
+  - 针对训练数据太少的问题，可以增加训练数据（Data Augmentation）
+  - 增对模型复杂度太高的问题，可以降低模型复杂度。比如，减少层的数量或者减少神经元的个数，这样可以缩小网络的规模。
+  - 正则化，这是解决过拟合的常用方法。
+  - dropout，神经网络在每一次迭代过程中随机地丢弃神经网络中的神经元。每当我们丢弃不同的神经元，相当于重新训练了一个新的神经网络。
+  - early stop，训练过程中，如果训练误差继续减小，但是测试误差已经开始增加，此时可以停止训练。
+  - 集成学习，将多个模型进行组合，可以降低少数模型过拟合风险。
+  - BN，Batch Normalization。在CNN每层之间加上将神经元的权重调成标准正态分布的正则化层。
 
-  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Data%20pre_processing.png?raw=true)
-
-- Data Augmentation增长
-  - A classifier has to be invariant不变 to a wide variety of transformations变化
-  - Helping the classifier: synthesize合成 data simulating plausible似乎是真的 transformations
-  - 手段有：
-    - Flip翻转
-    - crop裁剪
-    - Random brightniess and contrast changes
-    - shear剪切(使倾斜)
-
-## 9) Regularization 正则化
-
-正则化的目的主要是防止过拟合overfitting，限制模型的复杂度。
-
-### 9.1 L2 regularization
+### 8.1 L2 regularization
 
 - 公式：$\theta_{k+1}=\theta_k-\epsilon\nabla_\theta(\theta_k,x,y)-\lambda\theta_k$
 
@@ -705,7 +714,7 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
 
 - Early Stopping
 
-### 9.2 Max Norm Regularization
+### 8.2 Max Norm Regularization
 
 Regularization technique that constrains weights of network (directly) 
 
@@ -718,7 +727,7 @@ r\frac{w}{||w||_2} \ otherwise
 ||w||_2=\sqrt{w_1^2+w_2^2+\cdots+w_n^2}
 $$
 
-### 9.3 Ensemble Methods集成学习
+### 8.3 Ensemble Methods集成学习
 
   集成学习是一种训练思路，并不是某种具体的算法。它会挑选一些简单的基础模型进行组装，从而得到更好的效果。主要有2种：
 
@@ -739,11 +748,18 @@ $$
       3. 在每一轮改变训练数据的权值或概率分布，通过提高那些在前一轮被弱分类器分错样例的权值，减小前一轮分对样例的权值，来使得分类器对误分的数据有较好的效果。
     - 在 boosting 的方法中，比较主流的有 [Adaboost](https://easyai.tech/ai-definition/adaboost/) 和 Gradient boosting 。
 
-### 9.4 Dropout
+### 8.4 Dropout
 
 - 在机器学习的模型中，如果模型的参数太多，而训练样本又太少，训练出来的模型很容易产生过拟合的现象。Dropout可以比较有效的缓解过拟合的发生，在一定程度上达到正则化的效果。
 
 - Dropout可以作为训练深度神经网络的一种trick供选择。在每个训练批次中，通过忽略一半的特征检测器（让一半的隐层节点值为0）Using half the network = half capacity，可以明显地减少过拟合现象。这种方式可以减少特征检测器（隐层节点）间的相互作用reducing co-adaptation between neurons，检测器相互作用是指某些检测器依赖其他检测器才能发挥作用。
+
+- Dropout在训练和测试时的区别
+
+  - Dropout 在训练时采用，是为了减少神经元对部分上层神经元的依赖，以提高模型的泛化能力，减少过拟合。
+
+  - 在测试时，应该用整个训练好的模型，因此不需要dropout。
+
 
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Dropout.png?raw=true)
 
@@ -758,7 +774,7 @@ $$
   - Training: use dropout with a low p (0.1 or 0.2).
   - Inference, run the same image multiple times (25- 100), and average the results.
 
-### 9.5 Batch normalization
+### 8.5 Batch normalization
 
 - Batch Normalization批标准化：
 
@@ -767,6 +783,20 @@ $$
     先数据X -> 全连接层 -> Batch normalization -> 激励函数
 
   - Batch normalization 的 batch 是批数据, 把数据分成小批小批进行 stochastic gradient descent. 而且在每批数据进行前向传递 forward propagation 的时候, 对每一层都进行 normalization 的处理,
+
+  - BN就是通过归一化手段，将每层输入强行拉回均值0方差为1的标准正态分布，这样使得激活输入值分布在非线性函数梯度敏感区域，从而避免梯度消失问题，大大加快训练速度。
+
+- BN 作用
+
+  - 加快收敛速度，有效避免梯度消失。
+
+  - 提升模型泛化能力，BN的缩放因子可以有效的识别对网络贡献不大的神经元，经过激活函数后可以自动削弱或消除一些神经元。另外，由于归一化，很少发生数据分布不同导致的参数变动过大问题。
+
+- BN在训练和测试时的差别：
+
+  - 在训练时，是对每一批的训练数据进行归一化，也即用每一批数据的均值和方差。
+
+  - 测试时，比如进行一个样本的预测，就并没有batch的概念，因此，这个时候用的均值和方差是全量训练数据的均值和方差
 
 - 为什么需要Batch Normalization批标准化：
 
@@ -800,13 +830,30 @@ $$
 
   - 最后得到输出: $y_{i,j}=\gamma_j\hat{x}_{i,j}+\beta_j$
 
-    - $\gamma和\beta$：是我们要去训练的参数
+    - $\gamma$：scale参数
+    - $\beta$：shift参数
 
 - Train vs Test
 
   - Mean 和 Variace的获得：
     - Train：通过mini-batch获得
     - Test：没有足够的测试数据集，所以 by running an exponentially weighted averaged across training minibatches.
+
+### 8.6 Data Augmentation
+
+- Data Pre-Processing
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Data%20pre_processing.png?raw=true)
+
+- Data Augmentation增长
+
+  - A classifier has to be invariant不变 to a wide variety of transformations变化
+  - Helping the classifier: synthesize合成 data simulating plausible似乎是真的 transformations
+  - 手段有：
+    - Flip翻转
+    - crop裁剪
+    - Random brightniess and contrast changes
+    - shear剪切(使倾斜)
 
 ## 10) Transfer Learning迁移学习
 
@@ -986,6 +1033,56 @@ Convolutional Neural Networks
 全连接层是随机不激活某一个unit,但卷积层是三维结构的，这么做并不能提升性能。
 
 所以Spatial Dropout randomly sets entire feature maps to zero
+
+## Common Performance Metrics
+
+- Top-1 score: check if a sample’s top class (i.e. the one with highest probability) is the same as its target label
+- Top-5 score: check if your label is in your 5 first predictions (i.e. predictions with 5 highest probabilities)
+  - Top-5 error: percentage of test samples for which the correct class was not in the top 5 predicted classes
+
+## Clasic Architectures
+
+### 1. LeNet
+
+- 特点
+  - Digit recognition: 10 classes
+  - Conv -> Pool -> Conv -> Pool -> Conv -> FC
+  - As we go deeper: Width, Height 下降；Number of Filters增加
+
+### 2. [AlexNet](https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf)
+
+- 特点：
+  - Similar to LeNet but much bigger (~1000 times)
+  - Use of ReLU instead of tanh/sigmoid
+
+### 3.[VGGNet](https://arxiv.org/abs/1409.1556)
+
+- Striving奋斗 for simplicity
+- CONV = 3x3 filters with stride 1, same convolutions
+- MAXPOOL = 2x2 filters with stride 2
+- Conv -> Pool -> Conv -> Pool -> Conv -> FC
+- As we go deeper: Width, Height 下降；Number of Filters增加
+- Called VGG-16: 16 layers that have weights
+
+- Large but simplicity makes it appealing有吸引力的
+
+### 4.[ResNet](https://arxiv.org/abs/1512.03385)
+
+### 5.[GoogLeNet](https://arxiv.org/abs/1409.4842)
+
+### 6.[Xception Net](https://arxiv.org/abs/1610.02357)
+
+### 7.[U-Net](https://arxiv.org/abs/1505.04597)
+
+### 8.[EfficientNet](https://arxiv.org/abs/1905.11946)
+
+### 9.[Fast R-CNN](https://arxiv.org/abs/1504.08083)
+
+## Inception Layer
+
+Tired of choosing filter sizes?
+
+Use them all!
 
 # 1. 数据预处理
 
@@ -1608,6 +1705,12 @@ class CrossEntropyFromLogits(Loss):
 ```
 
 ## 2.5前向传播，反向传播
+
+- 前向传播的作用：
+  - takes output from previous layer, performs operation, returns result
+  - caches values needed for gradient computation during backprop
+- 反向传播
+  - takes upstream逆流的 gradient, returns all partial derivatives
 
 - 前向传播用的2.3的模型：$\mathbf{\hat{y}}  = \sigma \left( \mathbf{X} \cdot \mathbf{w} \right)$
 - 反向传播即它的导数：
@@ -4803,5 +4906,566 @@ def evaluate_model(model, dataset):
     return 1.0 / (2 * (loss/len(dataloader)))
 
 print("Score of the Dummy Model:", evaluate_model(dummy_model, val_dataset))
+```
+
+# 8. Semantic Segmentation语义分割
+
+[参考](https://www.jeremyjordan.me/semantic-segmentation/)
+
+## 8.1 加载库
+
+```python
+import sys
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+import torch
+
+from exercise_code.data.segmentation_dataset import SegmentationData, label_img_to_rgb
+from exercise_code.data.download_utils import download_dataset
+from exercise_code.util import visualizer, save_model
+from exercise_code.util.Util import checkSize, checkParams, test
+from exercise_code.networks.segmentation_nn import SegmentationNN, DummySegmentationModel
+from exercise_code.tests import test_seg_nn
+#set up default cuda device
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+%matplotlib inline
+plt.rcParams['figure.figsize'] = (10.0, 8.0) # set default size of plots
+plt.rcParams['image.interpolation'] = 'nearest'
+plt.rcParams['image.cmap'] = 'gray'
+
+# for auto-reloading external modules
+# see http://stackoverflow.com/questions/1907993/autoreload-of-modules-in-ipython
+%load_ext autoreload
+%autoreload 2
+# 使用Tensorboard
+%load_ext tensorboard
+%tensorboard --logdir lightning_logs --port 6006
+```
+
+## 8.2 加载数据集
+
+### 8.2.0 下载数据集
+
+```python
+download_url = 'https://i2dl.dvl.in.tum.de/downloads/segmentation_data.zip'
+i2dl_exercises_path = os.path.dirname(os.path.abspath(os.getcwd()))
+data_root = os.path.join(i2dl_exercises_path, 'datasets','segmentation')
+
+
+download_dataset(
+    url=download_url,
+    data_dir=data_root,
+    dataset_zip_name='segmentation_data.zip',
+    force_download=False,
+)
+
+train_data = SegmentationData(image_paths_file=f'{data_root}/segmentation_data/train.txt')
+val_data = SegmentationData(image_paths_file=f'{data_root}/segmentation_data/val.txt')
+test_data = SegmentationData(image_paths_file=f'{data_root}/segmentation_data/test.txt')
+```
+
+### 8.2.1 用到的download_dataset()
+
+```python
+import os
+import shutil
+import urllib
+import tarfile
+import zipfile
+import gzip
+import tqdm
+
+
+def gen_bar_updater():
+    """tqdm report hook for urlretrieve"""
+    pbar = tqdm.tqdm(total=None)
+
+    def bar_update(count, block_size, total_size):
+        if pbar.total is None and total_size:
+            pbar.total = total_size
+        progress_bytes = count * block_size
+        pbar.update(progress_bytes - pbar.n)
+
+    return bar_update
+
+
+def download_url(url, root, filename):
+    """
+    Download a file with given filename from a given url to a given directory
+    :param url: url from where to download
+    :param root: root directory to which to download
+    :param filename: filename under which the file should be saved
+    """
+    file_path = os.path.join(root, filename)
+    os.makedirs(root, exist_ok=True)
+    if not os.path.exists(file_path):
+        print('Downloading ' + url + ' to ' + file_path)
+        urllib.request.urlretrieve(
+            url,
+            file_path,
+            reporthook=gen_bar_updater()
+        )
+    return file_path
+
+
+def _is_tarxz(filename):
+    return filename.endswith(".tar.xz")
+
+
+def _is_tar(filename):
+    return filename.endswith(".tar")
+
+
+def _is_targz(filename):
+    return filename.endswith(".tar.gz")
+
+
+def _is_tgz(filename):
+    return filename.endswith(".tgz")
+
+
+def _is_gzip(filename):
+    return filename.endswith(".gz") and not filename.endswith(".tar.gz")
+
+
+def _is_zip(filename):
+    return filename.endswith(".zip")
+
+
+def extract_archive(from_path, to_path=None, remove_finished=False):
+    """
+    Extract a given archive
+    :param from_path: path to archive which should be extracted
+    :param to_path: path to which archive should be extracted
+        default: parent directory of from_path
+    :param remove_finished: if set to True, delete archive after extraction
+    """
+    if not os.path.exists(from_path):
+        return
+
+    if to_path is None:
+        to_path = os.path.dirname(from_path)
+
+    if _is_tar(from_path):
+        with tarfile.open(from_path, 'r') as tar:
+            tar.extractall(path=to_path)
+    elif _is_targz(from_path) or _is_tgz(from_path):
+        with tarfile.open(from_path, 'r:gz') as tar:
+            tar.extractall(path=to_path)
+    elif _is_tarxz(from_path):
+        with tarfile.open(from_path, 'r:xz') as tar:
+            tar.extractall(path=to_path)
+    elif _is_gzip(from_path):
+        to_path = os.path.join(
+            to_path,
+            os.path.splitext(os.path.basename(from_path))[0]
+        )
+        with open(to_path, "wb") as out_f, gzip.GzipFile(from_path) as zip_f:
+            out_f.write(zip_f.read())
+    elif _is_zip(from_path):
+        with zipfile.ZipFile(from_path, 'r') as zip_:
+            zip_.extractall(to_path)
+    else:
+        raise ValueError("Extraction of {} not supported".format(from_path))
+
+    if remove_finished:
+        os.remove(from_path)
+
+
+def download_dataset(url, data_dir, dataset_zip_name, force_download=False):
+    """
+    Download dataset
+    :param url: URL to download file from
+    :param data_dir: Base name of the current dataset directory
+    :param dataset_zip_name: Name of downloaded compressed dataset file
+    :param force_download: If set to True, always download dataset
+        (even if it already exists)
+    """
+    if not os.path.exists(data_dir) or not os.listdir(data_dir) or force_download:
+        if os.path.exists(data_dir):
+            shutil.rmtree(data_dir)
+        data_file = download_url(url, data_dir, dataset_zip_name)
+        extract_archive(data_file, remove_finished=True)
+```
+
+### 8.2.2 用到的segmentationData()
+
+- Each segmentation label has its corresponding RGB value stored in the `SEG_LABELS_LIST`. 
+  - The label `void` means `unlabeled`, and it is displayed as black `"rgb_values": [0, 0, 0]` in the target image. 
+  - The target image pixels will be labeled based on its color using `SEG_LABELS_LIST`.
+
+```python
+"""Data utility functions."""
+import os
+
+import numpy as np
+import torch
+import torch.utils.data as data
+from PIL import Image
+from torchvision import transforms
+
+import _pickle as pickle
+
+# pylint: disable=C0326
+SEG_LABELS_LIST = [
+    {"id": -1, "name": "void",       "rgb_values": [0,   0,    0]},
+    {"id": 0,  "name": "building",   "rgb_values": [128, 0,    0]},
+    {"id": 1,  "name": "grass",      "rgb_values": [0,   128,  0]},
+    {"id": 2,  "name": "tree",       "rgb_values": [128, 128,  0]},
+    {"id": 3,  "name": "cow",        "rgb_values": [0,   0,    128]},
+    {"id": 4,  "name": "horse",      "rgb_values": [128, 0,    128]},
+    {"id": 5,  "name": "sheep",      "rgb_values": [0,   128,  128]},
+    {"id": 6,  "name": "sky",        "rgb_values": [128, 128,  128]},
+    {"id": 7,  "name": "mountain",   "rgb_values": [64,  0,    0]},
+    {"id": 8,  "name": "airplane",   "rgb_values": [192, 0,    0]},
+    {"id": 9,  "name": "water",      "rgb_values": [64,  128,  0]},
+    {"id": 10, "name": "face",       "rgb_values": [192, 128,  0]},
+    {"id": 11, "name": "car",        "rgb_values": [64,  0,    128]},
+    {"id": 12, "name": "bicycle",    "rgb_values": [192, 0,    128]},
+    {"id": 13, "name": "flower",     "rgb_values": [64,  128,  128]},
+    {"id": 14, "name": "sign",       "rgb_values": [192, 128,  128]},
+    {"id": 15, "name": "bird",       "rgb_values": [0,   64,   0]},
+    {"id": 16, "name": "book",       "rgb_values": [128, 64,   0]},
+    {"id": 17, "name": "chair",      "rgb_values": [0,   192,  0]},
+    {"id": 18, "name": "road",       "rgb_values": [128, 64,   128]},
+    {"id": 19, "name": "cat",        "rgb_values": [0,   192,  128]},
+    {"id": 20, "name": "dog",        "rgb_values": [128, 192,  128]},
+    {"id": 21, "name": "body",       "rgb_values": [64,  64,   0]},
+    {"id": 22, "name": "boat",       "rgb_values": [192, 64,   0]}]
+
+
+def label_img_to_rgb(label_img):
+    label_img = np.squeeze(label_img)
+    labels = np.unique(label_img)
+    label_infos = [l for l in SEG_LABELS_LIST if l['id'] in labels]
+
+    label_img_rgb = np.array([label_img,
+                              label_img,
+                              label_img]).transpose(1,2,0)
+    for l in label_infos:
+        mask = label_img == l['id']
+        label_img_rgb[mask] = l['rgb_values']
+
+    return label_img_rgb.astype(np.uint8)
+
+
+class SegmentationData(data.Dataset):
+
+    def __init__(self, image_paths_file):
+        self.root_dir_name = os.path.dirname(image_paths_file)
+
+        with open(image_paths_file) as f:
+            self.image_names = f.read().splitlines()
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            # get the start, stop, and step from the slice
+            return [self[ii] for ii in range(*key.indices(len(self)))]
+        elif isinstance(key, int):
+            # handle negative indices
+            if key < 0:
+                key += len(self)
+            if key < 0 or key >= len(self):
+                raise IndexError("The index (%d) is out of range." % key)
+            # get the data from direct index
+            return self.get_item_from_index(key)
+        else:
+            raise TypeError("Invalid argument type.")
+
+    def __len__(self):
+        return len(self.image_names)
+
+    def get_item_from_index(self, index):
+        to_tensor = transforms.ToTensor()
+        img_id = self.image_names[index].replace('.bmp', '')
+
+        img = Image.open(os.path.join(self.root_dir_name,
+                                      'images',
+                                      img_id + '.bmp')).convert('RGB')
+        center_crop = transforms.CenterCrop(240)
+        img = center_crop(img)
+        img = to_tensor(img)
+
+        target = Image.open(os.path.join(self.root_dir_name,
+                                         'targets',
+                                         img_id + '_GT.bmp'))
+        target = center_crop(target)
+        target = np.array(target, dtype=np.int64)
+
+        target_labels = target[..., 0]
+        for label in SEG_LABELS_LIST:
+            mask = np.all(target == label['rgb_values'], axis=2)
+            target_labels[mask] = label['id']
+
+        target_labels = torch.from_numpy(target_labels.copy())
+
+        return img, target_labels
+
+```
+
+
+
+## 8.3 展示数据
+
+```python
+print("Train size: %i" % len(train_data))
+print("Validation size: %i" % len(val_data))
+print("Img size: ", train_data[0][0].size())
+print("Segmentation size: ", train_data[0][1].size())
+
+num_example_imgs = 4
+plt.figure(figsize=(10, 5 * num_example_imgs))
+for i, (img, target) in enumerate(train_data[:num_example_imgs]):
+    # img
+    plt.subplot(num_example_imgs, 2, i * 2 + 1)
+    plt.imshow(img.numpy().transpose(1,2,0))
+    plt.axis('off')
+    if i == 0:
+        plt.title("Input image")
+    
+    # target
+    plt.subplot(num_example_imgs, 2, i * 2 + 2)
+    plt.imshow(label_img_to_rgb(target.numpy()))
+    plt.axis('off')
+    if i == 0:
+        plt.title("Target image")
+plt.show()
+```
+
+## 8.4 Loss and Metrics度量
+
+- The loss function for the task of image segmentation is a **pixel-wise cross entropy loss.** This loss examines each pixel individually, comparing the class predictions (depth-wise pixel vector) to our one-hot encoded target vector.
+
+  ![](https://www.jeremyjordan.me/content/images/2018/05/Screen-Shot-2018-05-24-at-10.46.16-PM.png)
+
+  Up until now we only used the default loss function (`nn.CrossEntropyLoss`) in our solvers. However, In order to ignore the `unlabeled` pixels for the computation of our loss, we have to use a customized version of the loss for the initialization of our segmentation solver. The `ignore_index` argument of the loss can be used to filter the `unlabeled` pixels and computes the loss only over remaining pixels.
+
+  ```python
+  loss_func = torch.nn.CrossEntropyLoss(ignore_index=-1, reduction='mean')
+  
+  for (inputs, targets) in train_data[0:4]:
+      inputs, targets = inputs, targets
+      outputs = dummy_model(inputs.unsqueeze(0))
+      losses = loss_func(outputs, targets.unsqueeze(0))
+      print(losses)
+  ```
+
+  - there is `softmax` function in the `nn.CrossEntropyLoss` function, the loss is:      $$loss(x, class) = - \log \left( \frac{\exp(x[class])}{\Sigma_j \exp (x[j])} \right) = −x[class]+\log \left( \Sigma_j \exp(x[j]) \right)$$
+    and the loss will not be zero.  
+
+  - To obtain an evaluation accuracy, we can simply compute the average per pixel accuracy of our network for a given image. We will use the following function
+
+    ```python
+    def evaluate_model(model, dataloader):
+        test_scores = []
+        model.eval()
+        for inputs, targets in dataloader:
+            inputs, targets = inputs.to(device), targets.to(device)
+    
+            outputs = model.forward(inputs)
+            _, preds = torch.max(outputs, 1)
+            targets_mask = targets >= 0
+            test_scores.append(np.mean((preds.cpu() == targets.cpu())[targets_mask].numpy()))
+    
+        return np.mean(test_scores)
+    
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=1,shuffle=False,num_workers=0)
+    print(evaluate_model(dummy_model, test_loader))
+    ```
+
+## 8.5 使用transfer learning来设计model
+
+PyTorch有一些[pretrained models](https://pytorch.org/vision/stable/models.html)。用他们来做transfer learning
+
+### 8.5.1 使用PyTorch Lightning设计model
+
+```python
+import torch
+import torch.nn as nn
+import pytorch_lightning as pl
+# 从pytorch加载pretrained models
+from torchvision import models
+
+class SegmentationNN(pl.LightningModule):
+
+    def __init__(self, num_classes=23, hparams=None):
+        super().__init__()
+        self.save_hyperparameters(hparams)
+        # 使用MobileNet V2 model
+        # .eval()将模型设置为评估模式
+        pretrained = models.mobilenet_v2(pretrained=True, progress=True).eval()
+		# 冻结MobileNet V2模型，不修改它的参数
+        for param in pretrained.parameters():
+            param.requires_grad = False
+            
+		# 设计模型
+        self.model = nn.Sequential(
+          # [:-1]为剔除列表最后一个数字，这里去除原模型的全连接层？
+          # model.children()获得一个模型的神经网络结构
+          *(list(pretrained.children())[:-1]),
+          # mobilenet_v2 output is 1280-dimensional
+          nn.ConvTranspose2d(1280, self.hparams['channel_1'], kernel_size=3,stride=2),
+          nn.ConvTranspose2d(self.hparams['channel_1'], self.hparams['channel_2'], kernel_size=3,stride=2),
+          nn.ConvTranspose2d(self.hparams['channel_2'], self.hparams['channel_3'], 1),
+          torch.nn.Upsample(size=(240, 240)),
+        )
+
+
+    def forward(self, x):
+        """
+        Forward pass of the convolutional neural network. Should not be called
+        manually but by calling a model instance directly.
+
+        Inputs:
+        - x: PyTorch input Variable
+        """
+        x = self.model(x)
+        return x
+
+    def general_step(self, batch, batch_idx, mode):
+        images = batch[0]
+        gt_category = batch[1]
+
+        # forward pass
+        predicted_category = self.forward(images)
+
+        # loss
+        loss = nn.CrossEntropyLoss(ignore_index=-1, reduction='mean')(predicted_category, gt_category)
+
+        return loss
+
+    def training_step(self, batch, batch_idx):
+        loss  = self.general_step(batch, batch_idx, "train")
+        tensorboard_logs = {'loss': loss}
+        return {'loss': loss, 'log': tensorboard_logs}
+
+    def validation_step(self, batch, batch_idx):
+        loss  = self.general_step(batch, batch_idx, "val")
+        return loss
+
+    def train_dataloader(self):
+        return torch.utils.data.DataLoader(self.train_set, shuffle=True, batch_size=self.hparams['batch_size'], drop_last=True, num_workers=16)
+
+    def val_dataloader(self):
+        return torch.utils.data.DataLoader(self.val_set, batch_size=self.hparams['batch_size'],  drop_last=True, num_workers=16)
+
+    def configure_optimizers(self):
+        optim = torch.optim.Adam(self.parameters(), self.hparams["learning_rate"])
+        return optim
+
+    @property
+    def is_cuda(self):
+        """
+        Check if model parameters are allocated on the GPU.
+        """
+        return next(self.parameters()).is_cuda
+
+    def save(self, path):
+        """
+        Save model with its parameters to the given path. Conventionally the
+        path should end with "*.model".
+
+        Inputs:
+        - path: path string
+        """
+        print('Saving model... %s' % path)
+        torch.save(self, path)
+
+```
+
+### 8.5.2 设置超参
+
+```python
+hparams = {
+    # TODO: if you have any model arguments/hparams, define them here and read them from this dict inside SegmentationNN class
+    'learning_rate': 0.001,
+    'batch_size': 128,
+    'channel_1': 152,
+    'channel_2': 64,
+    'channel_3': 23
+}
+```
+
+### 8.5.3训练模型
+
+```python
+model = SegmentationNN(hparams=hparams)
+model.to(device)
+
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+early_stop_callback = EarlyStopping(
+   monitor='val_loss',
+   patience=10
+)
+train_dataloader= torch.utils.data.DataLoader(train_data, batch_size=hparams['batch_size'], shuffle=True, num_workers=16)
+val_dataloader=torch.utils.data.DataLoader(val_data, batch_size=hparams['batch_size'], shuffle=False, num_workers=16)
+
+# trainer = pl.Trainer(logger=ae_logger,accelerator='dp', max_epochs=75,progress_bar_refresh_rate = 10,callbacks=[early_stop_callback]) 
+trainer = pl.Trainer(
+    max_epochs=50,
+    accelerator = 'gpu'
+) 
+                 
+trainer.fit(model,train_dataloader,val_dataloader)
+
+```
+
+## 8.6 测试模型
+
+```python
+def test(acc):
+
+    print("Validation-Accuracy: {}%".format(acc*100))
+    if acc < ACC_THRESHOLD:
+        print("That's too low! Please tune your model in order to reach at least {}% before running on the test set and submitting!".format(ACC_THRESHOLD * 100))
+
+    else:
+        print("Congrats! The accuracy passes the threshold, you can try to submit your model to server now.")
+
+# evaluate_mode()在8.4中
+test(evaluate_model(model, test_loader))
+```
+
+## 8.7展示结果
+
+```python
+def visualizer(model, test_data=None):
+    num_example_imgs = 4
+    plt.figure(figsize=(15, 5 * num_example_imgs))
+    for i, (img, target) in enumerate(test_data[:num_example_imgs]):
+        inputs = img.unsqueeze(0)
+        inputs = inputs.to(device)
+
+        outputs = model.forward(inputs)
+        _, preds = torch.max(outputs, 1)
+        pred = preds[0].data.cpu()
+
+        img, target, pred = img.numpy(), target.numpy(), pred.numpy()
+
+        # img
+        plt.subplot(num_example_imgs, 3, i * 3 + 1)
+        plt.axis('off')
+        plt.imshow(img.transpose(1, 2, 0))
+        if i == 0:
+            plt.title("Input image")
+
+        # target
+        plt.subplot(num_example_imgs, 3, i * 3 + 2)
+        plt.axis('off')
+        plt.imshow(label_img_to_rgb(target))
+        if i == 0:
+            plt.title("Target image")
+
+        # pred
+        plt.subplot(num_example_imgs, 3, i * 3 + 3)
+        plt.axis('off')
+        plt.imshow(label_img_to_rgb(pred))
+        if i == 0:
+            plt.title("Prediction image")
+
+    plt.show()
 ```
 
