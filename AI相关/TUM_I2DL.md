@@ -456,6 +456,8 @@ $$
 
 Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然较大和收敛速度较慢。RMSProp在动量法的基础上进一步优化该问题。具体做法是更新权重时，使用除根号的方法，使得较大幅度大幅度变小，较小幅度小幅度变小；然后通过设置较大learning rate，使得学习步子变大。
 
+RMSProp is an adaptive learning rate method自适应学习率方法。It scale the learning rate based on element wise squared gradient.
+
 - 直观展示：
 
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/RMSProp.png?raw=true)
@@ -478,23 +480,27 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
   - Dampening抑制 the oscillations振荡 for high-variance高方差 directions
   - Can use faster learning rate because it is less likely to diverge
     - Speed up learning speed
-    - Second moment二阶矩估计
+    - Second moment二阶矩估计 RMSProp does not have momentum
   
 
 ### 3.5Adaptive Moment Estimation (Adam)
 
-自适应矩估计，本质上是带有动量项momentum的RMSprop.它利用梯度的一阶矩估计和二阶矩估计动态调整每个参数的学习率。Adam的优点主要在于经过偏置校正后，每一次迭代学习率都有个确定范围，使得参数比较平稳。
+自适应矩估计，本质上是带有动量项momentum的RMSprop，即 adam = Momentum + Adaptive learning rate.它利用梯度的一阶矩估计和二阶矩估计动态调整每个参数的学习率。Adam的优点主要在于经过偏置校正bias correction后，每一次迭代学习率都有个确定范围，使得参数比较平稳。
 
 - Adam
   - 原理即结合Momentum和RMSProp
     - Momentum:   $m^{k+1}=\beta_1\cdot m^k+(1-\beta_1)\nabla_\theta L(\theta^k)$
     - RMSProp:        $v^{k+1}=\beta_2\cdot v^k + (1-\beta_2)[\nabla_\theta L\bigodot \nabla_\theta L]$
   - 初始化$m^0=0,v^0=0$
-  - 跟新两个值
+  - 跟新两个值（偏置校正）
     - Momentum:$\hat{m}^{k+1}=\frac{m^{k+1}}{1-\beta_1^{k+1}}$
     - RMSProp:$\hat{v}^{k+1}=\frac{v^{k+1}}{1-\beta_2^{k+1}}$
   - 更新参数
     - $\theta^{k+1}=\theta^k-\alpha\cdot\frac{\hat{m}^{k+1}}{\sqrt{\hat{v}^{k+1}}+\epsilon}$
+- 偏置校正Bias Correction
+  - When accumulating积累 gradients in a weighted average fashion以加权平均的方式, the first gradient is initialized to zero. This biases all the accumulated gradients down towards zero使所有累积的梯度向下偏向0.
+  - The Bias correction normalizes the magnitude of the accumulated gradient for early steps
+
 - 特点：
   - Exponentially-decaying指数衰减 mean and variance of gradients (combines first and second order momentum)
   - 优点：
@@ -583,7 +589,9 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
 ## 6) 参数的初始化
 
 - 初始化时权重Weights不能设置为如下三种
-  1. 都等于0 ：The hidden units are all going to compute the same function, gradients are going to be the same
+  1. 都是同一个值 ：
+     - The hidden units are all going to compute the same function, gradients are going to be the same
+     - All neurons will learn the same things
   2. 都是小随机数：Output become to zero，梯度消失vanishing gradient
   3. 都是大随机数：Output saturated to -1 and 1，对于tanh,sigmoid同样会梯度消失
 
@@ -610,6 +618,10 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
     - $E[XY]=E[X]E[Y]$
 
 - Xavier Initialization
+  
+  With Xavier initialization we initialize the weights to be Gaussian with zero mean and variance Var(w)=1/n where n is the amount of neurons in the input.
+  
+  As a result, the output will have zero mean and  similar variance as the input.
   $$
   \begin{align}
   Var(s)&=Var(\sum_i^nw_ix_i)=\sum_i^nVar(w_ix_i)\\
@@ -624,9 +636,9 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
     注意n不是input Data$X\in R^{N\times D}$的N，对于第一层而言n=D
 
   - 上面等式第二行$E(w_i)和E(x_i)$因为用到Gaussian with zero mean所以都是0
-
+  
   - 为了确保variance方差 of the output = input，即为了$Var(s)=Var(x)$
-
+  
     - $n(Var(w)Var(x))=Var(x)\Rightarrow Var(w)=\frac{1}{n}$
 
 
@@ -705,7 +717,8 @@ Momentum虽然初步减小了摆动幅度但是实际应用中摆动幅度仍然
 
   - $\nabla_\theta$: Gradient
 
-  - $-\lambda\theta_k$: Gradient of L2-Regularization
+  - $\lambda\theta_k$: Gradient of L2-Regularization
+    - L2 Regularization=$0.5\cdot\lambda\cdot||\theta||^2$
   - $1-\lambda$: Learning rate of weight decay衰减.(上面公式合并一下)
 
 - 用于penalize惩罚 large weights
@@ -855,7 +868,7 @@ $$
     - Random brightniess and contrast changes
     - shear剪切(使倾斜)
 
-## 10) Transfer Learning迁移学习
+## 9) Transfer Learning迁移学习
 
 - [迁移学习](https://www.zhihu.com/question/41979241)(Transfer learning) 
   - 就是把已学训练好的模型参数迁移到新的模型来帮助新模型训练。考虑到大部分数据或任务是存在相关性的，所以通过迁移学习我们可以将已经学到的模型参数（也可理解为模型学到的知识）通过某种方式来分享给新模型从而加快并优化模型的学习效率不用像大多数网络那样从零学习（starting from scratch，tabula rasa）。
@@ -868,7 +881,7 @@ $$
     - T2 extract high level features
 
 
-## 11）一些训练技巧
+## 10）一些训练技巧
 
 1. Debug:
    1. Use train/validation/test curves
@@ -884,11 +897,52 @@ $$
    - Logit value见3.4，是没有正则化的值
    - Softmax后的值是正则了的值，见3.4
 
-## 12）整合成接口来调试
+## 11）整合成接口来调试
 
 1. 将所有的东西写成一个接口`solver`,只要输入参数就能计算不同的模型。**代码见2.10**
 
 2. `solver`调用的模型model，我们也要写成一个函数，来方便调用调参。**代码见4.3**
+
+## 12） 一个应用：Encoder编码器
+
+代码实现见下面6.4.3
+
+### 12.1 Autoencoder自动编码器
+
+- 主要应用：
+
+  - 数据去噪
+  - 可视化降维
+  - 生成数据
+
+- 基本结构：
+
+  NN Encoder -> code -> NN Decoder
+
+  - 第一部分：编码器
+
+    输入的数据经过神经网络(Encoder)降维到一个编码(code)
+
+  - 第二部分：解码器
+
+    编码经过另一个神经网络(Decoder)解码得到一个与输入原数据几乎一模一样的数据
+
+### 12.2 Variational Autoencoder变分自动编码器
+
+变分编码器是自动编码器的升级版本，其结构跟自动编码器是类似的，也由编码器和解码器构成。但普通的自动编码器不能任意的生成图片，因为我们没法自己去构造隐藏向量（即上面的 code）。
+
+而变分自动编码器在编码过程给它增加一些限制，迫使其生成的隐含向量能够粗略的遵循一个标准正态分布，这就是其与一般的自动编码器最大的不同。这样我们生成一张新图片就很简单了，我们只需要给它一个标准正态分布的随机隐含向量，这样通过解码器就能够生成我们想要的图片，而不需要给它一张原始图片先编码。
+
+在实际情况中，我们需要在模型的准确率上与隐含向量服从标准正态分布之间做一个权衡，所谓模型的准确率就是指解码器生成的图片与原图片的相似程度。我们可以让网络自己来做这个决定，非常简单，我们只需要将这两者都做一个loss，然后在将他们求和作为总的loss，这样网络就能够自己选择如何才能够使得这个总的loss下降。有一个东西叫KL divergence来衡量两种分布的相似程度，这里我们就是用KL divergence来表示隐含向量与标准正态分布之间差异的loss，另外一个loss仍然使用生成图片与原图片的均方误差来表示。
+
+- KL divergence公式
+  $$
+  DKL(P||Q)=\int_{-\infty}^{\infty}P(x)log\frac{P(x)}{q(x)}dx
+  $$
+
+- 与AutoEncoder区别
+
+  A variational Autoencoder imposes强加 (optional: Gaussian / KL-Divergence loss) constraints on the distribution of the bottleneck
 
 # 四、CNN卷积神经网络
 
@@ -1019,7 +1073,10 @@ $$
 
 ## Receptive Field感受野
 
-- 感受野是指特征图上的某个点能看到的输入图像的区域,即特征图上的点是由输入图像中感受野大小区域的计算得到的
+- 感受野是指特征图上的某个点能看到的输入图像的区域,即特征图上的点是由输入图像中感受野大小区域的计算得到的.
+
+  The size of the region in the input space that a pixel in the output space is affected by.
+
 - 神经元感受野的值越大表示其能接触到的原始图像范围就越大，也意味着它可能蕴含更为全局，语义层次更高的特征；相反，值越小则表示其所包含的特征越趋向局部和细节。因此**感受野的值可以用来大致判断每一层的抽象层次**
 
 ## Spatial Batch Normalization
@@ -1137,7 +1194,9 @@ Use them all!
 
 ## 2. Long Term Dependencies长期依赖
 
-- 长期依赖产生的原因是当神经网络的节点经过许多阶段的计算后，之前比较长的时间片的特征已经被覆盖
+- 长期依赖产生的原因是当神经网络的节点经过许多阶段的计算后，之前比较长的时间片的特征已经被覆盖。
+
+  it's difficult for traditional RNNs to learn long-term dependencies due to vanishing gradients
 
 - Simple Recurrence: $A_t=\theta^tA_0$
 
@@ -1161,7 +1220,11 @@ LSTM具有记忆长短期信息的能力的神经网络.
 
 - LSTM提出的动机是为了解决上面我们提到的长期依赖问题。传统的RNN节点输出仅由权值，偏置以及激活函数决定
 
-- LSTM之所以能够解决RNN的长期依赖问题，是因为LSTM引入了门（gate）机制用于控制特征的流通和损失。LSTM是由一系列LSTM单元（LSTM Unit）组成，其链式结构如下图:
+- LSTM之所以能够解决RNN的长期依赖问题，是因为LSTM引入了门（gate）机制用于控制特征的流通和损失。
+
+  The cell state in LSTMs improve the gradient flow and thereby allows the network to learn longer dependencies.
+
+- LSTM是由一系列LSTM单元（LSTM Unit）组成，其链式结构如下图:
 
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/LSTM%E7%BB%93%E6%9E%84.png?raw=true)
 
@@ -1235,6 +1298,73 @@ LSTM具有记忆长短期信息的能力的神经网络.
 
   - 时间片 t 的计算依赖 t-1 时刻的计算结果，这样限制了模型的并行能力
   - 顺序计算的过程中信息会丢失，尽管LSTM等门机制的结构一定程度上缓解了长期依赖的问题，但是对于特别长期的依赖现象,LSTM依旧无能为力。
+
+# 七、GAN
+
+## 1. GAN的基本介绍
+
+生成对抗网络（GAN，Generative Adversarial Networks）作为一种优秀的生成式模型，引爆了许多图像生成的有趣应用。GAN相比于其他生成式模型，有两大特点：
+
+- 不依赖任何先验假设。传统的许多方法会假设数据服从某一分布，然后使用极大似然去估计数据分布。
+- 生成real-like样本的方式非常简单。GAN生成real-like样本的方式通过生成器(Generator)的前向传播，而传统方法的采样方式非常复杂
+
+## 2. GAN的基本思想
+
+- 一个形象的例子：
+
+  假如你是一名篮球运动员，你想在下次比赛中得到上场机会。
+  于是在每一次训练赛之后你跟教练进行沟通：
+
+  *你：教练，我想打球*
+  *教练：（评估你的训练赛表现之后）... 算了吧*
+  *（你通过跟其他人比较，发现自己的运球很差，于是你苦练了一段时间）*
+
+  *你：教练，我想打球*
+  *教练：... 嗯 还不行*
+  *（你发现大家投篮都很准，于是你苦练了一段时间的投篮）*
+
+  *你：教练，我想打球*
+  *教练： ... 嗯 还有所欠缺*
+  *（你发现你的身体不够壮，被人一碰就倒，于是你去泡健身房）*
+
+  *......*
+
+  *通过这样不断的努力和被拒绝，你最终在某一次训练赛之后得到教练的赞赏，获得了上场的机会。*
+  *值得一提的是在这个过程中，所有的候选球员都在不断地进步和提升。因而教练也要不断地通过对比场上球员和候补球员来学习分辨哪些球员是真正可以上场的，并且要“观察”得比球员更频繁。随着大家的成长教练也会会变得越来越严格。*
+
+- GAN就是通过对抗的方式，去学习数据分布的生成式模型。所谓的对抗，指的是生成网络和判别网络的互相对抗。生成网络尽可能生成逼真样本，判别网络则尽可能去判别该样本是真实样本，还是生成的假样本。
+
+## 3. GAN的基本结构
+
+GAN的主要结构包括一个**生成器**G（Generator）和一个**判别器**D（Discriminator）。
+
+- 上面的例子中：
+
+  - 球员=生成器：我们需要他在球场上能有好的表现
+  - 教练=判别器：教练员来指导球员训练，告诉他们训练得怎么样，直到真的能够达到上场的标准。
+
+- 手写字的例子：
+
+  ![](https://pic4.zhimg.com/v2-5ca6a701d92341b8357830cc176fb8a3_r.jpg)
+
+  - 定义一个模型来作为生成器（图三中蓝色部分Generator），能够输入一个向量，输出手写数字大小的像素图像。
+  - 定义一个分类器来作为判别器（图三中红色部分Discriminator）用来判别图片是真的还是假的（或者说是来自数据集中的还是生成器中生成的），输入为手写图片，输出为判别图片的标签。
+
+## 4.GAN的训练
+
+### 4.1 生成器：
+
+- 生成器可以是任意可以输出图片的模型，比如最简单的全连接神经网络，又或者是反卷积网络等。
+- 对于生成器，输入需要一个n维度向量random noise vector，输出为图片像素大小的图片。因而首先我们需要得到输入的向量。
+- 这里输入的向量我们将其视为携带输出的某些信息，比如说手写数字为数字几，手写的潦草程度等等。由于这里我们对于输出数字的具体信息不做要求，只要求其能够最大程度与真实手写数字相似（能骗过判别器）即可。所以我们使用随机生成的向量来作为输入即可，这里面的随机输入最好是满足常见分布比如均值分布，高斯分布等。
+
+### 4.2 判别器：
+
+- 对于判别器不用多说，往往是常见的判别器，输入为图片，输出为图片的真伪标签。
+
+### 4.3 如何训练
+
+[参考](https://zhuanlan.zhihu.com/p/33752313)
 
 # 1. 数据预处理
 
