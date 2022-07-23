@@ -1,4 +1,4 @@
-# *. 各种库的安装使用
+# 一、 各种库的安装使用
 
 ## 0) 用GPU跑jupyter notebook
 
@@ -20,7 +20,7 @@ https://numpy.org/doc/stable/
 
 
 
-# *. 一些特别的Python机制
+# 二、一些特别的Python机制
 
 ## 1） Iterator迭代器和Generator生成器
 
@@ -98,7 +98,7 @@ https://numpy.org/doc/stable/
 
 
 
-# *.一些重要概念
+# 三、一些重要概念
 
 ## 0）超参数Hyperparameters
 
@@ -860,6 +860,13 @@ $$
 - [迁移学习](https://www.zhihu.com/question/41979241)(Transfer learning) 
   - 就是把已学训练好的模型参数迁移到新的模型来帮助新模型训练。考虑到大部分数据或任务是存在相关性的，所以通过迁移学习我们可以将已经学到的模型参数（也可理解为模型学到的知识）通过某种方式来分享给新模型从而加快并优化模型的学习效率不用像大多数网络那样从零学习（starting from scratch，tabula rasa）。
 - Pytorch关于Transfer Learning的[教程](https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html)
+- 什么时候用Transfer learning
+  - When task T1 and T2 have the same input
+  - When you have more data for task T1 than for task T2
+  - When the low-level features for T1 could be useful to learn T2
+    - T1 extract low level features
+    - T2 extract high level features
+
 
 ## 11）一些训练技巧
 
@@ -883,9 +890,9 @@ $$
 
 2. `solver`调用的模型model，我们也要写成一个函数，来方便调用调参。**代码见4.3**
 
-# *.CNN卷积神经网络
+# 四、CNN卷积神经网络
 
-Convolutional Neural Networks
+[Convolutional Neural Networks](https://www.zybuluo.com/hanbingtao/note/485480)
 
 - 为什么处理图片时要用卷积层来代替fc全连接层
 
@@ -1083,6 +1090,151 @@ Convolutional Neural Networks
 Tired of choosing filter sizes?
 
 Use them all!
+
+# 五、Recurrent Neural Networks循环神经网络
+
+- 循环神经网络是一个在时间上传递的神经网络，网络的深度就是时间的长度。该神经网络是专门用来处理**时间序列Time Sequence**问题的，能够提取时间序列的信息。如果是前向神经网络，每一层的神经元信号只能够向下一层传播，样本的处理在时刻上是独立的。对于循环神经网络而言，神经元在这个时刻的输出可以直接影响下一个时间点的输入，因此该神经网络能够处理时间序列方面的问题。
+
+- 为什么需要RNN?
+
+  之前的模型都只能单独的取处理一个个的输入，前一个输入和后一个输入是完全没有关系的。但是，某些任务需要能够更好的处理**序列**的信息，即前面的输入和后面的输入是有关系的。
+
+  比如：
+
+  - 当我们在理解一句话意思时，孤立的理解这句话的每个词是不够的，我们需要处理这些词连接起来的整个序列；
+  - 当我们处理视频的时候，我们也不能只单独的去分析每一帧，而要分析这些帧连接起来的整个序列。
+
+- RNN结构
+
+  一个简单的循环神经网络，它由输入层、一个隐藏层和一个输出层组成：
+
+  ![](https://raw.githubusercontent.com/Fernweh-yang/Reading-Notes/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/RNN%E6%9C%80%E7%AE%80%E7%BB%93%E6%9E%84.jpg)
+
+  - 如果把上面有W的那个带箭头的圈去掉，它就变成了最普通的**全连接神经网络**
+
+  - 加入了w后：**循环神经网络**的**隐藏层**的值s不仅仅取决于当前这次的输入x，还取决于上一次/时刻**隐藏层**的值s。**权重矩阵** W就是**隐藏层**上一次/时刻的值作为这一次的输入的权重
+
+    ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/rnn%E7%BB%93%E6%9E%84%E5%85%B7%E4%BD%93%E5%8C%96.jpg?raw=true)
+
+- 用公式表达：
+  $$
+  O_t=g(VS_t)\\
+  S_t=g(UX_t+WS_{t-1})\\
+  $$
+
+  - $S_t$的值不仅仅取决于$X_t$,还取决于上一刻的值$S_{t-1}$
+  - 不同时刻的3个权重U,W,V都是保持不变的
+
+## 1. RNN的不同用处
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/RNN%E4%B8%8D%E5%90%8C%E7%BB%93%E6%9E%84.png?raw=true)
+
+- One to one: Classic Neural Networks for Image Classification
+- One to many: Image captioning图像字幕
+- many to one: Language recognition
+- many to many: Machine translation机器翻译
+- many to many: Event classification时间分类
+
+## 2. Long Term Dependencies长期依赖
+
+- 长期依赖产生的原因是当神经网络的节点经过许多阶段的计算后，之前比较长的时间片的特征已经被覆盖
+
+- Simple Recurrence: $A_t=\theta^tA_0$
+
+  - 将权重eigendecomposition特征分解
+    $$
+    \theta=Q\Lambda Q^TA_0
+    $$
+    可得：$A_t=Q\Lambda^tQ^TA_0$
+
+  - 梯度消失/爆炸
+
+    - Vanishing gradient：当eigenvalues with magnitude量级 less than one
+      - 梯度消失不能简单的通过类似梯度截断的阈值式方法来解决，因为长期依赖的现象也会产生很小的梯度
+      - 如果我们刻意提高小梯度的值将会使模型失去捕捉长期依赖的能力。
+    - Exploding gradient：当eigenvalues with magnitude量级 larger than one
+      - 处理梯度爆炸可以采用梯度截断的方法。所谓梯度截断是指将梯度值超过阈值 $\theta$ 的梯度手动降到$\theta $ 。虽然梯度截断会一定程度上改变梯度的方向，但梯度截断的方向依旧是朝向损失函数减小的方向。
+
+## 3. Long Short Term Meomry
+
+LSTM具有记忆长短期信息的能力的神经网络.
+
+- LSTM提出的动机是为了解决上面我们提到的长期依赖问题。传统的RNN节点输出仅由权值，偏置以及激活函数决定
+
+- LSTM之所以能够解决RNN的长期依赖问题，是因为LSTM引入了门（gate）机制用于控制特征的流通和损失。LSTM是由一系列LSTM单元（LSTM Unit）组成，其链式结构如下图:
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/LSTM%E7%BB%93%E6%9E%84.png?raw=true)
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/LSTM%E6%8B%86%E8%A7%A3.png?raw=true)
+
+  - **黄色方框**表示一个神经网络层，由权值，偏置以及激活函数组成
+
+  - **粉色圆圈**表示元素级别操作
+
+  - **单元状态(cell state)** $C_t$:LSTM单元最上面的那条传送带。它自始至终存在于LSTM的整个链式系统中
+
+    $C_t=f_t\times C_{t-1}+i_t\times \tilde{C}_t$
+
+    - $f_t$：遗忘门forget gate。是一个每个元素均位于[0,1] 范围内的向量。通常使用sigmoid作为激活函数。
+
+      - $f_t=\sigma(W_f\cdot[h_{t-1},x_t]+b_f)$
+      - 用于控制$C_{t-1}$的哪些特征用于更新$C_t$
+
+      $i_t$：输入门input gate，和$f_t$一样。
+
+      - $i_t=\sigma(W_i\cdot[h_{t-1},x_t]+b_i)$
+      - 用于控制$\tilde{C}_t$的哪些特征用于更新$C_t$
+
+      $o_t$：输出门output gate，和$i_t$一样。
+
+      - $o_t=\sigma(W_o\cdot[h_{t-1},x_t]+b_o)$$
+
+    - $C_{t-1}$：表示哪些特征被用于计算$C_t$
+
+    - $\tilde{C}_t$：表示单元状态更新值Cell update，单元状态更新值的激活函数通常使用tanh
+
+      $\tilde{C}_t=tanh(W_c\cdot [h_{t-1},x_t]+b_c)$
+
+    - $h_t$隐节点输出output：$h_t=o_t*tanh(C_t)$
+
+- When coding an LSTM, we have to define the size of the hidden state. Dimensions need to match
+
+  - Input, states, and gates not limited to 1st-order tensors
+  - Gate functions can consist of FC and CNN layers
+
+- Problems with RNN
+
+  - Each word is dependent on the words coming before it
+  - Vanishing gradient problem.
+  - Long-short term memory dependencies are not that long.
+
+# 六、Transformers
+
+- [知乎讲解](https://zhuanlan.zhihu.com/p/48508221)参考于：[外国一博文](http://jalammar.github.io/illustrated-transformer/)
+
+- [参考2](https://luweikxy.gitbook.io/machine-learning-notes/self-attention-and-transformer)，据说很好
+
+## 1. Deep Learning Revolution
+
+|                  | Deep Learning     | Deep Learning 2.0 |
+| ---------------- | ----------------- | ----------------- |
+| Main idea        | Convolution       | Attention         |
+| Field invented   | Computer vision   | NLP               |
+| Started          | NeurIPS 2012      | NeurIPS 2017      |
+| Paper            | AlexNet           | Transformers      |
+| Conquered vision | Around 2014-2015  | Around 2020-2021  |
+| Augmented        | Traditional ML/CV | CNNs, RNNs        |
+
+## 2. 解决RNN的问题
+
+- [Attention is all you need](https://arxiv.org/abs/1706.03762)
+
+  文章提出了Attention注意力机制和Transformer的概念。Transformer中抛弃了传统的CNN和RNN，整个网络结构完全是由Attention机制组成。更准确地讲，Transformer由且仅由self-Attenion和Feed Forward Neural Network组成。一个基于Transformer的可训练的神经网络可以通过堆叠Transformer的形式进行搭建。
+
+- 采用Attention机制的原因是考虑到RNN（或者LSTM，GRU等）的计算限制为是顺序的，也就是说RNN相关算法只能从左向右依次计算或者从右向左依次计算，这种机制带来了两个问题：
+
+  - 时间片 t 的计算依赖 t-1 时刻的计算结果，这样限制了模型的并行能力
+  - 顺序计算的过程中信息会丢失，尽管LSTM等门机制的结构一定程度上缓解了长期依赖的问题，但是对于特别长期的依赖现象,LSTM依旧无能为力。
 
 # 1. 数据预处理
 
@@ -4372,6 +4524,8 @@ trainer.fit(model, data_module)
 ```
 
 # 6.Autoencoder for MNIST in PyTorch Lightning
+
+MNIST数据库是一个手写数字的大型数据库，通常用于训练各种图像处理系统。
 
 ## 6.1 加载库
 
