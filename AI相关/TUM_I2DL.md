@@ -165,6 +165,10 @@ https://numpy.org/doc/stable/
 
     也叫做Softmax Loss，用于多分类中表示预测和真实分布之间的距离有多远。
 
+    It normalizes the logits/scores to sum up to 1 / a probability distribution。
+
+    **公式：**
+
     $$ CE(\hat{y}, y) = \frac{1}{N} \sum_{i=1}^N \sum_{k=1}^{C} \Big[ -y_{ik} \log(\hat{y}_{ik}) \Big]=-\frac{1}{N}\sum_{i=1}^Nlog(\frac{e^{S_{yi}}}{\Sigma_{k=1}^Ce^{S_k}}) $$
 
     $L_i=-log(\frac{e^{S_{}yi}}{\Sigma_{k=1}^Ce^{S_k}}) $
@@ -405,13 +409,15 @@ $$
 
   - m: Minibatch size选择选择为 power of 2 即8，16，32.....
   - 越小的minibatch size ->  greater variance in the gradients -> noisy updates
+    - 但noisy update 也可以帮助escape from saddle point
   - It is limited by GPU memory(in backward pass)
-
+  
 - Stochastic Gradient Descent
 
   - $\theta^{k+1}=\theta^{k}-\alpha\nabla_\theta L(\theta^k,x_{\{1..m\}},y_{\{1..m\}})$
     - k现在refers to k-th **iteration**,$k\in(1.\frac{n}{m})$
     - 当所有的$\frac{n}{m}$个minibatch都更新完，就称为完成了一个**epoch**
+    - **Epoch**:full run through the entire train set
   - $\nabla_\theta L=\frac{1}{m}\sum_{i=1}^m\nabla_\theta L_i$
     - m training samples in the current minibatch
     - $\nabla_\theta$: Gradient for the k-th minibatch
@@ -434,9 +440,10 @@ $$
   - 可以很轻松的跳出下面这三种伪最优解
     - plateau(稳定的水平)：下降的很慢，微分约等于0
     - saddle point(鞍点)：微分时沿着某一方向是稳定的(=0)，另一条方向是不稳定的奇点
+      - The gradient is zero , but it is neither a local minima nor a local maxima
     - local minima(局部最小点)；
   - 让寻找最优解的曲线能够不那么振荡、波动，让他能够更加的平滑，在水平方向的速度更快。（如下图）
-
+  
 - 与SGD的对比
 
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/sgd_momentum.png?raw=true)
@@ -542,7 +549,12 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/learning%20rate.png?raw=true)
 
   - need high learning rate when far away aim
-  - need low learning rate when close
+
+    need low learning rate when close
+
+  - 如果network's training curve diverge发散(no problem in data loading)
+
+    - 这时需要reduce the learning rate
 
 - Learning Rate Decay衰败
 
@@ -711,7 +723,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
 
 ### 8.1 L2 regularization
 
-- 公式：$\theta_{k+1}=\theta_k-\epsilon\nabla_\theta(\theta_k,x,y)-\lambda\theta_k$
+- 公式：$\theta_{k+1}=\theta_k-\epsilon\nabla_\theta(\theta_k,x,y)-\epsilon\lambda\theta_k$
 
   - $\epsilon$: Learning rate
 
@@ -719,7 +731,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
 
   - $\lambda\theta_k$: Gradient of L2-Regularization
     - L2 Regularization=$0.5\cdot\lambda\cdot||\theta||^2$
-  - $1-\lambda$: Learning rate of weight decay衰减.(上面公式合并一下)
+  - $1-\epsilon\lambda$: Learning rate of weight decay衰减.(上面公式合并一下)
 
 - 用于penalize惩罚 large weights
 
@@ -766,6 +778,10 @@ $$
 - 在机器学习的模型中，如果模型的参数太多，而训练样本又太少，训练出来的模型很容易产生过拟合的现象。Dropout可以比较有效的缓解过拟合的发生，在一定程度上达到正则化的效果。
 
 - Dropout可以作为训练深度神经网络的一种trick供选择。在每个训练批次中，通过忽略一半的特征检测器（让一半的隐层节点值为0）Using half the network = half capacity，可以明显地减少过拟合现象。这种方式可以减少特征检测器（隐层节点）间的相互作用reducing co-adaptation between neurons，检测器相互作用是指某些检测器依赖其他检测器才能发挥作用。
+
+- Dropout可以看作是一种集成学习Ensemble Methods
+
+  因为对于采用了dropout的网络，一个mini-batch中的每个样本所走的网络结构是不同的，于是可以理解为我们在同时训练多个网络，所以可以视作集成学习。
 
 - Dropout在训练和测试时的区别
 
@@ -881,28 +897,46 @@ $$
     - T2 extract high level features
 
 
-## 10）一些训练技巧
+## 10）类别不平衡的分类问题
 
-1. Debug:
-   1. Use train/validation/test curves
-      - Evaluation needs to be consistent
-      - Numbers need to be comparable
-   2. Only make one change at a time
-2. start with a simple network.
-3. Start with single training sample->increase samples
-4. Did not overfit to single batch first
-5. Don't forgot to toggle train/eval mode for network
-6. Don't Forgot to call `.zero_grad()` (in PyTorch) before calling `.backward()`
-7. Don't pass softmaxed outputs to a loss function that expects raw logits (or vice-versa)
-   - Logit value见3.4，是没有正则化的值
-   - Softmax后的值是正则了的值，见3.4
+也叫长尾分布学习，long-tailed recognition。
 
-## 11）整合成接口来调试
+- 如果某一数据集的某一标签占比太大，模型会倾向于预测所有的数据都是它 the network will prefer it。
 
-1. 将所有的东西写成一个接口`solver`,只要输入参数就能计算不同的模型。**代码见2.10**
+  比如有4000个猫图片，却只有100个狗图片
 
-2. `solver`调用的模型model，我们也要写成一个函数，来方便调用调参。**代码见4.3**
+- 解决方法：
 
+  - collect more dog images/data augmentation for dogs
+  - Reweight重加权 loss function
+    - 对不同类别的loss分配不同的权重
+  - reweight dataloader 
+
+## 11）Residual connections
+
+残差连接，也叫skip connect.
+
+- 基本思想：
+
+  输出表述为输入和输入的一个非线性变换的线性叠加，没用新的公式，没有新的理论，只是换了一种新的表达。
+
+- 结构如下：
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/residual%20connect.png?raw=true)
+
+  - 我们可以使用一个非线性变化函数来描述一个网络的输入输出，即输入为X，输出为F(x)，F通常包括了卷积，激活等操作。
+
+- 为什么要skip connect
+
+  - 有一个通识：网络越深表达能力越强，性能越好。但随着网络深度的增加，带来了许多问题，梯度消散，梯度爆炸。为此更好的优化方法，更好的初始化策略，BN层，Relu等各种激活函数，都被用过了，但是仍然不够。
+
+    但是如果使用了残差，**每一个导数就加上了一个恒等项1，dh/dx=d(f+x)/dx=1+df/dx**。此时就算原来的导数df/dx很小，这时候误差仍然能够有效的反向传播。
+
+  - **神经网络的退化**也是难以训练深层网络的原因。
+
+    - 网络退化Degradation problem：虽然是一个很高维的矩阵，但是大部分维度却没有信息，表达能力没有看起来那么强大。
+    - **残差连接**强制打破了网络的对称性，使得网络又恢复了表达能力。
+    - 应用残差链接的CNN结构：ResNet (Deep residual network)
 ## 12） 一个应用：Encoder编码器
 
 代码实现见下面6.4.3
@@ -948,25 +982,44 @@ $$
 
 [Convolutional Neural Networks](https://www.zybuluo.com/hanbingtao/note/485480)
 
+## 1. 基本概念
+
 - 为什么处理图片时要用卷积层来代替fc全连接层
 
-  比如一个5X5的图片，3个RGB通道，那么一个神经元就需要75个权重Weights。如果1个全连接层有1000个神经元，那1层就要算75000个权重！！！更何况图片不可能只有5X5那么小。所以用全连接层来训练图片是impractical的
+  比如一个5X5的图片，3个RGB通道，那么一个神经元就需要75个权重Weights。如果1个全连接层有1000个神经元，那1层就要算75000个权重！！！更何况图片不可能只有5X5那么小。所以用全连接层来训练图片是impractical的。
 
-- Convolutions vs Fully-Connected
+  - 将图像展开为向量会丢失空间信息；
+  - 参数过多效率低下，训练困难；
+  - 大量的参数也很快会导致网络过拟合。
 
-  - In contrast to fully-connected layers, we want to restrict限制 the degrees of freedom
-    - FC is somewhat brute force
-    - Convolutions are structured
-  - Sliding window to with the same filter parameters to extract提取 image features
-    - Concept观念 of weight sharing
-    - Extract same features independent of location
-  - Output size:
-    - Fully-Connected layer: One layer of neurons, independent
-    - Convolutional Layer: Neurons arranged排列 in 3 dimensions
+- CNN Prototype原型
 
-## Image Filter
+  - 卷积神经网络主要由这几类层构成：输入层、卷积层，ReLU层、池化（Pooling）层和全连接层
 
-每一个核给成出一个不一样的图片过滤器
+  - 可见最后会用一层Fully connected layer
+  
+    - 用卷积层得出的特征features来做最终的决定
+  
+    - 一般1或2层全连接层
+  
+  
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/CNN%20Prototype.png?raw=true)
+
+### 1.1 Image Filter
+
+**卷积核（convolutional kernel）**：可以看作对某个局部的加权求和；它是对应局部感知，它的原理是在观察某个物体时我们既不能观察每个像素也不能一次观察整体，而是先从局部开始认识，这就对应了卷积。卷积核的大小一般有1x1,3x3和5x5的尺寸。
+
+卷积核的个数就对应输出的通道数（channels），这里需要说明的是对于输入的每个通道，输出每个通道上的卷积核是不一样的。比如输入是28x28x192(WxDxK,K代表通道数)，然后在3x3的卷积核，卷积通道数为128，那么卷积的参数有3x3x192x128，其中前两个对应的每个卷积里面的参数，后两个对应的卷积总的个数（一般理解为，卷积核的权值共享只在每个单独通道上有效，至于通道与通道间的对应的卷积核是独立不共享的，所以这里是192x128）。
+
+计算：每个通道都需要跟一个卷积核做卷积运算，然后将**结果相加**得到一个特征图的输出，这里有4个过滤器，因此得到4个特征图的输出，输出通道数为4。
+
+#### 1.1.1 一些过滤器：
+
+- 卷积核和过滤器的区别：
+  - 卷积核就是由长和宽来指定的，是一个二维的概念。
+  - 而过滤器是是由长、宽和深度指定的，是一个三维的概念。
+    - 过滤器可以看作是卷积核的集合
+    - 过滤器比卷积核高一个维度——深度。
 
 - Edge detection:
   $$
@@ -1012,7 +1065,32 @@ $$
     \right]
   $$
 
-## Convolution Layers: 
+#### 1.1.2 1X1卷积核
+
+1x1卷积核，又称为网中网（Network in Network）。
+
+- 1x1卷积核的作用
+
+  - **升维/降维**：
+
+    collapse number of channels
+
+    - 由于 1×1 并不会改变 height 和 width，改变通道的第一个最直观的结果，就是可以将原本的数据量进行增加或者减少。
+    - 改变的只是 height × width × channels 中的 channels 这一个维度的大小而已
+
+  - **增加非线性**
+
+    learn more complex functions by introducing additional non-linearities
+
+    - 1*1卷积核，可以在保持feature map尺度不变的（即不损失分辨率）的前提下大幅增加非线性特性（利用后接的非线性激活函数），把网络做的很deep
+    - 一个filter对应卷积后得到一个feature map，不同的filter(不同的weight和bias)，卷积以后得到不同的feature map，提取不同的特征，得到对应的specialized neuron[7]
+
+### 1.2 Convolution Layers卷积层 
+
+- 卷积层的作用
+  - **滤波器的作用**
+  - **可以被看做是神经元的一个输**
+  - **降低参数的数量**
 
 - Padding填充(图片四周填充一圈值)
 
@@ -1033,7 +1111,21 @@ $$
   - padding的圈数应该是：$p=\frac{F-1}{2}$
   - Padding后再过滤后的维度是：$(\left[\frac{N+2P-F}{S}\right]+1)\times(\left[\frac{N+2P-F}{S}\right]+1)$
 
-## Pooling Layer池化层
+#### 1.2.1 权值共享
+
+- 在卷积层中权值共享是用来控制参数的数量。假如在一个卷积核中，每一个感受野采用的都是不同的权重值（卷积核的值不同），那么这样的网络中参数数量将是十分巨大的。
+- 权值共享是基于这样的一个合理的假设：如果一个特征在计算某个空间位置 (x1,y1)(x1,y1) 的时候有用，那么它在计算另一个不同位置 (x2,y2)(x2,y2) 的时候也有用。
+- 一个数据体尺寸为[55x55x96]的就有96个深度切片depth slice，每个尺寸为[55x55]，其中在每个深度切片上的结果都使用同样的权重和偏差获得的。
+  - 如果有96个核大小为 11x11的卷积核，图像是RGB 3 通道的，那么就共有96x11x11x3=34,848个不同的权重，总共有34,944个参数（因为要+96个偏差），并且在每个深度切片中的55x55 的结果使用的都是同样的参数。
+  - 在反向传播的时候，都要计算每个神经元对它的权重的梯度，但是需要把同一个深度切片上的所有神经元对权重的梯度累加，这样就得到了对共享权重的梯度。这样，每个切片只更新一个权重集。
+
+### 1.3 Pooling Layer池化层
+
+可以理解为汇聚层
+
+- 作用：
+
+  通常在连续的卷积层之间会周期性地插入一个池化层。它的作用是逐渐降低数据体的空间尺寸，这样的话就能减少网络中参数的数量，使得计算资源耗费变少，也能有效控制过拟合。
 
 - 与卷积层对比：
 
@@ -1063,15 +1155,15 @@ $$
 
     ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Average%20Pooling.png?raw=true)
 
-## CNN Prototype
+### 1.4 Receptive Field感受野
 
-![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/CNN%20Prototype.png?raw=true)
+- 什么是感受野？
 
-- 可见最后会用一层Fully connected layer
-  - 用卷积层得出的特征features来做最终的决定
-  - 一般1或2层全连接层
+  在处理图像这样的高维度输入时，让每个神经元都与前一层中的所有神经元进行全连接是不现实的。相反，我们让每个神经元只与输入数据的一个局部区域连接。**该连接的空间大小叫做神经元的感受野**（receptive field）。
 
-## Receptive Field感受野
+  感受野的尺寸是一个超参数（其实就是滤波器的空间尺寸），**在深度方向上，这个连接的大小总是和输入量的深度相等**。
+
+  感受野讲解了卷积层中每个神经元与**输入数据体**之间的连接方式。
 
 - 感受野是指特征图上的某个点能看到的输入图像的区域,即特征图上的点是由输入图像中感受野大小区域的计算得到的.
 
@@ -1079,7 +1171,42 @@ $$
 
 - 神经元感受野的值越大表示其能接触到的原始图像范围就越大，也意味着它可能蕴含更为全局，语义层次更高的特征；相反，值越小则表示其所包含的特征越趋向局部和细节。因此**感受野的值可以用来大致判断每一层的抽象层次**
 
-## Spatial Batch Normalization
+- 一个例子
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/%E6%84%9F%E5%8F%97%E9%87%8E.jpg?raw=true)
+
+  - 红色为输入数据，假设输入数据体尺寸为[32x32x3]（比如CIFAR-10的RGB图像），如果感受野（或滤波器尺寸）是5x5，那么卷积层中的每个神经元会有输入数据体中[5x5x3]区域的权重，共5x5x3=75个权重（还要加一个偏差参数）。
+    - 无论输入输入数据是多少层，一个卷积核就对应一个偏置
+  - 这个连接在深度维度上的大小必须为3，和输入数据体的深度一致
+  - 感受野有75个权重，这75个权重是通过学习进行更新的，所以很大程度上这些权值之间是不相等（也就对于同一个卷积核，它对于与它连接的输入的每一层的权重都是独特的）
+
+### 1.5 Common Performance Metrics
+
+- Top-1 score: check if a sample’s top class (i.e. the one with highest probability) is the same as its target label
+- Top-5 score: check if your label is in your 5 first predictions (i.e. predictions with 5 highest probabilities)
+  - Top-5 error: percentage of test samples for which the correct class was not in the top 5 predicted classes
+
+### 1.6 Inception Layer
+
+Tired of choosing filter sizes?
+
+Use them all!
+
+## 2. 与全连接层的区别
+
+Convolutions vs Fully-Connected
+
+- In contrast to fully-connected layers, we want to restrict限制 the degrees of freedom
+  - FC is somewhat brute force
+  - Convolutions are structured
+- Sliding window to with the same filter parameters to extract提取 image features
+  - Concept观念 of weight sharing
+  - Extract same features independent of location
+- Output size:
+  - Fully-Connected layer: One layer of neurons, independent
+  - Convolutional Layer: Neurons arranged排列 in 3 dimensions
+
+### 2.1 Spatial Batch Normalization
 
 一般的batch normalization见9.5。
 
@@ -1092,34 +1219,37 @@ $$
 
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Normalizations.png?raw=true)
 
-## Dropout for convolutional layers
+### 2.2 Dropout for convolutional layers
 
 全连接层是随机不激活某一个unit,但卷积层是三维结构的，这么做并不能提升性能。
 
 所以Spatial Dropout randomly sets entire feature maps to zero
 
-## Common Performance Metrics
+- Conv: drop feature map at random
+- fully connected: drop weights at random
 
-- Top-1 score: check if a sample’s top class (i.e. the one with highest probability) is the same as its target label
-- Top-5 score: check if your label is in your 5 first predictions (i.e. predictions with 5 highest probabilities)
-  - Top-5 error: percentage of test samples for which the correct class was not in the top 5 predicted classes
+## 3. CNN的一些Clasic Architectures
 
-## Clasic Architectures
+### 3.1 LeNet
 
-### 1. LeNet
+第一个成功的卷积神经网络应用，是Yann LeCun在上世纪90年代实现的。当然，最著名还是被应用在识别数字和邮政编码等的LeNet结构。
 
 - 特点
   - Digit recognition: 10 classes
   - Conv -> Pool -> Conv -> Pool -> Conv -> FC
   - As we go deeper: Width, Height 下降；Number of Filters增加
 
-### 2. [AlexNet](https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf)
+### 3.2 [AlexNet](https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf)
+
+这个网络的结构和LeNet非常类似，但是更深更大，并且使用了**层叠的卷积层**来获取特征（**之前通常是只用一个卷积层并且在其后马上跟着一个汇聚层**）。
 
 - 特点：
   - Similar to LeNet but much bigger (~1000 times)
   - Use of ReLU instead of tanh/sigmoid
 
-### 3.[VGGNet](https://arxiv.org/abs/1409.1556)
+### 3.3 [VGGNet](https://arxiv.org/abs/1409.1556)
+
+它主要的贡献是展示出网络的**深度是算法优良性能的关键部分**
 
 - Striving奋斗 for simplicity
 - CONV = 3x3 filters with stride 1, same convolutions
@@ -1130,23 +1260,21 @@ $$
 
 - Large but simplicity makes it appealing有吸引力的
 
-### 4.[ResNet](https://arxiv.org/abs/1512.03385)
+### 3.4 [ResNet](https://arxiv.org/abs/1512.03385)
 
-### 5.[GoogLeNet](https://arxiv.org/abs/1409.4842)
+残差网络（Residual Network）是ILSVRC2015的胜利者，由何恺明等实现。它使用了特殊的**跳跃链接**，大量使用了**批量归一化**（batch normalization）。这个结构同样在最后没有使用全连接层。
 
-### 6.[Xception Net](https://arxiv.org/abs/1610.02357)
+### 3.5 [GoogLeNet](https://arxiv.org/abs/1409.4842)
 
-### 7.[U-Net](https://arxiv.org/abs/1505.04597)
+它能够**显著地减少网络中参数的数量**（AlexNet中有60M，该网络中只有4M）。还有，这个论文中**没有使用卷积神经网络顶部使用全连接层**，而是使用了一个平均汇聚，把大量不是很重要的参数都去除掉了。
 
-### 8.[EfficientNet](https://arxiv.org/abs/1905.11946)
+### 3.6 [Xception Net](https://arxiv.org/abs/1610.02357)
 
-### 9.[Fast R-CNN](https://arxiv.org/abs/1504.08083)
+### 3.7 [U-Net](https://arxiv.org/abs/1505.04597)
 
-## Inception Layer
+### 3.8 [EfficientNet](https://arxiv.org/abs/1905.11946)
 
-Tired of choosing filter sizes?
-
-Use them all!
+### 3.9 [Fast R-CNN](https://arxiv.org/abs/1504.08083)
 
 # 五、Recurrent Neural Networks循环神经网络
 
