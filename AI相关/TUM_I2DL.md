@@ -224,10 +224,12 @@ https://numpy.org/doc/stable/
     - Robust(Cost of outliers is linear)不容易受离异值影响
     - Costly to optimize
     - Optimum is the median
+    - 没有导数为0的点，smooth l1 loss解决了其在0点处导数不唯一
   - **L2/MSE loss**: $L(y,\hat{y};\theta)=\frac{1}{n}\sum_i^n||y_i-\hat{y}_i||_2^2$
     - Prone to outliers容易受离异值影响
     - Computer efficient optimization
     - Optimum is the mean
+    - 0点处导数为0
 
 ### 1.3 Loss + Regularization正则化
 
@@ -585,21 +587,30 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
 
   - True/False指预测对了没有，positive/negative指预测的结果
 
-  - $精准度precision=\frac{True\ Positive}{True\ Positive+False\ Positive}$
+  - **精准度**$precision=\frac{True\ Positive}{True\ Positive+False\ Positive}$
 
     - Precision从预测结果角度出发，描述了二分类器预测出来的正例结果中有多少是真实正例，即该二分类器预测的正例有多少是准确的
 
-  - $召回率Recall = \frac{True\ Positive}{True\ Positive+False\ Negative}$
+  - **召回率**$Recall = \frac{True\ Positive}{True\ Positive+False\ Negative}$
 
     - Recall从真实结果角度出发，描述了测试集中的真实正例有多少被二分类器挑选了出来，即真实的正例有多少被该二分类器召回。
 
-  - $准确性Accuracy=\frac{True\ Positives + True\ Negatives}{Total\ Examples}$
+  - **准确性**$Accuracy=\frac{True\ Positives + True\ Negatives}{Total\ Examples}$
 
     On **skewed使不公允 datasets**(e.g., when there are more positive examples than negative examples), accuracy is not a good measure of performance and you should instead use F1 score
 
   - $F_1\ Score=\frac{2 * Precision * Recall}{Precision + Recall}$
 
-- Precision和Recall通常是一对矛盾的性能度量指标。一般来说，Precision越高时，Recall往往越低
+  - Precision和Recall通常是一对矛盾的性能度量指标。一般来说，Precision越高时，Recall往往越低
+
+- Bias和variance
+
+  - 一般情况下，模型需要在bias和variance之间取得一个平衡。bias小的模型，variance一般大；variance小的模型，bias一般大。
+
+  - **Bias偏差**：refers to the model being too simple -> underfitting
+
+  - **Variance方差**：refers to too many attention on trainins data and missing generalization on unseen data -> overfitting
+
 
 ## 6) 参数的初始化
 
@@ -719,6 +730,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   - 针对训练数据太少的问题，可以增加训练数据（Data Augmentation）
   - 增对模型复杂度太高的问题，可以降低模型复杂度。比如，减少层的数量或者减少神经元的个数，这样可以缩小网络的规模。
   - 正则化，这是解决过拟合的常用方法。
+    - Regularization is a technique that aims to reduce the generatlizatioan泛化 gap.
   - dropout，神经网络在每一次迭代过程中随机地丢弃神经网络中的神经元。每当我们丢弃不同的神经元，相当于重新训练了一个新的神经网络。
   - early stop，训练过程中，如果训练误差继续减小，但是测试误差已经开始增加，此时可以停止训练。
   - 集成学习，将多个模型进行组合，可以降低少数模型过拟合风险。
@@ -735,6 +747,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   - $\lambda\theta_k$: Gradient of L2-Regularization
     - L2 Regularization=$0.5\cdot\lambda\cdot||\theta||^2$
   - $1-\epsilon\lambda$: Learning rate of weight decay衰减.(上面公式合并一下)
+    - weight decay的目的是防止过拟合，to spread the decision power amog as many neurons as possible.
 
 - 用于penalize惩罚 large weights
 
@@ -1101,7 +1114,6 @@ $$
       \right]
   $$
   
-
 - **Sobel算子**
 
   Sobel算子则是Prewitt算子的改进版，对中间的元素适当进行了加权，Sobel算子之于Prewitt算子类似于高斯滤波之于均值滤波。
@@ -1301,6 +1313,24 @@ $$
 Tired of choosing filter sizes?
 
 Use them all!
+
+- 为什么要用inception layer:
+
+  - Avoid choosing kernel size
+  - Dimensionality reduction leads to lower computational cost
+
+- 结构
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/inception%20layer.png?raw=true)
+
+  - 和卷积层、池化层顺序连接的结构（如VGG网络）相比，这样的结构主要有以下改进：
+
+    - 一层block就包含1x1卷积，3x3卷积，5x5卷积，3x3池化(使用这样的尺寸不是必需的，可以根据需要进行调整)。这样，网络中每一层都能学习到“稀疏”（3x3、5x5）或“不稀疏”（1x1）的特征，既增加了网络的宽度，也增加了网络对尺度的适应性；
+    - 通过deep concat在每个block后合成特征，获得非线性属性
+
+  - 按照这样的结构来增加网络的深度，虽然可以提升性能，但是还面临计算量大（参数多）的问题。为改善这种现象，GooLeNet借鉴Network-in-Network的思想，使用1x1的卷积核实现降维操作(也间接增加了网络的深度)，以此来减小网络的参数量
+
+    ![](https://pic3.zhimg.com/80/v2-4c7116b1d363bcf9e492e8437dcc108a_720w.jpg)
 
 ## 2. 与全连接层的区别
 
@@ -1596,7 +1626,7 @@ LSTM具有记忆长短期信息的能力的神经网络.
 
 ## 3. GAN的基本结构
 
-GAN的主要结构包括一个**生成器**G（Generator）和一个**判别器**D（Discriminator）。
+GAN(Generative Adversarial Network)生成对抗网络的主要结构包括一个**生成器**G（Generator）和一个**判别器**D（Discriminator）。
 
 - 上面的例子中：
 
@@ -1625,6 +1655,65 @@ GAN的主要结构包括一个**生成器**G（Generator）和一个**判别器*
 ### 4.3 如何训练
 
 [参考](https://zhuanlan.zhihu.com/p/33752313)
+
+- **训练一个判别器，就是最大化实际数据和生成器抽样数据的JS散度**。
+
+   $$ G^{*}=\arg \min {G} \max {D} V(G, D) $$* 
+
+- GAN是生成器和判别器的零和博弈，即$J^{(G)}=-J^{(D)}$，即min-max博弈。
+
+  - **max what** : 在训练的第一步，我们需要提高判别器的辨别能力。即在给定生成器$G_i$的情况下，找到D的参数$\theta_d $最大化判别器对不同分布样本的JS散度（区分能力）
+  - **min what**： 与此同时，对于当前分辩能力最好的判别器$D_i$，找到$\theta_g$，使得判别器分辩两类样本的区分度最小。
+  - 但如果Discriminator训练的太好，Generator所有的sample都被拒绝，G就没法学习了
+    -  heuristical启发式的方法：the generator maximizes the log probability of the discriminator being mistaken.
+
+# 八、Reinforcement Learning强化学习
+
+## 1. 基本概念
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Reinforcement%20Learning%E7%A4%BA%E6%84%8F%E5%9B%BE.png?raw=true)
+
+- 相较于机器学习经典的有监督学习、无监督学习问题，强化学习最大的特点是在交互中学习（Learning from Interaction）
+
+  - Agent在与环境的交互中根据获得的奖励或惩罚不断的学习知识，更加适应环境。
+  - RL学习的范式非常类似于我们人类学习知识的过程，也正因此，RL被视为实现通用AI重要途径。
+
+- Markov Process马尔可夫过程
+
+  - Markov Property马尔可夫性
+
+    The future is independent of the history and the present state determines the future.
+
+    只要当前状态可知，所有的历史信息都不再需要，当前状态就可以决定未来，则认为该状态具有**马尔科夫性**。
+
+    用状态转移概率公式表达$P[S_{t+1}|S_1,...,S_t]=P[S_{t+1}|S_t]$
+
+  - Markov Process马尔可夫过程
+
+    **马尔科夫过程** 又叫马尔科夫链(Markov Chain)，它是一个无记忆的随机过程，可以用一个元组<S,P>表示，其中S是有限数量的状态集，P是状态转移概率矩阵。
+
+## 2. Q-learning
+
+### 2.1 基本理解
+
+- **Q-学习**是强化学习的一种方法。Q-学习就是要记录下学习过的策略，因而告诉智能体什么情况下采取什么行动会有最大的奖励值。Q-学习不需要对环境进行建模，即使是对带有随机因素的转移函数或者奖励函数也不需要进行特别的改动就可以进行。
+- **Q**为**动作效用函数**（action-utility function），用于评价在特定状态下采取某个动作的优劣。它是**智能体的记忆**。
+- 根据行为的后果来加强或减弱行为。如果后果是好的，则加强行为，如果后果是坏的则减弱行为。通过这种方式来获得趋利避害的能力。公式后一部分是对后果的估值。
+  q-training就是个建立“操作性条件反射”的过程。
+
+### 2.2 算法
+
+### 2.3 Q-learning 和 neural networks
+
+- 为什么要将Q-Learning与neural networks结合使用
+
+  - For even semi big problems, calculating all state action pairs is not tractable易处理的, but we can approximate them using neural networks.
+
+- 使用：
+
+  Function approximator for Q values $Q^*(s,a)=Q(s,a;\theta)$
+
+  这里的$\theta$是神经网络的参数
 
 # 1. 数据预处理
 
