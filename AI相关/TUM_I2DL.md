@@ -246,6 +246,10 @@ https://numpy.org/doc/stable/
   - 如果使用线性激活函数，那么输入跟输出之间的关系为线性的，无论神经网络有多少层都是线性组合。
   - 激活函数给神经元引入了非线性因素，使得神经网络可以任意逼近任何非线性函数，这样神经网络就可以应用到众多的非线性模型中。
   - 输出层可能会使用线性激活函数，但在**隐含层都使用非线性激活函数**
+- 激活函数的作用：
+  - Introduce non-linearity into network. Without activation function is network only linear
+  - prevent layer collapse
+
 
 ### 2.1Sigmoid
 
@@ -503,6 +507,9 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   - 原理即结合Momentum和RMSProp
     - Momentum:   $m^{k+1}=\beta_1\cdot m^k+(1-\beta_1)\nabla_\theta L(\theta^k)$
     - RMSProp:        $v^{k+1}=\beta_2\cdot v^k + (1-\beta_2)[\nabla_\theta L\bigodot \nabla_\theta L]$
+    - $\beta_1$和$\beta_2$是exponential decay rate for the moment estimates
+      - $\beta_1$ is related to bias correction for first moment estimate(decays the running average of the gradient)
+      - $\beta_2$ is related to bias correction for second moment estimate(decays running average of square of gradient)
   - 初始化$m^0=0,v^0=0$
   - 跟新两个值（偏置校正）
     - Momentum:$\hat{m}^{k+1}=\frac{m^{k+1}}{1-\beta_1^{k+1}}$
@@ -530,11 +537,21 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
 
 1. Newton’s Method牛顿法
    - BFGS and L-BFGS，Gauss-Newton，Levenberg，Levenberg-Marquardt
+   
    - 牛顿法doesn’t work well for minibatches，适用于全数据集处理
-   - Mathematical View：牛顿法有着Faster convergence in terms of number of iterations
+   
+   - Mathematical View：牛顿法有着Faster convergence in fewer iterations
      - 但是：Approximating近似 the inverse Hessian is highly computationally costly, not
        feasible可行的 for high-dimensional datasets.
+     
+   - Key idea:
+   
+     Approximate by second order taylor expansion
+   
+     $\theta_*=\theta_0-H^{-1}\nabla_\theta L(\theta)$
+   
 2. Conjugate Gradien共轭梯度法
+
 3. coordinate descent坐标下降法
 
 ### 3.7什么是一阶矩和二阶矩
@@ -620,6 +637,9 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
      - All neurons will learn the same things
   2. 都是小随机数：Output become to zero，梯度消失vanishing gradient
   3. 都是大随机数：Output saturated to -1 and 1，对于tanh,sigmoid同样会梯度消失
+- 为此使用 Xavier or Kaiming initialization.
+  - They aims to maintain same variance of output as input
+
 
 ### 6.1 Xavier Initialization
 
@@ -872,17 +892,29 @@ $$
 
     - $\hat{x}$也叫做unit gaussian
     - 计算得到的是一个mini batch的$\hat{x}$
-
+    - 其中$\epsilon$是为了防止方差为0产生无效计算。
+    
   - 最后得到输出: $y_{i,j}=\gamma_j\hat{x}_{i,j}+\beta_j$
 
+    可以用下面这2个参数来undo the normaliztion operation of Barchnorm
+    
     - $\gamma$：scale参数
+    
+      undo时，$\gamma=\sqrt{var(x_i)}$
+    
     - $\beta$：shift参数
+    
+      undo时，$\beta_i=E(x_i)$
 
 - Train vs Test
 
   - Mean 和 Variace的获得：
-    - Train：通过mini-batch获得
-    - Test：没有足够的测试数据集，所以 by running an exponentially weighted averaged across training minibatches.
+    - Train：
+      - compute statics from mini-batch,
+      - store the mean and variance
+    - Test：
+      - Use stored mean and variance and don't compute any batch statistics
+      - 没有足够的测试数据集，所以 by running an exponentially weighted averaged across training minibatches.
 
 ### 8.6 Data Augmentation
 
@@ -953,6 +985,11 @@ $$
     - 网络退化Degradation problem：虽然是一个很高维的矩阵，但是大部分维度却没有信息，表达能力没有看起来那么强大。
     - **残差连接**强制打破了网络的对称性，使得网络又恢复了表达能力。
     - 应用残差链接的CNN结构：ResNet (Deep residual network)
+  
+- Skip connections为什么helpful?
+
+  1. Help prevent vanishing gradients 
+  2. Provides highway for the gradients in backward pass
 ## 12） 一个应用：Encoder编码器
 
 代码实现见下面6.4.3
@@ -1020,6 +1057,10 @@ $$
   
   
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/CNN%20Prototype.png?raw=true)
+
+- 不变性invariance：
+  - CNN中不变性意味着即使目标的外观发生了某种变化，但是你依然可以把它识别出来
+  - 根据[文章](https://pyimagesearch.com/2021/05/14/are-cnns-invariant-to-translation-rotation-and-scaling/)可知：CNN只有translation invariance没有rotation/scaling invariance。
 
 ### 1.1 Image Filter
 
@@ -1243,11 +1284,16 @@ $$
 
 ### 1.3 Pooling Layer池化层
 
-可以理解为汇聚层
+可以理解为汇聚层,通常在连续的卷积层之间会周期性地插入一个池化层。
 
 - 作用：
 
-  通常在连续的卷积层之间会周期性地插入一个池化层。它的作用是逐渐降低数据体的空间尺寸，这样的话就能减少网络中参数的数量，使得计算资源耗费变少，也能有效控制过拟合。
+  1. downsamping下采样，降维，减少网络中参数的数量，使得计算资源耗费变少，
+  2. 实现非线性，能防止过拟合。
+  3. 实现特征不变性feature invariance
+     - translation invariance
+     - rotation invariance
+     - scaling invariance
 
 - 与卷积层对比：
 
@@ -1276,6 +1322,23 @@ $$
   - Average Pooling
 
     ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Average%20Pooling.png?raw=true)
+  
+  - GAP(global average pooling)全局平均池化
+    - 对整个网路在结构上做正则化防止过拟合。
+    - GAP可以实现任意图像大小的输入.
+    - 但gap会导致收敛速度减慢
+
+- 两者对比：
+
+  根据相关理论，特征提取的误差主要来自两个方面
+
+  1. 邻域大小受限造成的估计值方差增大。
+
+     average-pooling能减小第一种误差，更多的保留图像的背景信息
+
+  2. 卷积层参数误差造成估计均值的偏移。
+
+     max-pooling能减小第二种误差，更多的保留纹理信息。
 
 ### 1.4 Receptive Field感受野
 
@@ -1428,7 +1491,8 @@ Fully Convolutional Network，[知乎参考](https://zhuanlan.zhihu.com/p/301951
 
   - 用于图像分类的CNN网络一般结构是"**卷积-池化-卷积-池化-全连接**"，其中**卷积和全连接层**是有参数的，池化则没有参数。
   - 但全连接层会让目标的位置信息消失，只保留语义信息。因此FCN需要将全连接层转换为卷积层，以同时保留**位置信息及语义信息**，达到给每个像素分类的目的。
-    - 全连接层和卷积层之间唯一的不同就是卷积层中的神经元只与输入数据中的一个局部区域连接，并且在卷积列中的神经元共享参数。然而在两类层中，神经元都是计算点积，所以它们的函数形式是一样的。因此，将此两者相互转化是可能的：
+    - 全连接层和卷积层之间唯一的不同就是卷积层中的神经元只与输入数据中的一个局部区域连接，并且在卷积列中的神经元共享参数。然而在两类层中，神经元都是计算点积，所以它们的函数形式是一样的。因此，将此两者相互转化是可能的
+  - 转换成全卷积层后要+global average pooling
   
 - 上采样：
 
@@ -1450,6 +1514,18 @@ Fully Convolutional Network，[知乎参考](https://zhuanlan.zhihu.com/p/301951
 
   - 当我们在理解一句话意思时，孤立的理解这句话的每个词是不够的，我们需要处理这些词连接起来的整个序列；
   - 当我们处理视频的时候，我们也不能只单独的去分析每一帧，而要分析这些帧连接起来的整个序列。
+
+- RNN的优缺点
+
+  - 优点：
+
+    1. can model temporal sequential data
+
+    缺点：
+
+    1. Vanishing/Exploding Gradient发生在时间轴上
+
+       It cannot system very lengthy sequences if the usage of Tanh or Relu as an activation feature.
 
 - RNN结构
 
@@ -1488,6 +1564,8 @@ Fully Convolutional Network，[知乎参考](https://zhuanlan.zhihu.com/p/301951
 
   it's difficult for traditional RNNs to learn long-term dependencies due to vanishing gradients
 
+  就导致了越晚的输入影响越大，越早的输入影响越小。
+
 - Simple Recurrence: $A_t=\theta^tA_0$
 
   - 将权重eigendecomposition特征分解
@@ -1514,6 +1592,10 @@ LSTM具有记忆长短期信息的能力的神经网络.
 
   The cell state in LSTMs improve the gradient flow and thereby allows the network to learn longer dependencies.
 
+  - lstm suffer遭受 less rome vanishing gradient的另一个原因是：
+
+    Highway for gradients through the cell state.
+
 - LSTM是由一系列LSTM单元（LSTM Unit）组成，其链式结构如下图:
 
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/LSTM%E7%BB%93%E6%9E%84.png?raw=true)
@@ -1528,7 +1610,7 @@ LSTM具有记忆长短期信息的能力的神经网络.
 
     $C_t=f_t\times C_{t-1}+i_t\times \tilde{C}_t$
 
-    - $f_t$：遗忘门forget gate。是一个每个元素均位于[0,1] 范围内的向量。通常使用sigmoid作为激活函数。
+    - $f_t$：遗忘门forget gate。是一个每个元素均位于[0,1] 范围内的向量。通常使用sigmoid作为激活函数。精髓！
 
       - $f_t=\sigma(W_f\cdot[h_{t-1},x_t]+b_f)$
       - 用于控制$C_{t-1}$的哪些特征用于更新$C_t$
