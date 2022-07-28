@@ -577,6 +577,10 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   - 如果network's training curve diverge发散(no problem in data loading)
 
     - 这时需要reduce the learning rate
+    
+  - **Too high learning rate**: cost function does not converge to an optimal solution and can even diverge.
+
+  - **Too low learning rate**： cost function may not converge to an optimal solution, or will converge after a very long time.
 
 - Learning Rate Decay衰败
 
@@ -615,6 +619,10 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   - **准确性**$Accuracy=\frac{True\ Positives + True\ Negatives}{Total\ Examples}$
 
     On **skewed使不公允 datasets**(e.g., when there are more positive examples than negative examples), accuracy is not a good measure of performance and you should instead use F1 score
+
+    - Why is it a problem to use the classification accuracy as a loss to train a neural network?
+
+      Because Accuracy is discrete function->not differentiable
 
   - $F_1\ Score=\frac{2 * Precision * Recall}{Precision + Recall}$
 
@@ -693,7 +701,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
 - 相比Xavier:
   - Xavier初始化的问题在于，它只适用于线性激活函数，但实际上，对于深层神经网络来说，线性激活函数是没有价值，神经网络需要非线性激活函数来构建复杂的非线性系统。今天的神经网络普遍使用relu激活函数。
   - Kaiming初始化的发明人kaiming he，在[论文](https://arxiv.org/abs/1502.01852)中提出了针对relu的kaiming初始化。
-  - 因为relu会抛弃掉小于0的值，对于一个均值为0的data来说，这就相当于砍掉了一半的值，这样一来，均值就会变大，前面Xavier初始化公式中E(x)=mean=0的情况就不成立了。根据新公式的推导，最终得到新的rescale系数：$\sqrt\frac{2}{n}$
+  - 因为relu会抛弃掉小于0的值，对于一个均值为0的data来说，这就相当于砍掉了一半的值the output variance of a layer is halved，这样一来，均值就会变大，前面Xavier初始化公式中E(x)=mean=0的情况就不成立了。根据新公式的推导，最终得到新的rescale系数：$\sqrt\frac{2}{n}$
 - $Var(w)=\frac{2}{n}$
   - $n$：the number of input neurons for the layer of weights you want to initialize
 
@@ -711,6 +719,11 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
 - Test set('test')
 
   -  assess the performance [generalization]检验模型的泛化能力。
+
+- 如果training set都是白天during the day拍的图片，validation set都是晚上at night拍的
+
+  - 这样的data from different distributions 会导致bad generaization/ high var error
+  - 通过mix trainig +validation data, shuffle洗牌 and split again来使all sets from same distribution
 
 - Typocal split分割
 
@@ -768,6 +781,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
     - L2 Regularization=$0.5\cdot\lambda\cdot||\theta||^2$
   - $1-\epsilon\lambda$: Learning rate of weight decay衰减.(上面公式合并一下)
     - weight decay的目的是防止过拟合，to spread the decision power amog as many neurons as possible.
+    - $\epsilon \lambda$<<1,so the weight$\theta$ is pushed towards zero in each iteration
 
 - 用于penalize惩罚 large weights
 
@@ -851,6 +865,8 @@ $$
 
   - BN就是通过归一化手段，将每层输入强行拉回均值0方差为1的标准正态分布，这样使得激活输入值分布在非线性函数梯度敏感区域，从而避免梯度消失问题，大大加快训练速度。
 
+    Mimics模仿 the normalization of data for each layer to receive more stable inputs
+
 - BN 作用
 
   - 加快收敛速度，有效避免梯度消失。
@@ -860,8 +876,12 @@ $$
 - BN在训练和测试时的差别：
 
   - 在训练时，是对每一批的训练数据进行归一化，也即用每一批数据的均值和方差。
+    - Calculate the mean and variance computed from the mini-batch
+
+    - store a weighted average across training mini-batches for the update at test time
 
   - 测试时，比如进行一个样本的预测，就并没有batch的概念，因此，这个时候用的均值和方差是全量训练数据的均值和方差
+    - Use exponentially weighted average指数加权平均 mean and variance that was computed at training time on the test samples
 
 - 为什么需要Batch Normalization批标准化：
 
@@ -980,8 +1000,10 @@ $$
 
     但是如果使用了残差，**每一个导数就加上了一个恒等项1，dh/dx=d(f+x)/dx=1+df/dx**。此时就算原来的导数df/dx很小，这时候误差仍然能够有效的反向传播。
 
-  - **神经网络的退化**也是难以训练深层网络的原因。
+    highway of gradients-> improve the vanishing gradient problem
 
+  - **神经网络的退化**也是难以训练深层网络的原因。
+  
     - 网络退化Degradation problem：虽然是一个很高维的矩阵，但是大部分维度却没有信息，表达能力没有看起来那么强大。
     - **残差连接**强制打破了网络的对称性，使得网络又恢复了表达能力。
     - 应用残差链接的CNN结构：ResNet (Deep residual network)
@@ -996,13 +1018,15 @@ $$
 
 ### 12.1 Autoencoder自动编码器
 
+自编码器（autoencoder, AE）是一类在半监督学习和非监督学习中使用的人工神经网络ANN，其功能是通过将输入信息作为学习目标，对输入信息进行表征学习（representation learning）。
+
 - 主要应用：
 
   - 数据去噪
   - 可视化降维
   - 生成数据
 
-- 基本结构：
+- 基本结构：(unsupervised learning)
 
   NN Encoder -> code -> NN Decoder
 
@@ -1013,14 +1037,33 @@ $$
   - 第二部分：解码器
 
     编码经过另一个神经网络(Decoder)解码得到一个与输入原数据几乎一模一样的数据
+  
+- 我们可以修改size of bottleneck(code)，但如果
+
+  - the latent潜在的 space is too small:
+    - loss of information
+    - bad reconstruction quality
+    - too much compression/extraction/blurry
+    - underfitting.
+
+  - the latent space is too big
+    - too little compression/extraction
+    - overfitting
+    - poor generalization
+    - learned identity mapping/memorizes the inputs
+
 
 ### 12.2 Variational Autoencoder变分自动编码器
 
-变分编码器是自动编码器的升级版本，其结构跟自动编码器是类似的，也由编码器和解码器构成。但普通的自动编码器不能任意的生成图片，因为我们没法自己去构造隐藏向量（即上面的 code）。
+- 变分编码器是自动编码器的升级版本，其结构跟自动编码器是类似的，也由编码器和解码器构成。但普通的自动编码器不能**任意的生成图片**，因为我们没法自己去构造隐藏向量（即上面的 code）。而变分自动编码器在编码过程给它增加一些限制，迫使其生成的隐含向量能够粗略的遵循一个标准正态分布，这就是其与一般的自动编码器最大的不同。这样我们生成一张新图片就很简单了，我们只需要给它一个标准正态分布的随机隐含向量，这样通过解码器就能够生成我们想要的图片，而不需要给它一张原始图片先编码。
 
-而变分自动编码器在编码过程给它增加一些限制，迫使其生成的隐含向量能够粗略的遵循一个标准正态分布，这就是其与一般的自动编码器最大的不同。这样我们生成一张新图片就很简单了，我们只需要给它一个标准正态分布的随机隐含向量，这样通过解码器就能够生成我们想要的图片，而不需要给它一张原始图片先编码。
+  在实际情况中，我们需要在模型的准确率上与隐含向量服从标准正态分布之间做一个权衡，所谓模型的准确率就是指解码器生成的图片与原图片的相似程度。我们可以让网络自己来做这个决定，非常简单，我们只需要将这两者都做一个loss，然后在将他们求和作为总的loss，这样网络就能够自己选择如何才能够使得这个总的loss下降。有一个东西叫KL divergence来衡量两种分布的相似程度，这里我们就是用KL divergence来表示隐含向量与标准正态分布之间差异的loss，另外一个loss仍然使用生成图片与原图片的均方误差来表示。
 
-在实际情况中，我们需要在模型的准确率上与隐含向量服从标准正态分布之间做一个权衡，所谓模型的准确率就是指解码器生成的图片与原图片的相似程度。我们可以让网络自己来做这个决定，非常简单，我们只需要将这两者都做一个loss，然后在将他们求和作为总的loss，这样网络就能够自己选择如何才能够使得这个总的loss下降。有一个东西叫KL divergence来衡量两种分布的相似程度，这里我们就是用KL divergence来表示隐含向量与标准正态分布之间差异的loss，另外一个loss仍然使用生成图片与原图片的均方误差来表示。
+- 普通的Autoencoder不能任意的生成图片是因为：
+
+  encoder does not project input distribution surjectively满射的 into latent space->
+
+  decoder will not project all latent space vectors to coin images.
 
 - KL divergence公式
   $$
@@ -1030,6 +1073,20 @@ $$
 - 与AutoEncoder区别
 
   A variational Autoencoder imposes强加 (optional: Gaussian / KL-Divergence loss) constraints on the distribution of the bottleneck
+
+### 12.3 结合transfer learning
+
+- 如何利用训练好的encoder参数来帮助训练其他网络
+
+  - use pretrained encoder of autoencoder and discard丢弃 decoder
+  - freeze weights of encoder
+
+- 预训练的autoencoder变量比randomly initialized的网络更泛化。
+
+  因为
+
+  - the network can access to much more data
+  - can already detect some features
 
 # 四、CNN卷积神经网络
 
@@ -1106,7 +1163,7 @@ $$
   和下面高斯滤波共有的特征:
 
   - 滤波器中元素之和为1，输出亮度与输入基本一致；
-  - 均为低通滤波器，主要用于图像模糊/平滑处理、消除噪点；
+  - 均为低通滤波器，主要用于图像模糊blur/平滑smooth处理、消除噪点noise；
   - 核越大，模糊程度越大；
 
 ##### 3.Gaussian blur高斯滤波
@@ -1126,7 +1183,7 @@ $$
 
 ##### 4. 一阶微分算子Prewitt/Sobel
 
-用于边缘检测edge detector
+用于边缘检测vertical/horizontal edge detector
 
 一阶微分算子可以计算出某个方向上物体的边缘，但往往对噪声较为敏感，且边缘检测敏感度依赖于物体的大小。
 
