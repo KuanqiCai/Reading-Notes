@@ -782,12 +782,8 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   - $1-\epsilon\lambda$: Learning rate of weight decay衰减.(上面公式合并一下)
     - weight decay的目的是防止过拟合，to spread the decision power amog as many neurons as possible.
     - $\epsilon \lambda$<<1,so the weight$\theta$ is pushed towards zero in each iteration
-
 - 用于penalize惩罚 large weights
-
 - 用于improve generalization泛化
-
-- Early Stopping
 
 ### 8.2 Max Norm Regularization
 
@@ -826,6 +822,8 @@ $$
 ### 8.4 Dropout
 
 - 在机器学习的模型中，如果模型的参数太多，而训练样本又太少，训练出来的模型很容易产生过拟合的现象。Dropout可以比较有效的缓解过拟合的发生，在一定程度上达到正则化的效果。
+
+  每次选择丢弃的神经元是随机的．最简单的方法是设置一个固定的概率 p．对每一个神经元都以概率 p 随机丢弃（即置0）
 
 - Dropout可以作为训练深度神经网络的一种trick供选择。在每个训练批次中，通过忽略一半的特征检测器（让一半的隐层节点值为0）Using half the network = half capacity，可以明显地减少过拟合现象。这种方式可以减少特征检测器（隐层节点）间的相互作用reducing co-adaptation between neurons，检测器相互作用是指某些检测器依赖其他检测器才能发挥作用。
 
