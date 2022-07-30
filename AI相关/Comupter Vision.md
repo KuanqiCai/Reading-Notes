@@ -450,6 +450,12 @@ Image Formation成像
   
       - 注意不是像平面，虽然实际中光线经过透镜后并不会完美的都交于焦点，而会形成弥散圆。
       - [相机成像究竟是成在像平面还是成在焦平面？底片相当于像平面还是焦平面？](https://www.zhihu.com/question/33793912/answer/57646234)
+      
+    - 针孔相机Lochkamera的焦平面和像平面为什么zusammenfallen同时发生？
+  
+      Auf Grund kleinen Öffnung der Kamera kann angenommen werden, dass die Strahlen, die in die Kamera einfallen, annähernd parallel sind. Somit entspricht die Brennebene der Bildebene.
+  
+      Alle Strahlen, die vor der Linse parallel verlaufen treffen sich hinter der Linse in der Brennebene.
   
   - 如果空间点P在相机坐标系中的坐标是$P_c=[X,Y,Z]^T$ ，其像点在图像坐标系中的坐标是$p=[x,y]^T$,因为光轴和成像平面垂直，所以像点p在相机坐标系中的坐标是$p=[x,y,z]^T$，z=f(相机焦距)
   
@@ -523,6 +529,10 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
      - 像素是一个矩形块: 假设其在水平和竖直方向上的长度为$\alpha和\beta$
        - ->坐标的缩放
 
+  - Umrechnug von Bildkoordinaten $x$ in Pixelkoordinaten $x'$:$x'=Kx$
+
+    为了能反过来求$x=K^{-1}x^，$ 就需要K ist invertierbar -> K的 Eigenwerte$\lambda_i\neq0$
+
 - 若像素坐标系的水平轴为u，竖轴为v；原点平移了$(c_x,c_y)$，那么成像平面点(x,y)在像素坐标系下的坐标为：
   $$
   u=\alpha\cdot x+c_x\\
@@ -575,7 +585,7 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
   $$
   由此得到**内参数矩阵(Camera Intrinsics) K**:
   
-  也叫Calibration Matrix标定矩阵
+  也叫Calibration Matrix/Kalibierungsmatrix标定矩阵
   $$
   K=K_sK_f
   =
@@ -621,14 +631,16 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
   - $c_x,c_y$：是平移的距离，和相机成像平面的大小有关
   
   求解相机内参数的过程称为**标定**
+  
+  
 
 ### 3.2外参数
 
 - 由3.1的4式可得：$p=KP$
 
-  - p：是成像平面中像点在像素坐标下的坐标
+  - p：是成像平面中像点在像素坐标下pixelkoordinaten的坐标
   - K：是内参数矩阵
-  - P：是相机坐标系下的空间点P的坐标。（P的像点是p）
+  - P：是相机坐标系Bildkoordinaten下的空间点P的坐标。（P的像点是p）
 
   但相机坐标系是会随相机移动而动的，不够稳定，为了稳定需要引入**世界坐标系**。
 
@@ -1062,7 +1074,7 @@ $$
 
 - 基本矩阵的性质：
 
-  - 未标定相机：Epipolargleichung$x_2^{'}Fx_1^{’}=0$
+  - 未标定相机：Epipolargleichung：$x_2^{'T}Fx_1^{’}=0$
   - 基本矩阵：$F=K^{-T}\hat{T}RK^{-1}$
   - 对于极点：$Fe_1^{'}=0,F^Te_2^{'}=0$
   - 对于极线：$l_2^{'}等价于Fx_1^{'},l_1^{'}等价于Fx_2^{'}$
