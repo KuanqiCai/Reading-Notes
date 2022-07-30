@@ -231,7 +231,11 @@ https://numpy.org/doc/stable/
     - Optimum is the mean
     - 0点处导数为0
 
-### 1.3 Loss + Regularization正则化
+### 1.3 Image reconstruction loss
+
+- L1,L2,ssim,psnr
+
+### 1.4 Loss + Regularization正则化
 
 ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Full%20Loss.png?raw=true)
 
@@ -279,7 +283,21 @@ $\sigma(x)=\frac{1}{(1+e^{-x})}$
 
   - 缺点：
     - It requires **computation of an exponent**, which need more compute resouce and makes the convergence of the network slower.
+    
     - **vanishing gradient**梯度消失：the neuro is saturated, because when it reaches its maximum or minimum value, the derivative will be equal to 0（也称为saturate饱和）.$\sigma(x)(1-\sigma(x))$趋于0，因为sigmoid最小最大值为0和1。then the weights will not be updated
+    
+      - 可以用ReLU激活函数来代替：
+    
+        因为ReLU doesn't saturate and have large consistent gradients
+    
+      - 也可以add residual connections
+    
+        因为有highway for gradient flow
+    
+      - 还可以用Xavier initialization
+    
+        因为it improved weight initialization targets active area of the activation function
+    
     - **Not zero-centered function**:During update process, these weights are only allowed to move in one direction, i.e. positive or negative, at a time. This makes the loss function optimization harder.
 ### 2.2tanh
 
@@ -420,6 +438,7 @@ $$
   - 越小的minibatch size ->  greater variance in the gradients -> noisy updates
     - 但noisy update 也可以帮助escape from saddle point
   - It is limited by GPU memory(in backward pass)
+  - There exists some batch size, for which the gradient of the loss w.r.t model parameters in SGD is equal to the gradient in GD
   
 - Stochastic Gradient Descent
 
@@ -438,6 +457,10 @@ $$
     - need to have conservative保守的 min learning rate to avoid divergence发散
     - Slower than ‘necessary’
   - Finding good learning rate is an art by itself
+  
+    Because SGD only has one learning rate for all dimensons
+  
+  - SGD is noisy
 
 ### 3.3Gradient Descent with Momentum
 
@@ -458,13 +481,23 @@ $$
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/sgd_momentum.png?raw=true)
 
   - 可以看到动量优化之后左右的摆动减小，从而提高了效率。
+  - speeds up learning if gradient keeps pointing in the same direction.->解决了sgd的slow learning
+  - keep direction of gradient to get out of local minimum.->解决了sgd can't escape from local minima
+  - adjusts learning rate if  oscillating振荡 over local minimum. -> 解决了sgd only has one learning rate for all dimension
+  - exponentially weighted moving average reduces noise.-> 解决了sgd is noisy
 
 -  Gradient Descent with Momentum
 
   - $v^{k+1}=\beta \cdot v^k-\alpha\cdot\nabla_\theta L(\theta^k)$
     - $v$: velocity。这是一个向量
-    - $\beta$: accmulation rate积累速率(friction, momentum)，和$\alpha$一样都是Hyperparameters
+    - $\beta$: accmulation rate积累速率of velocity/friction，和$\alpha$一样都是Hyperparameters
   - $\theta^{k+1}=\theta^k+v^{k+1}$
+  
+- 使用Nesterov Momentum:
+
+  Nesterov是Momentum的变种。与Momentum唯一区别就是，计算梯度的不同。Nesterov动量中，**先用当前的速度 v 临时更新一遍参数，在用更新的临时参数计算梯度**。
+
+  - Use the previous momentum to update the parameter, then use the parameter to calculate the new gradient.
 
 ### 3.4Root Mean Squared Prop(RMSProp)
 
@@ -713,12 +746,14 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
 
 - Validation set('val')
 
+  - Validation set is used for testing generalization with different Hyperparameters
+
   - Hyperparameter Optimization调整模型的超参数。
   - tune the model's architecture确定网络结构
 
 - Test set('test')
 
-  -  assess the performance [generalization]检验模型的泛化能力。
+  - Test set is only used **at the end** to test generalization on unseen data once.
 
 - 如果training set都是白天during the day拍的图片，validation set都是晚上at night拍的
 
@@ -745,6 +780,10 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
      和LOOCV的不同在于，我们每次的测试集将不再只包含一个数据，而是多个，具体数目将根据K的选取决定。
 
      比如K=5，就把数据集分成5份。不重复地每次取其中一份做测试集，用其他四份做训练集训练模型，之后计算该模型在测试集上的MSE
+     
+     - 如果K过大，会increase training time or more computations
+     
+       因为It has to train and validate K separate times
 
 - 各个数据集误差处理
 
@@ -759,6 +798,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   - 训练集数据太少，很容易就过拟合了。
   - 训练集测试集的数据分布不一致，这点很容易被忽略。比如有的算法要求数据集符合高斯分布，训练集也满足条件，但是上线以后线上数据分布发生了变化，效果肯定不会太好。
   - 模型本身特别复杂。比如树模型，如果树的棵数太多，深度太大，也很容易就过拟合。
+  
 - **解决方案**
   - 针对训练数据太少的问题，可以增加训练数据（Data Augmentation）
   - 增对模型复杂度太高的问题，可以降低模型复杂度。比如，减少层的数量或者减少神经元的个数，这样可以缩小网络的规模。
@@ -768,6 +808,19 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   - early stop，训练过程中，如果训练误差继续减小，但是测试误差已经开始增加，此时可以停止训练。
   - 集成学习，将多个模型进行组合，可以降低少数模型过拟合风险。
   - BN，Batch Normalization。在CNN每层之间加上将神经元的权重调成标准正态分布的正则化层。
+  
+- Unsupervised learning也会遇到过拟合的问题
+
+  比如：
+
+  1. Clustering N datapoints with N cluster
+  2. Autoencoder with large bottleneck
+
+- 反过来如果遇到underfitting.需要：
+
+  1. increase model capacity
+  2. decrease learning rate
+  3. BN
 
 ### 8.1 L2 regularization
 
@@ -836,6 +889,12 @@ $$
   - Dropout 在训练时采用，是为了减少神经元对部分上层神经元的依赖，以提高模型的泛化能力，减少过拟合。
 
   - 在测试时，应该用整个训练好的模型，因此不需要dropout。
+  
+- 两层probabilities分别为p和q的dropout层，可以用1个dropout层代替：
+
+  - If neurons zero out independently, so dropout layer with probability p+q-2pq
+  - If dropout layer 1 has already zeroed out neurons, then those can't be considered by second layer anymore. Probability is pq.
+
 
 
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Dropout.png?raw=true)
@@ -1070,7 +1129,8 @@ $$
 
 - 与AutoEncoder区别
 
-  A variational Autoencoder imposes强加 (optional: Gaussian / KL-Divergence loss) constraints on the distribution of the bottleneck
+  - A variational Autoencoder imposes强加 (optional: Gaussian / KL-Divergence loss) constraints on the distribution of the bottleneck
+  - Variational autoenoders will constrain the bottleneck distribution into a probability distribution but autoencoders don't constrain the latent space.
 
 ### 12.3 结合transfer learning
 
@@ -1085,6 +1145,11 @@ $$
 
   - the network can access to much more data
   - can already detect some features
+  
+- 如果已经在dataset上训练了一个Autoencoder,应该如何在不继续训练（without further training）的情况下将数据集分成10类？
+
+  1. Use the trained encoder to get latent embedding for each unlabeled image
+  2. DO clustering. Assign分配 each image to it's cluster centre.
 
 # 四、CNN卷积神经网络
 
@@ -1473,6 +1538,12 @@ Convolutions vs Fully-Connected
   - Input size$(N,C,W,H)\rightarrow(N,C,H\times W)$
   - Compute minibatch mean and variance across N, W, H (i.e. we compute mean/var for each channel C))
 
+- Normalization acts on channel dimension instead of per feature
+
+  - Each BatchNorm2d layer has two weights per channel
+
+    比如有conv->pool->BN->...这一段有8通道，那么BN层有2X8=16个可训练参数
+
 - Other Normalizations
 
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Normalizations.png?raw=true)
@@ -1788,6 +1859,8 @@ GAN(Generative Adversarial Network)生成对抗网络的主要结构包括一个
 ### 4.2 判别器：
 
 - 对于判别器不用多说，往往是常见的判别器，输入为图片，输出为图片的真伪标签。
+  - 同理，判别器与生成器一样，可以是任意的判别器模型，比如全连接网络，或者是包含卷积的网络等等
+
 
 ### 4.3 如何训练
 
@@ -1795,7 +1868,12 @@ GAN(Generative Adversarial Network)生成对抗网络的主要结构包括一个
 
 - **训练一个判别器，就是最大化实际数据和生成器抽样数据的JS散度**。
 
-   $$ G^{*}=\arg \min {G} \max {D} V(G, D) $$* 
+   $$ G^{*}=\arg \min_G \max_D V(G, D) $$ 
+
+   - $V(G,D)$相当于表示真实样本和生成样本的差异程度。
+   - $max_DV(G,D)$的意思是固定生成器G，尽可能地让判别器D能够最大化的识别出样本的真伪。
+   - 将$L=max_DV(G,D)$看作一个整体，$min_GL$的意思是固定判别器D，找到一个生成器G，要求能够最小化真实样本和生成样本的差异
+   - 通过上述min max的博弈过程，理想情况下会收敛于生成分布拟合于真实分布
 
 - GAN是生成器和判别器的零和博弈，即$J^{(G)}=-J^{(D)}$，即min-max博弈。
 
@@ -1803,6 +1881,16 @@ GAN(Generative Adversarial Network)生成对抗网络的主要结构包括一个
   - **min what**： 与此同时，对于当前分辩能力最好的判别器$D_i$，找到$\theta_g$，使得判别器分辩两类样本的区分度最小。
   - 但如果Discriminator训练的太好，Generator所有的sample都被拒绝，G就没法学习了
     -  heuristical启发式的方法：the generator maximizes the log probability of the discriminator being mistaken.
+  
+- 基本训练流程：
+
+  - 初始化判别器D的参数$\theta_d$和生成器G的参数$\theta_g$ 。
+  - 从真实样本中采样 m 个样本${ x^1,x^2,...x^m }$ ，从先验分布噪声中采样 m 个噪声样本${ z^1,z^2,...,z^m }$并通过生成器获取 m 个生成样本${ \tilde{x}_1,\tilde{x}_2,...,\tilde{x}_m }$ 。固定生成器G，训练判别器D尽可能好地准确判别真实样本和生成样本，尽可能大地区分正确样本和生成的样本。
+  - **循环k次更新判别器之后，使用较小的学习率来更新一次生成器的参数**，训练生成器使其尽可能能够减小生成样本与真实样本之间的差距，也相当于尽量使得判别器判别错误。
+    - 之所以要训练k次判别器，再训练生成器，是因为要先拥有一个好的判别器，使得能够教好地区分出真实样本和生成样本之后，才好更为准确地对生成器进行更新。
+  - 多次更新迭代之后，最终理想情况是使得判别器判别不出样本来自于生成器的输出还是真实的输出。亦即最终样本判别概率均为0.5。
+
+  
 
 # 八、Reinforcement Learning强化学习
 
