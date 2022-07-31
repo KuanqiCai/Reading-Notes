@@ -409,6 +409,16 @@ Correspondence Estimation of Feature Points特征点的对应估计
     - 两个normalized image section是相似的,如果
       1. SSD small (few differences)
       2. NCC close to =1 (high correlation)
+  
+## 5.找特征点的整体流程：
+
+1. 用两个相机拍照（第三章）
+2. Konvertierung der Farbbilder in ein Grauwert-/Intensitäts-Bild
+3. Lokalisierung von Merkmalspunkten mit dem Harris-Detektor
+4. Ausschneiden剪切 und normieren标准化 von Bildsegmenten图像片段 um die Merkmalspunkte herum
+5. Schätzung估计 von Korrespondenzen durch die Normalized Cross Correlation (NCC) der Bildsegmente untereinander
+
+  
 
 # 二、Bildentstehung
 
@@ -538,6 +548,14 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
   u=\alpha\cdot x+c_x\\
   v=\beta\cdot y+c_y\tag{2}
   $$
+  - 公式含义：
+    - $\alpha$:Pixelbreite
+    - $\beta$:Pixelhöhe
+    - $\theta$:Scherung剪切
+    - $c_x$:X-Offset
+    - $c_y$:Y-Offset
+    - $f$:Brennweite焦距
+  
   将1.Bildentstehung中的1式代入这里的2式可得：
   $$
   \begin{cases}
@@ -808,12 +826,22 @@ $$
 
     - $\hat{T}$​是T的反对称矩阵skew symmetric matrix
 
+      如果$T=(a,b,c)$则:$\hat{T}=\left[
+       \begin{matrix}
+         0 & -c & b \\
+         c & 0 & -a \\
+         -b & a & 0
+        \end{matrix}
+        \right]$
+    
+      
+    
     - Epipolar equation对极方程：$P'^TEP=0$
-
+    
       The epipolar equation describes the correlation between corresponding image points from different images of the same scene
-
+    
     - **Essential matrix本质矩阵**：$E=\hat{T}R$
-
+    
 - 本质矩阵的特性：[奇异值分解SVD](https://zhuanlan.zhihu.com/p/26306568)(Singular Value Decomposition)
 
   - 任何一个m x n的矩阵A都可以奇异值分解为：$A=P\Sigma Q^T$
@@ -866,11 +894,12 @@ $$
 - Epipole对极点和本质矩阵的关系：
 
   $Ee_1=0；E^Te_2=0$
-  
+
   因为：
-  
+
   - The Coimage余象 of $e_1$is equivalent to the third singular value of E from the right: $e_1等价于q_3 $
   - The Coimage余象 of $e_2$is equivalent to the third singular value of E from the left: $e_2等价于p_3 $
+  - q3,p3都是上面本质矩阵 奇异分解后的特征向量。
 
 - Epipolar lines对极线的一些性质：
 
@@ -1122,9 +1151,22 @@ Planar Epipolar Equation平面对极方程
       - 用单应矩阵可以Unique determination of correspondences
       - 单应矩阵也可以用于计算 epipolar lines outside of the plane
   
-  - 由此我们得到**Planar epipolar equation**:$x_2=Hx_1$
+  - 由此我们得到**Planar epipolar equation**平面对极方程：
   
+    $x_2=Hx_1$
+    
     - $x_2\ orthogonal\ to\ 垂直于\ u\times Hx_1\ for\ all\ u \in R^3$
+  
+- 单应矩阵H必有如下Singulärwertszerlegung
+  $$
+  H=U\begin{bmatrix}
+  \sigma_1 & 0 & 0\\
+  0 & 1 & 0\\
+  0 & 0 & \sigma_3
+  \end{bmatrix}V^T
+  $$
+
+  - 其中特征值$\sigma_1$和$\sigma_3$都不能等于0
 
 ## 2.Vier-Punkt-Algorithmus
 
@@ -1169,9 +1211,8 @@ Planar Epipolar Equation平面对极方程
       \end{matrix}
       \right]\in R^{9\times3}
     $$
-
-  - 展开后可得：$B^TH=0$
-
+    展开后可得：$B^TH=0$
+    
   - 如果有n对特征点，即有n个B:
     $$
     AH=0,A:=\left[
@@ -1183,13 +1224,38 @@ Planar Epipolar Equation平面对极方程
       \end{matrix}
       \right]\in R^{3n\times 9}
     $$
-
-  - 类似8点算法，我们要求解最小化问题:$H_L=argmin_{||H||_2=1}||AH||_2^2$
-
-  - 由SVD奇异值分解A，可得：$H_L:=\lambda H$
-
-  - 由**Homography Matrix**单应矩阵的性质$|\lambda|=\sigma_2(H_L)$,可得：$H=\frac{H_L}{\sigma_2(H_L)}$
-
+    因为H又8个未知数，所以A的rang秩必须=8。
+  
+- 但直接求解AH=0来确定H是unzuverlässig不可靠的,因为：
+  
+    1. Rauschen噪音
+    2. Quantifizierung量化
+    3. Falsch zugeordnete Korrespondenzen
+    
+    为此需要类似8点算法，将求解AH=0转变为求解最小化问题:
+    
+    $H_L=argmin_{||H_L||_2=1}||AH||_2^2$
+    
+  - 由SVD奇异值singulär-wertszerlegnung分解A，
+  
+- 如果我们得到了一falsch skalierte的$H_L$，如何得到正确的$H$？
+  
+  - 由**Homography Matrix**的性质:单应矩阵H必有如下Singulärwertszerlegung
+  
+  $$
+  H=U\begin{bmatrix}
+  \sigma_1 & 0 & 0\\
+  0 & 1 & 0\\
+  0 & 0 & \sigma_3
+  \end{bmatrix}V^T，其中特征值\sigma_1和\sigma_3都不能等于0
+  $$
+  
+  - 然后需要将$H_L$scale拉升到正确值:$H_L:=\lambda H$
+  
+    由上面性质可知$\lambda=\sigma_2(H_L)$
+  
+    最后得：$H=\frac{H_L}{\sigma_2(H_L)}$
+  
   - 这样算出来的正负H都符合平面对极方程，所以增加一个 条件：$x_2^THx_1>0$
 
 ### 2.2 从单应矩阵来3维重建
@@ -1240,7 +1306,16 @@ Planar Epipolar Equation平面对极方程
   **从本质矩阵E算单应矩阵H**
 
   - 本质矩阵E 和  三组corresponding points$(x_1^j,x_2^j ),j=1,2,3$已知。3个点都在一个平面内
+  
   - 可得：$H=\hat{T}^TE+Tv^T$  for a specific $v\in \mathbb{R}^3$
+  
+  - 其中v根据等式$\hat{x}_2^j(\hat{T}^TE+Tv^T)x_1^j=0,j=1,2,3$计算而得
+  
+    因为：
+  
+    1. 极线计算:$l_2^j=\hat{x}_2^jHx_1^j$
+    2. 由1可知对极平面上的点就有：$$0=\hat{x}_2^jHx_1^j$$，因为线长度=0
+    3. 根据3个$(x_1^j,x_2^j )$点，就可以得到$v=[v1\ v2\ v3]$
 
 ## 3.Kamerakalibrierung
 
@@ -1806,9 +1881,21 @@ end
   
 - RANSAC是通过反复选择数据集去估计出模型，一直迭代到估计出认为比较好的模型。步骤如下：
   1. 选择出可以估计出模型的最小数据集；(对于直线拟合来说就是两个点，对于计算Homography矩阵就是4个点)
+  
+     Wähle zufällig k = 8 Datenpunkte
+  
   2. 使用这个数据集来计算出数据模型；
+  
+     Bestimme Parameter F via Achtpunktalgorithmus
+  
   3. 将所有数据带入这个模型，计算出“内点”的数目；(累加在一定误差范围内的适合当前迭代推出模型的数据)
+  
+     Bestimme Menge M von Punkten, die Teil des Consensus-Set (Innerhalb des Toleranzmaß容忍度) sind.
+  
   4. 比较当前模型和之前推出的最好的模型的“内点“的数量，记录最大“内点”数的模型参数和“内点”数；
+  
+     Speichere Parameter F und die Menge M falls die neue Menge M größer ist als die Alte.
+  
   5. 重复1-4步，直到迭代结束或者当前模型已经足够好了(“内点数目大于一定数量”)。
   
 - 迭代次数：
