@@ -887,7 +887,11 @@ $$
       \end{matrix}
       \right]
     $$
-    Essential matrices are the ones , whose singular value decomposition produces two **identical** singular values and one singular value equal to zero
+    Essential matrices are the ones , whose singular value decomposition produces two **identical** singular values and one singular value equal to zero.
+    
+    $\sigma$不能等于0；P,Q必须是Rotationsmatrizen旋转矩阵。
+    
+    所以本质矩阵的秩为2.
 
 ## 2.Epipole und Epipolarlinien
 
@@ -1101,6 +1105,31 @@ $$
   5. 将4代入3可得：$x_{2im}^TK^{-T}EK^{-1}x_{1im}=0$
   6. 其中$F=K^{-T}EK^{-1}$即基本矩阵
 
+- Fundamental矩阵的SVD分解
+  $$
+  F=P \left[
+   \begin{matrix}
+     \sigma_1 &  &  \\
+      & \sigma_2 &  \\
+      &  & 0
+    \end{matrix}
+    \right]Q^T=
+    [p_1\ p_2\ p_3]\left[
+   \begin{matrix}
+     \sigma_1 &  &  \\
+      & \sigma_2 &  \\
+      &  & 0
+    \end{matrix}
+    \right]\left[
+   \begin{matrix}
+     q_1^T  \\
+      q_2^T \\
+      q_3^T
+    \end{matrix}
+    \right]
+  $$
+  
+
 - 基本矩阵的性质：
 
   - 未标定相机：Epipolargleichung：$x_2^{'T}Fx_1^{’}=0$
@@ -1229,14 +1258,26 @@ Planar Epipolar Equation平面对极方程
 - 但直接求解AH=0来确定H是unzuverlässig不可靠的,因为：
   
     1. Rauschen噪音
+    
     2. Quantifizierung量化
+    
     3. Falsch zugeordnete Korrespondenzen
     
-    为此需要类似8点算法，将求解AH=0转变为求解最小化问题:
-    
-    $H_L=argmin_{||H_L||_2=1}||AH||_2^2$
-    
-  - 由SVD奇异值singulär-wertszerlegnung分解A，
+- 为此需要类似8点算法，将求解AH=0转变为求解最小化问题:
+  
+  $H_L=argmin_{||H_L||_2=1}||AH||_2^2$
+  
+  由SVD奇异值singulär-wertszerlegnung分解A后可得：
+  $$
+  ||AH||_2^2=H^TV\begin{bmatrix}
+  \sigma_1^2& &  \\
+   &\ddots  & \\
+   & & \sigma_9^2
+  \end{bmatrix}
+  V^TH
+  $$
+  
+  最后我们选择$H=v_9$因为das steht senkrecht auf allen anderen Vektoren in V:$V^Tv_9=[0\cdots1]^T$
   
 - 如果我们得到了一falsch skalierte的$H_L$，如何得到正确的$H$？
   
@@ -1279,7 +1320,7 @@ Planar Epipolar Equation平面对极方程
 
      ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Computer%20Vision/%E5%8D%95%E5%BA%94%E7%9F%A9%E9%98%B53%E7%BB%B4%E9%87%8D%E5%BB%BA%E8%A7%A3.png?raw=true)
 
-### 2.3单应矩阵和本质矩阵相互计算
+### 2.3 单应矩阵和本质矩阵相互计算
 
 - 由于：
   $$
