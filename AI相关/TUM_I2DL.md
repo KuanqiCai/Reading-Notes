@@ -1544,6 +1544,10 @@ Convolutions vs Fully-Connected
 
     比如有conv->pool->BN->...这一段有8通道，那么BN层有2X8=16个可训练参数
 
+- 对于全连接层：is normalized over all neurons.
+
+  对于卷积层：is normalized over each channel.
+
 - Other Normalizations
 
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Deep%20learning/Normalizations.png?raw=true)
