@@ -10,7 +10,25 @@
   rospack list | grep 'joint_state_publisher'
   ```
 
-- 
+- 查看机器人各个坐标系
+
+  - 可视化ROS TF框架树
+
+    ```
+    rosrun rqt_tf_tree rqt_tf_tree
+    ```
+
+- 遇到TF_OLD_DATA ignoring data from the past 
+
+  命令行输入
+  
+  ```
+  rosparam set use_sim_time true
+  ```
+  
+  
+  
+  
 
 ## *catkin的一些操作
 
@@ -2622,7 +2640,59 @@ int main(int argc, char** argv){
 
 ##   4.[Octomap](http://wiki.ros.org/octomap)
 
+### 4.1 [octomap_server](http://wiki.ros.org/octomap_server)
 
+- 一个launch file例子：
+
+  ```xml
+  <launch>
+    <node pkg="octomap_server" type="octomap_server_node" name="octomap_server">
+      <!-- resolution in meters per pixel -->
+      <param name = "resolution" value = "0.15" />
+  
+      <!-- name of the fixed frame, needs to be "/map" for SLAM -->
+      <!-- 静态全局地图的 frame_id，但在增量式构建地图时，需要提供输入的点云帧和静态全局帧之间的 TF 变换 -->
+      <param name = "frame_id" type = "string" value = "camera_init" />
+  
+      <!-- set min to speed up! -->
+      <param name = "sensor_model/max_range" value = "15.0" />
+  
+      <!-- 机器人坐标系 base_link，滤除地面需要该 frame -->
+      <!-- <param name = "base_frame_id" type = "string" value = "base_link" /> -->
+  	
+      <param name="pointcloud_min_z" type="double" value="0"/>
+      <!-- filter ground plane, distance value should be big! 项目并不需要滤除地面 -->
+  	<!-- <param name = "filter_ground" type = "bool" value = "true" /> -->
+      <!-- <param name = "ground_filter/distance" type = "double" value = "1.0" /> -->
+      <!-- 分割地面的 Z 轴阈值 value 值 -->
+  	<!-- <param name = "ground_filter/plane_distance" type = "double" value = "0.3" /> -->
+  
+      <!-- 直通滤波的 Z 轴范围，保留 [-1.0, 10.0] 范围内的点 -->
+      <!-- <param name = "pointcloud_max_z" type = "double" value = "100.0" /> -->
+      <!-- <param name = "pointcloud_min_z" type = "double" value = "-1.0" /> -->
+  
+      <!-- <param name = "filter_speckles" type = "bool" value = "true" /> -->
+  
+      <param name = "height_map" value = "false" />
+      <param name = "colored_map" value = "true" />
+  	
+      <!-- 增加了半径滤波器 -->
+      <param name = "outrem_radius" type = "double" value = "1.0" />
+      <param name = "outrem_neighbors" type = "int" value = "10" />
+  
+      <!-- when building map, set to false to speed up!!! -->
+      <param name = "latch" value = "false" /> 
+  
+      <!-- topic from where pointcloud2 messages are subscribed -->
+      <!-- 要订阅的点云主题名称 /pointcloud/output -->
+      <!-- 这句话的意思是把当前节点订阅的主题名称从 cloud_in 变为 /pointcloud/output -->
+      <remap from = "/cloud_in" to = "/fusion_cloud" />
+   
+    </node>
+  </launch>
+  ```
+
+  
 
 
 # 四、ROS控制
@@ -4878,6 +4948,8 @@ sensors_kinect.urdf.xacro
 
 导航其实就是机器人自主的从 A 点移动到 B 点的过程。
 
+[nav2官方文档](https://navigation.ros.org/index.html#)
+
 ### 1.1 导航模块简介
 
 ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/navigation.png?raw=true)
@@ -5606,6 +5678,7 @@ robot_radius: 0.12 #圆形
 obstacle_range: 3.0 # 用于障碍物探测，比如: 值为 3.0，意味着检测到距离小于 3 米的障碍物时，就会引入代价地图
 raytrace_range: 3.5 # 用于清除障碍物，比如：值为 3.5，意味着清除代价地图中 3.5 米以外的障碍物
 
+allow_unknown: true #允许定位到未知地图区域
 
 #膨胀半径，扩展在碰撞区域以外的代价区域，使得机器人规划路径避开障碍物
 inflation_radius: 0.2
