@@ -198,7 +198,7 @@ $ echo $ROS_PACKAGE_PATH
 
     `$ rospack depends beginner_tutorials`
 
-### 定制自己的包package.xml
+### 1.定制自己的包package.xml
 
 通过修改**package.xml**来customize包。
 
@@ -235,6 +235,45 @@ $ echo $ROS_PACKAGE_PATH
    58   <exec_depend>rospy</exec_depend>
    59   <exec_depend>std_msgs</exec_depend>
    ```
+
+### 2.源码/二进制安装包
+
+- 两者区别
+
+  - 二进制包是直接通过apt方式安装了ROS相关的软件包，
+  - 而我们在GitHub上下载自己需要的源码来进行代码复用，编译通过生成可运行节点后的包是源码包，
+  - 两者是可以共存的，但是运行时只能运行.bashrc文件中默认环境下的包。 
+
+- 二进制安装：
+
+  只要ros wiki中有的都可以二进制安装。下载后可直接用，但无法修改源码
+
+  `sudo apt-get install ros-noetic-pr2-simulator`
+
+- 源码安装：
+
+  需要从git上下载。下载后需要编译后再运行，但可以自己做修改。
+
+  ```shell
+  cd catkin_ws/src         #进入src路径
+  $ git clone https://github.com/源码包链接   #克隆软件包
+  
+  #同时一定不要忘记在克隆包后要安装依赖项然后进行编译：
+  $ rosdep install --from-paths src --ignore-src
+  $ cd ~/catkin_ws    #回到catkin工作空间
+  $ catkin_make       #编译
+  $ source ~/catkin_ws/devel/setup.bash 
+  ```
+
+- 如果1个包有多个版本，如何指定用哪个？
+
+  1. 寻找当前包的地址：`rospack find move_base `
+
+     得到`/opt/ros/noetic/share/move_base`,说明现在用的二进制安装的move_base包
+
+  2. 想要改为使用/catkin_ws/src/navigation中的move_base包
+
+     在.bashrc中加入source ~/catkin_ws/devel/setup.bash，即可
 
 ## 三、构建包catkin_make
 
