@@ -4,7 +4,9 @@ githubt官方文档：https://docs.github.com/cn
    这里name和email不一致，会使得github小绿点不更新
    
    - ~$ git config --global user.name "Fernweh-yang"
+     - TUM GITLAB: git config --global user.name "Yang Xu"
    - ~$ git config --global user.email "512127058@qq.com"
+     - TUM Gitlab: git config --global user.email "ge23ged@mytum.de"
    - ~$ git config --list   //查看配置信息
    
 - 获得帮助，以config 为例
