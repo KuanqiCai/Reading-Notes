@@ -71,6 +71,8 @@ MoveIt 的核心节点（node）为**move_group**，外围的几个部分分别�
 
 ## 代码：
 
+moveit_tutorials::move_group_interface_tutorial.cpp
+
 ```c++
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
