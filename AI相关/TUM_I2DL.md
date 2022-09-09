@@ -1921,18 +1921,56 @@ GAN(Generative Adversarial Network)生成对抗网络的主要结构包括一个
 
     **马尔科夫过程** 又叫马尔科夫链(Markov Chain)，它是一个无记忆的随机过程，可以用一个元组<S,P>表示，其中S是有限数量的状态集，P是状态转移概率矩阵。
 
-## 2. Q-learning
+## 2. 主流算法分类
 
-### 2.1 基本理解
+各算法选择[参考](https://zhuanlan.zhihu.com/p/342919579)
+
+免模型学习（Model-Free） vs 有模型学习（Model-Based）
+
+这2个分类的重要差异是：**智能体是否能完整了解或学习到所在环境的模型**
+
+- 有模型学习（Model-Based）对环境有提前的认知，可以提前考虑规划，但是缺点是如果模型跟真实世界不一致，那么在实际使用场景下会表现的不好。
+  - Learn the Model
+    - World Models
+    - I2A
+    - MBMF
+    - MBVE
+  - Given the MOdel
+    - AlphaZero
+- 免模型学习（Model-Free）放弃了模型学习，在效率上不如前者，但是这种方式更加容易实现，也容易在真实场景下调整到很好的状态。所以**免模型学习方法更受欢迎，得到更加广泛的开发和测试。**
+  - Policy Optimization
+    - Policy Gradient
+    - A2C/A3C
+    - PPO
+    - TRPO
+  - Q-Learning
+    - DQN
+    - C51
+    - QR-DQN
+    - HER
+  - 两者兼有
+    - DDPG
+    - TD3
+    - SAC
+
+除了免模型学习和有模型学习的分类外，强化学习还有其他几种分类方式：
+
+- 基于概率 VS 基于价值
+- 回合更新 VS 单步更新
+- 在线学习 VS 离线学习
+
+## 3. Q-learning
+
+### 3.1 基本理解
 
 - **Q-学习**是强化学习的一种方法。Q-学习就是要记录下学习过的策略，因而告诉智能体什么情况下采取什么行动会有最大的奖励值。Q-学习不需要对环境进行建模，即使是对带有随机因素的转移函数或者奖励函数也不需要进行特别的改动就可以进行。
 - **Q**为**动作效用函数**（action-utility function），用于评价在特定状态下采取某个动作的优劣。它是**智能体的记忆**。
 - 根据行为的后果来加强或减弱行为。如果后果是好的，则加强行为，如果后果是坏的则减弱行为。通过这种方式来获得趋利避害的能力。公式后一部分是对后果的估值。
   q-training就是个建立“操作性条件反射”的过程。
 
-### 2.2 算法
+### 3.2 算法
 
-### 2.3 Q-learning 和 neural networks
+### 3.3 Q-learning 和 neural networks
 
 - 为什么要将Q-Learning与neural networks结合使用
 
