@@ -1,6 +1,6 @@
-http://c.biancheng.net/view/7112.html
+# 1.G++,Makefile,Cmake简述
 
-# g++
+## 1.1 g++
 
 - g++是c++的一个编译器
 
@@ -25,11 +25,11 @@ http://c.biancheng.net/view/7112.html
 
   由此产生了方便的makefile以及更方便的cmake
 
-- - 
+  
 
-# Makefile文件
+## 1.2 Makefile文件
 
-## make
+### 1.2.1make
 
 - 功能：读取Makefile,按里面所写的内容，将文件进行编译。
 - make命令本身不知道如何做出该文件，需要知道一系列规则
@@ -39,7 +39,8 @@ http://c.biancheng.net/view/7112.html
   - `make <>`编译
   - `make clean`删除.o文件
 
-## Makefile概述
+Makefile概述
+
 - Makefile文件由一系列描述整个工程的编译和链接的规则所构成。   
   规则形式:
   
@@ -96,7 +97,8 @@ http://c.biancheng.net/view/7112.html
 				rm -rf *.o test	#"*.o"是所有的中间文件，test是最终生成的执行文件
 			```
 	
-## Makefile中的变量。
+
+### 1.2.2Makefile中的变量。
 
 - 定义和引用
 ```makefile
@@ -144,7 +146,7 @@ test:$(OBJ)							#引用变量，$(OBJ)
 
 ​	  
 
-## Makefile目标文件搜索
+### 1.2.3Makefile目标文件搜索
 
 如果需要的文件是存在于不同的路径下，在编译的时候要去怎么办？
 
@@ -192,7 +194,7 @@ test:$(OBJ)							#引用变量，$(OBJ)
 
     
 
-## Makefile条件判断
+### 1.2.4Makefile条件判断
 
 | **关键字** | **功能**                                            |
 | ---------- | --------------------------------------------------- |
@@ -232,7 +234,7 @@ test:$(OBJ)							#引用变量，$(OBJ)
   endif
   ```
 
-## Makefile伪目标
+### 1.2.5Makefile伪目标
 
 - 目的
   - 避免我们的 Makefile 中定义的只执行的命令的目标和工作目录下的实际文件出现名字冲突。
@@ -246,15 +248,15 @@ test:$(OBJ)							#引用变量，$(OBJ)
 
 
 
-# cmake
+## 1.3 cmake
 
-## 作用
+### 1.3.1作用
 
 - 可以用cmake命令生成一个makefile文件。然后用make命令根据这个makefile文件的内容来编译整个工程。
 
-## 流程
+### 1.3.2流程
 
-### 1. 编写代码 
+#### 1. 编写代码 
 
 并不是所有的代码都会编译为可执行文件
 
@@ -308,7 +310,7 @@ test:$(OBJ)							#引用变量，$(OBJ)
   #endif
   ```
 
-### 2. 创建CMakeLists.txt
+#### 2. 创建CMakeLists.txt
 
 ```cmake
 # 声明已要求的cmake最低版本
@@ -339,11 +341,11 @@ target_link_libraries(helloSlam hello_shared)
 - 每增加一个可执行文件，只要多加一行add_executable()
 - cmake会帮我们自动解决代码的依赖关系
 
-### 3. 创建makefile并make
+#### 3. 创建makefile并make
 
 在终端输入
 
-```
+```shell
 # cmake命令会自动生成一堆中间文件
 # 创建一个build子文件夹用来放置这些中间文件
 # 这样要push代码的话，直接把build文件夹删了就行。
@@ -353,3 +355,201 @@ cd build
 cmake ..
 make
 ```
+
+
+
+# 2. CMake学习笔记
+
+官方教程：https://cmake.org/cmake/help/latest/guide/tutorial/index.html
+
+笔记所学习的教程：https://cliutils.gitlab.io/modern-cmake/chapters/basics.html
+
+所有指令都可以在文档查询：https://cmake.org/cmake/help/latest/index.html#
+
+## 2.1 介绍
+
+### 2.1.1 How to run CMake
+
+- 编译：
+
+  ```shell
+  # 方法1：使用make或者ninja
+  ~/package $ mkdir build
+  ~/package $ cd build
+  ~/package/build $ cmake ..
+  ~/package/build $ make
+  
+  # 方法2.1：使用camke提供的generator				（推荐方法2.1）
+  ~/package $ mkdir build
+  ~/package $ cd build
+  ~/package/build $ cmake ..
+  ~/package/build $ cmake --build .
+  
+  # 方法2.2：不用先去创建build文件夹，但其实第一步也同时创建了build文件夹.
+  ~/package $ cmake -S . -B build
+  ~/package $ cmake --build build
+  ```
+
+  - [cmake的generator](https://cmake.org/cmake/help/latest/manual/cmake-generators.7.html#cmake-generators)使得cmake可以支持不同的底层，比如makefile和ninja。
+
+    `cmake --build .`就可以让我们无需管当前环境的底层是什么直接编译，不用再考虑使用底层命令`make`还是`ninja`。从而实现了跨平台的能力。
+
+  - 之所以要在build文件夹中编译：
+
+    1. 编译会生成很多中间文件，为了让工作目录更整洁，可以将编译目录单独分割出来
+    2. 同1，让我们git时可以直接ignore 文件夹build
+
+- 安装
+
+  ```shell
+  # From the build directory (三种方法：推荐第二种)
+  ~/package/build $ make install
+  ~/package/build $ cmake --build . --target install
+  ~/package/build $ cmake --install . # CMake 3.15+ only
+  
+  # From the source directory (三种方法：推荐第二种)
+  ~/package $ make -C build install
+  ~/package $ cmake --build build --target install
+  ~/package $ cmake --install build # CMake 3.15+ only
+  ```
+  
+- 一些cmake的常用编译选项
+
+  - `-DCMAKE_BUILD_TYPE=` Pick from Release, RelWithDebInfo, Debug, or sometimes more.
+  - `-DCMAKE_INSTALL_PREFIX=` The location to install to. System install on UNIX would often be `/usr/local` (the default), user directories are often `~/.local`, or you can pick a folder.
+  - `-DBUILD_SHARED_LIBS=` You can set this `ON` or `OFF` to control the default for shared libraries (the author can pick one vs. the other explicitly instead of using the default, though)
+  - `-DBUILD_TESTING=` This is a common name for enabling tests, not all packages use it, though, sometimes with good reason.
+  - `--trace` This option will print every line of CMake that is run.
+    - CMake 3.7 added `--trace-source="filename"`, which will print out every executed line of just the file you are interested in when it runs
+
+### 2.1.2 Do's and Don'ts
+
+参见[Effective Modern CMake](https://gist.github.com/mbinna/c61dbb39bca0e4fb7d1f73b0d66a4fd1)
+
+#### 2.1.2.1 CMake Antipatterns
+
+- **Do not use global functions**: This includes `link_directories`, `include_libraries`, and similar.
+- **Don't add unneeded PUBLIC requirements**: You should avoid forcing something on users that is not required (`-Wall`). Make these PRIVATE instead.
+- **Don't GLOB files**: Make or another tool will not know if you add files without rerunning CMake. Note that CMake 3.12 adds a `CONFIGURE_DEPENDS` flag that makes this far better if you need to use it.
+- **Link to built files directly**: Always link to targets if available.
+- **Never skip PUBLIC/PRIVATE when linking**: This causes all future linking to be keyword-less.
+
+#### 2.1.2.2 CMake Patterns
+
+- **Treat CMake as code**: It is code. It should be as clean and readable as all other code.
+- **Think in targets**: Your targets should represent concepts. Make an (IMPORTED) INTERFACE target for anything that should stay together and link to that.
+- **Export your interface**: You should be able to run from build or install.
+- **Write a Config.cmake file**: This is what a library author should do to support clients.
+- **Make ALIAS targets to keep usage consistent**: Using `add_subdirectory` and `find_package` should provide the same targets and namespaces.
+- **Combine common functionality into clearly documented functions or macros**: Functions are better usually.
+- **Use lowercase小写 function names**: CMake functions and macros宏指令 can be called lower or upper case. Always use lower case. Upper case is for variables.
+- **Use `cmake_policy` and/or range of versions**: Policies change for a reason. Only piecemeal set OLD policies if you have to.
+
+## 2.2 基础
+
+### 2.2.1 CMakeLists.txt基本组成
+
+```cmake
+# 1.版本不同有不同的政策：https://cmake.org/cmake/help/latest/manual/cmake-policies.7.html
+cmake_minimum_required(VERSION 3.7)
+# 如果版本低于3.24就用当前版本的cmake，如果高于3.24则用3.24版本的cmake
+if(${CMAKE_VERSION} VERSION_LESS 3.24)
+    cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
+else()
+    cmake_policy(VERSION 3.24)
+endif()
+# 2.项目名MyProject是必须的，其他都是可选项。其中选项languages 可以是 C, CXX, Fortran, ASM, CUDA (CMake 3.8+), CSharp (3.8+), and SWIFT (CMake 3.15+ experimental).
+project(MyProject VERSION 1.0
+                  DESCRIPTION "Very nice project"
+                  LANGUAGES CXX)
+  
+  
+# 3.添加一个可执行文件executable
+# one是生成的executable和CMake target的名字。
+# two是source file名，three是头文件通常可以省略
+add_executable(one two.cpp three.h)
+# 4.添加库文件library
+# library的类型有STATIC, SHARED, or MODULE
+add_library(one STATIC two.cpp three.h)
+# 5.指定Target
+# 将一个include directory添加给 target one
+# PUBLIC让CMake知道任何其他target想要link到target one，都需要这个include目录。
+# 	其他选项PRIVATE:只影响当前target比如这里的one,不影响其它dependencies
+# 	其他选项INTERFACE:只影响dependencies(指向one的其他target)
+target_include_directories(one PUBLIC include)
+
+
+# 6.连接其他的targets
+# 同4中一下添加库library给target another
+add_library(another STATIC another.cpp another.h)
+# 将前面的target one连接到target another作为another的依赖项
+# 如果target one不存在，那么会连接到一个interface library one(fictional虚假的库)
+target_link_libraries(another PUBLIC one)
+```
+
+### 2.2.2 变量设置
+
+See [cmake-variables](https://cmake.org/cmake/help/latest/manual/cmake-variables.7.html) for a listing of known variables in CMake.
+
+- **local variable局部变量**
+
+  在同一个CMake工程中使用，会有作用域限制或区分
+
+  ```cmake
+  # 1.设置一个变量
+  set(MY_VARIABLE "value")
+  # 2.设置一个list变量，下面2个等价identical
+  set(MY_LIST "one" "two")
+  set(MY_LIST "one;two")
+  
+  # 3.使用要用${},比如
+  xxx("${}")
+  ```
+
+- **Cache Variables缓存变量**
+
+  在同一个CMake工程中任何地方都可以使用。
+
+  ```cmake
+  # 1.定义格式：
+  # 变量类型可以是BOOL、FILEPATH、PATH、STRING、INTERNAL
+  # 如果加了FORCE就无论如何变量都是下面的变量值。如果不加FORCE则可以通过命令行等来改变变量值
+  set(<变量名> <变量值列表>... CACHE <变量类型> <变量概要说明string类型> [FORCE])
+  
+  # 2.例子：
+  # 第二行可以让变量出现在“cmake -L ..”显示的变量列表。
+  set(MY_CACHE_VARIABLE "VALUE" CACHE STRING "Description")
+  mark_as_advanced(MY_CACHE_VARIABLE)
+  
+  # 3，对于bool类型的变量：ON/OFF
+  option(MY_OPTION "This is settable from the command line" OFF)
+  ```
+
+  - Cache 其实是一个text文件：`CMakeCache.txt`
+    - 它会在我们`cmake ..`时和makefile一起出现在 build directory里。
+    - 这个文件然那个CMake知道了我们所有的选项，如此之后build前就不需要再`CMake`来创建新的makefile
+
+- **Properties特征**
+
+  特征类似于变量，但它同时还作用于directory或者target，可以用于导入外部库并设置外部库的路径
+
+  See [cmake-properties](https://cmake.org/cmake/help/latest/manual/cmake-properties.7.html) for a listing of all known properties
+
+  ```cmake
+  add_executable(myTargetName ${DIR_SRCS})
+  # 两方法设置特征：
+  # 1.可以同时为多个targets/files/tests设置多个property
+  set_property(TARGET myTargetName PROPERTY 
+               		CXX_STANDARD 11)
+  # 2.只能为1个target/files/tests设置多个property
+  set_target_properties(myTargetName PROPERTIES
+                        CXX_STANDARD 11)
+  set_source_files_properties(myFileName PROPERTIES
+  							CXX_STANDARD 11)
+  set_tests_properties(myTestName PROPERTIES
+  					 CXX_STANDARD 11)
+  # 3.得到property的值
+  get_property(ResultVariable TARGET myTargetName PROPERTY CXX_STANDARD)
+  ```
+
+  
