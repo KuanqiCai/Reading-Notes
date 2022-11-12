@@ -1,0 +1,2 @@
+C:/Users/51212/Desktop/Reading-Notes/cmake笔记/最简单的演示/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/51212/Desktop/Reading-Notes/cmake笔记/最简单的演示/build/CMakeFiles/ZERO_CHECK.dir

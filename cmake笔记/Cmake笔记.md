@@ -491,65 +491,300 @@ target_link_libraries(another PUBLIC one)
 
 See [cmake-variables](https://cmake.org/cmake/help/latest/manual/cmake-variables.7.html) for a listing of known variables in CMake.
 
-- **local variable局部变量**
+#### **local variable局部变量**
 
-  在同一个CMake工程中使用，会有作用域限制或区分
+在同一个CMake工程中使用，会有作用域限制或区分
+
+```cmake
+# 1.设置一个变量
+set(MY_VARIABLE "value")
+# 2.设置一个list变量，下面2个等价identical
+set(MY_LIST "one" "two")
+set(MY_LIST "one;two")
+
+# 3.使用要用${},比如
+xxx("${}")
+```
+
+#### **Cache Variables缓存变量**
+
+在同一个CMake工程中任何地方都可以使用。
+
+```cmake
+# 1.定义格式：
+# 变量类型可以是BOOL、FILEPATH、PATH、STRING、INTERNAL
+# 如果加了FORCE就无论如何变量都是下面的变量值。如果不加FORCE则可以通过命令行等来改变变量值
+set(<变量名> <变量值列表>... CACHE <变量类型> <变量概要说明string类型> [FORCE])
+
+# 2.例子：
+# 第二行可以让变量出现在“cmake -L ..”显示的变量列表。
+set(MY_CACHE_VARIABLE "VALUE" CACHE STRING "Description")
+mark_as_advanced(MY_CACHE_VARIABLE)
+
+# 3，对于bool类型的变量：ON/OFF
+option(MY_OPTION "This is settable from the command line" OFF)
+```
+
+- Cache 其实是一个text文件：`CMakeCache.txt`
+  - 它会在我们`cmake ..`时和makefile一起出现在 build directory里。
+  - 这个文件然那个CMake知道了我们所有的选项，如此之后build前就不需要再`CMake`来创建新的makefile
+
+#### **Properties特征**
+
+特征类似于变量，但它同时还作用于directory或者target，可以用于导入外部库并设置外部库的路径
+
+See [cmake-properties](https://cmake.org/cmake/help/latest/manual/cmake-properties.7.html) for a listing of all known properties
+
+```cmake
+add_executable(myTargetName ${DIR_SRCS})
+# 两方法设置特征：
+# 1.可以同时为多个targets/files/tests设置多个property
+set_property(TARGET myTargetName PROPERTY 
+             		CXX_STANDARD 11)
+# 2.只能为1个target/files/tests设置多个property
+set_target_properties(myTargetName PROPERTIES
+                      CXX_STANDARD 11)
+set_source_files_properties(myFileName PROPERTIES
+							CXX_STANDARD 11)
+set_tests_properties(myTestName PROPERTIES
+					 CXX_STANDARD 11)
+# 3.得到property的值
+get_property(ResultVariable TARGET myTargetName PROPERTY CXX_STANDARD)
+```
+
+### 2.2.3 Cmake中的编程
+
+#### [if](https://cmake.org/cmake/help/latest/command/if.html)语句
+
+```cmake
+# 1.用bool值
+if(variable)
+    # If variable is `ON`, `YES`, `TRUE`, `Y`, or non zero number
+else()
+    # If variable is `0`, `OFF`, `NO`, `FALSE`, `N`, `IGNORE`, `NOTFOUND`, `""`, or ends in `-NOTFOUND`
+endif()
+# If variable does not expand to one of the above, CMake will expand it then try again
+
+# 2.也可以用变量名
+if("${variable}")
+    # True if variable is not false-like
+else()
+    # Note that undefined variables would be `""` thus false
+endif()
+```
+
+#### [generator-expressions](https://cmake.org/cmake/help/latest/manual/cmake-generator-expressions.7.html)生成器表达式
+
+[一个blog参考](https://hongjh.blog.csdn.net/article/details/126453308?spm=1001.2101.3001.6661.1&utm_medium=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7EYuanLiJiHua%7EPosition-1-126453308-blog-119993262.pc_relevant_layerdownloadsortv1&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7EYuanLiJiHua%7EPosition-1-126453308-blog-119993262.pc_relevant_layerdownloadsortv1&utm_relevant_index=1)
+
+- 正常命令都是在configure time生成Makefile时执行的，但generator expressions是在build/install time时执行的
+
+- 格式：`$<KEYWORD>`或者`$<KEYWORD:value`,并可以嵌套nest使用
+
+- 用途：
+
+  1. 用于Cmake生成构建系统时根据不同配置动态生成特定的内容
+
+     - 条件链接：针对某一个编译目标，debug/release版本链接不同的库
+
+     - 条件定义：针对不同编译器，定义不同的宏
+
+     ```cmake
+     # 只在Debug模式下会有参数--my-flag，其他模式下是空字符串
+     target_compile_options(MyTarget PRIVATE "$<$<CONFIG:Debug>:--my-flag>")
+     ```
+
+  2. 给予build和install不同的目录
+
+     ```cmake
+     target_include_directories(
+         MyTarget
+       PUBLIC
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include>
+     )
+     ```
+
+  3. 更多用途见上诉网站
+
+#### 宏[Macros](https://cmake.org/cmake/help/latest/command/macro.html)和函数[Functions](https://cmake.org/cmake/help/latest/command/function.html)
+
+他们唯一的区别是：宏没有作用域全局可见，函数有作用域
+
+- 使用
 
   ```cmake
-  # 1.设置一个变量
-  set(MY_VARIABLE "value")
-  # 2.设置一个list变量，下面2个等价identical
-  set(MY_LIST "one" "two")
-  set(MY_LIST "one;two")
+  # 格式：
+  macro(<name> [<arg1> ...])
+    <commands>
+  endmacro()
   
-  # 3.使用要用${},比如
-  xxx("${}")
+  function(<name> [<arg1> ...])
+    <commands>
+  endfunction()
+  
+  # invocation调用
+  macro(foo)					function(foo)
+    <commands>					<commands>
+  endmacro()					endfunction()
+  ## 以下都可以
+  foo()
+  Foo()
+  FOO()
+  cmake_language(CALL foo)
   ```
 
-- **Cache Variables缓存变量**
+- Argument实参
 
-  在同一个CMake工程中任何地方都可以使用。
+  当宏/函数被调用时，首先会替换parameters形参为实参，然后正常调用命令.
+
+  利用[cmake_parse_arguments](https://cmake.org/cmake/help/latest/command/cmake_parse_arguments.html)来设置参数。
+
+  - 例子：
 
   ```cmake
-  # 1.定义格式：
-  # 变量类型可以是BOOL、FILEPATH、PATH、STRING、INTERNAL
-  # 如果加了FORCE就无论如何变量都是下面的变量值。如果不加FORCE则可以通过命令行等来改变变量值
-  set(<变量名> <变量值列表>... CACHE <变量类型> <变量概要说明string类型> [FORCE])
+  function(COMPLEX)
+      cmake_parse_arguments(
+          COMPLEX_PREFIX
+          "SINGLE;ANOTHER"
+          "ONE_VALUE;ALSO_ONE_VALUE"
+          "MULTI_VALUES"
+          ${ARGN}
+      )
+  endfunction()
   
-  # 2.例子：
-  # 第二行可以让变量出现在“cmake -L ..”显示的变量列表。
-  set(MY_CACHE_VARIABLE "VALUE" CACHE STRING "Description")
-  mark_as_advanced(MY_CACHE_VARIABLE)
+  complex(SINGLE ONE_VALUE value MULTI_VALUES some other values)
   
-  # 3，对于bool类型的变量：ON/OFF
-  option(MY_OPTION "This is settable from the command line" OFF)
+  #11行的输出：
+  COMPLEX_PREFIX_SINGLE = TRUE		
+  COMPLEX_PREFIX_ANOTHER = FALSE		# 11行中没用到
+  COMPLEX_PREFIX_ONE_VALUE = "value"	
+  COMPLEX_PREFIX_ALSO_ONE_VALUE = <UNDEFINED>	# 11行中没用到
+  COMPLEX_PREFIX_MULTI_VALUES = "some;other;values"
   ```
 
-  - Cache 其实是一个text文件：`CMakeCache.txt`
-    - 它会在我们`cmake ..`时和makefile一起出现在 build directory里。
-    - 这个文件然那个CMake知道了我们所有的选项，如此之后build前就不需要再`CMake`来创建新的makefile
+  - ARGN,ARGC,ARGV参数的意义
 
-- **Properties特征**
+    - **ARGC**代表的是函数或者宏传递的参数个数
 
-  特征类似于变量，但它同时还作用于directory或者target，可以用于导入外部库并设置外部库的路径
+    - **ARGV**代表所有传递的参数，使用list表示，其中如果函数有多个参数，要取得某个参数可以使用ARGV0，ARGV1，ARGV2等。
 
-  See [cmake-properties](https://cmake.org/cmake/help/latest/manual/cmake-properties.7.html) for a listing of all known properties
+    - **ARGN**包含传入参数的list， 与ARGV不同的是并不是代表所有参数，而是指宏或者函数声明的参数之后的所有参数。
 
-  ```cmake
-  add_executable(myTargetName ${DIR_SRCS})
-  # 两方法设置特征：
-  # 1.可以同时为多个targets/files/tests设置多个property
-  set_property(TARGET myTargetName PROPERTY 
-               		CXX_STANDARD 11)
-  # 2.只能为1个target/files/tests设置多个property
-  set_target_properties(myTargetName PROPERTIES
-                        CXX_STANDARD 11)
-  set_source_files_properties(myFileName PROPERTIES
-  							CXX_STANDARD 11)
-  set_tests_properties(myTestName PROPERTIES
-  					 CXX_STANDARD 11)
-  # 3.得到property的值
-  get_property(ResultVariable TARGET myTargetName PROPERTY CXX_STANDARD)
+    - 例子：
+
+      ```cmake
+      cmake_minimum_required(VERSION 3.4.3)
+       
+      macro(arg_test para1 para2)
+              MESSAGE(STATUS ARGC=${ARGC})
+              MESSAGE(STATUS ARGV=${ARGV})
+              MESSAGE(STATUS ARGN=${ARGN})
+              MESSAGE(STATUS ARGV0=${ARGV0})
+              MESSAGE(STATUS ARGV1=${ARGV1})
+              MESSAGE(STATUS ARGV2=${ARGV2})
+      endmacro()
+       
+      arg_test(para_1, para_2, para_3, para_4)
+      
+      # cmake ..后输出时是：
+      -- ARGC=4
+      -- ARGV=para_1,para_2,para_3,para_4
+      -- ARGN=para_3,para_4
+      -- ARGV0=para_1,
+      -- ARGV1=para_2,
+      -- ARGV2=para_3,
+      ```
+
+      
+
+###  2.2.4 让CMake和代码交互 
+
+#### C++读取CMake中的变量
+
+可以从代码中访问CMake的变量，文件名以.in结束
+
+```c++
+//***** Version.h.in
+#pragma once
+#define MY_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define MY_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define MY_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define MY_VERSION_TWEAK @PROJECT_VERSION_TWEAK@
+#define MY_VERSION "@PROJECT_VERSION@"
+```
+
+Cmake中：
+
+```cmake
+configure_file (
+    "${PROJECT_SOURCE_DIR}/include/My/Version.h.in"
+    "${PROJECT_BINARY_DIR}/include/My/Version.h"
+)
+```
+
+- 也需要包含binary地址，用于构建项目
+
+
+
+#### CMake读取C++中的变量
+
+```cmake
+# Assuming the canonical最简洁的 version is listed in a single line
+# This would be in several parts if picking up from MAJOR, MINOR, etc.
+set(VERSION_REGEX "#define MY_VERSION[ \t]+\"(.+)\"")
+
+# Read in the line containing the version
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/include/My/Version.hpp"
+    VERSION_STRING REGEX ${VERSION_REGEX})
+
+# Pick out just the version
+string(REGEX REPLACE ${VERSION_REGEX} "\\1" VERSION_STRING "${VERSION_STRING}")
+
+# Automatically getting PROJECT_VERSION_MAJOR, My_VERSION_MAJOR, etc.
+project(My LANGUAGES CXX VERSION ${VERSION_STRING})
+```
+
+
+
+### 2.2.5 Structure构造我们的项目
+
+- 一个好的结构可以：
+  - Easily read other projects following the same patterns,
+  - Avoid a pattern that causes conflicts,
+  - Keep from muddling and complicating your build.
+
+- 一个项目架构应该长这样：
+
+  ```shell
+  - project
+    - .gitignore
+    - README.md
+    - LICENCE.md
+    - CMakeLists.txt
+    - cmake
+      - FindSomeLib.cmake
+      - something_else.cmake
+    - include
+      - project
+        - lib.hpp
+    - src
+      - CMakeLists.txt
+      - lib.cpp
+    - apps
+      - CMakeLists.txt
+      - app.cpp
+    - tests
+      - CMakeLists.txt
+      - testlib.cpp
+    - docs
+      - CMakeLists.txt
+    - extern
+      - googletest
+    - scripts
+      - helper.py
   ```
 
-  
+  - **extern folder**:用到的git submodules，方便我们管理依赖版本
+  - **cmake folder**: 所有.cmake文件在的地方，.cmake文件加载后可以在CMakeList.txt中使用.cmake的一些函数和定义
+
