@@ -1,0 +1,972 @@
+Tutorial:https://docs.opencv.org/4.6.0/d6/d00/tutorial_py_root.html
+
+# Installtion
+
+- Install for c++: https://docs.opencv.org/4.1.2/d7/d9f/tutorial_linux_install.html
+
+  reference: https://www.ncnynl.com/archives/201912/3566.html
+
+  - check if succeed:
+
+    in terminal:
+
+    ```
+    opencv_version
+    ```
+
+- Install for python: 
+
+  ```
+  pip3 install opencv-python
+  ```
+
+  - check if succeed:
+
+    ```
+    import cv2 as cv
+    print(cv.__version__)
+    ```
+
+# Opencv-Python
+
+## 1. Gui Features
+
+### 1.1 Image read and write
+
+#### 1.1.1 Functions to learn:
+
+- `cv::imread`:Read an image from file 
+- `cv::imshow`:Display an image in an OpenCV window 
+- `cv::imwrite`:Write an image to a file
+
+#### 1.1.2 C++ Implementation
+
+- code: 
+
+    ```C++
+    #include <opencv2/core.hpp>			//opencv库的基本模块
+    #include <opencv2/imgcodecs.hpp>	//opencv库提供reading and writing功能的模块
+    #include <opencv2/highgui.hpp>		//opencv库提供在一个窗口中显示一个图片的功能
+    #include <iostream>
+    int main()
+    {	
+        // 1.使用core模块里的samples::findFile()得到地址
+        std::string image_path = cv::samples::findFile("starry_night.jpg");
+        // 2.使用imgcodecs模块里的imread()读取图片，并保存在core模块定义的cv::Mat object里
+        Mat img = cv::imread(image_path, IMREAD_COLOR);
+        if(img.empty())
+        {
+            std::cout << "Could not read the image: " << image_path << std::endl;
+            return 1;
+        }
+        // 3.使用highgui模块的imshow()来显示图片
+        imshow("Display window", img);
+        // 使用highgui模块的waitkey()来等待一个输入指令来结束图片显示
+        int k = waitKey(0); // 0表示永远等待，单位是millisecond毫秒
+        if(k == 's')
+        {	
+            // 4.使用imgcodecs模块的imwrite()来保存图片
+            imwrite("starry_night.png", img);
+        }
+        return 0;
+    }
+    ```
+
+- compile:
+
+  write CMakeLists.txt：
+
+  ```cmake
+  cmake_minimum_required(VERSION 2.8)
+  project( test )
+  find_package( OpenCV REQUIRED )
+  include_directories( ${OpenCV_INCLUDE_DIRS} )
+  add_executable( test test.cpp )
+  target_link_libraries( test ${OpenCV_LIBS} )
+  ```
+
+  compile:
+
+  ```
+  mkdir build
+  cmake ..
+  cmake --build .
+  ```
+
+​		run: `./test`
+
+#### 1.1.3 Python Implementation
+
+The functions' names are same as them in C++.
+
+```python
+import cv2 as cv
+import sys
+# 1.
+img = cv.imread(cv.samples.findFile("starry_night.jpg"))
+if img is None:
+    sys.exit("Could not read the image.")
+# 2.
+cv.imshow("Display window", img)
+k = cv.waitKey(0)
+if k == ord("s"):
+    # 3.
+    cv.imwrite("starry_night.png", img)
+```
+
+### 1.2 Video read and save
+
+#### 1.2.1 Functions to learn
+
+- **[cv.VideoCapture()](https://docs.opencv.org/4.6.0/d8/dfe/classcv_1_1VideoCapture.html)**,
+
+- **[cv.VideoWriter()](https://docs.opencv.org/4.6.0/dd/d9e/classcv_1_1VideoWriter.html)**
+
+#### 1.2.2 Capture and play Video 
+
+```python
+import numpy as np
+import cv2 as cv
+# 1.创建一个VideoCapture对象object来获得相机图像, 参数0是相机device index
+# linux中相机编号可在/dev 中查询video,偶数位代表相机编号
+cap = cv.VideoCapture(0)
+# 如果是关闭的也可以用cap.open()来打开
+if not cap.isOpened():
+    print("Cannot open camera")
+    exit()
+while True:
+    # 2.Capture frame-by-frame。并且如果读取成果cap.read()会返回True的Bool值
+    ret, frame = cap.read()
+    # if frame is read correctly ret is True
+    if not ret:
+        print("Can't receive frame (stream end?). Exiting ...")
+        break
+    # Our operations on the frame come here
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    # 3.Display the resulting frame
+    cv.imshow('frame', gray)
+    # waitKey()的参数是等待几毫秒。不能太大否则视频会卡顿，通常25ms以下都可以
+    if cv.waitKey(1) == ord('q'):
+        break
+# When everything done, release the capture
+cap.release()
+cv.destroyAllWindows()
+```
+
+#### 1.2.3 Save a video
+
+```python
+import numpy as np
+import cv2 as cv
+cap = cv.VideoCapture(0)
+# 1.Define the codec and create VideoWriter object
+# FourCC用于指定video codec视频编解码器，比如XVID,MJPG,WMV，DIVX等
+fourcc = cv.VideoWriter_fourcc(*'XVID')
+# 2.VideoWriter类：https://docs.opencv.org/3.4/dd/d9e/classcv_1_1VideoWriter.html
+# 参数1:输出视频名字2:编码器3:frames per second(fps)4:framesize
+out = cv.VideoWriter('output.avi', fourcc, 20.0, (640,  480))
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        print("Can't receive frame (stream end?). Exiting ...")
+        break
+    frame = cv.flip(frame, 0)
+    # 3.write the flipped frame。保存1帧。
+    out.write(frame)
+    cv.imshow('frame', frame)
+    if cv.waitKey(1) == ord('q'):
+        break
+# Release everything if job is finished
+cap.release()
+out.release()
+cv.destroyAllWindows()
+```
+
+
+
+### 1.3 Drawing Function
+
+#### 1.3.1 Functions to learn
+
+draw different geometric shapes
+
+- **[cv.line()](https://docs.opencv.org/4.6.0/d6/d6e/group__imgproc__draw.html#ga7078a9fae8c7e7d13d24dac2520ae4a2)**,
+
+- **[cv.circle()](https://docs.opencv.org/4.6.0/d6/d6e/group__imgproc__draw.html#gaf10604b069374903dbd0f0488cb43670)** ,
+
+- **[cv.rectangle()](https://docs.opencv.org/4.6.0/d6/d6e/group__imgproc__draw.html#ga07d2f74cadcf8e305e810ce8eed13bc9)**,
+
+- **[cv.ellipse()](https://docs.opencv.org/4.6.0/d6/d6e/group__imgproc__draw.html#ga28b2267d35786f5f890ca167236cbc69)**, 
+
+- **[cv.putText()](https://docs.opencv.org/4.6.0/d6/d6e/group__imgproc__draw.html#ga5126f47f883d730f633d74f07456c576)** 
+- **[cv.polylines()](https://docs.opencv.org/4.6.0/d6/d6e/group__imgproc__draw.html#gaa3c25f9fb764b6bef791bf034f6e26f5)**
+- 他们的共同实参Arguments:
+  - **img** : The image where you want to draw the shapes
+  - **color** : Color of the shape. for BGR, pass it as a tuple, eg: (255,0,0) for blue. For grayscale, just pass the scalar value.
+  - **thickness** : Thickness of the line or circle etc. If **-1** is passed for closed figures like circles, it will fill the shape. *default thickness = 1*
+  - **lineType** : Type of line, whether 8-connected, anti-aliased line etc. *By default, it is 8-connected.* [cv.LINE_AA](https://docs.opencv.org/4.6.0/d6/d6e/group__imgproc__draw.html#ggaf076ef45de481ac96e0ab3dc2c29a777a85fdabe5335c9e6656563dfd7c94fb4f) gives anti-aliased line抗锯齿线 which looks great for curves.
+
+#### 1.3.2 Code
+
+```python
+import numpy as np
+import cv2 as cv
+# Create a black image
+img = np.zeros((512,512,3), np.uint8)
+# 1.线段：参数2和3分别是线段的2个端点。参数4是颜色，参数5是粗细
+cv.line(img,(0,0),(511,511),(255,0,0),5)
+# 2.矩形：参数2和3分别是矩形的左上/右下顶点
+cv.rectangle(img,(384,0),(510,128),(0,255,0),3)
+# 3.圆：参数2和3分别是圆心和半径
+cv.circle(img,(447,63), 63, (0,0,255), -1)
+# 4.椭圆Ellipse：参数2:圆心3:轴长4:椭圆顺时针旋转的角度5:椭圆弧开始角度6:椭圆弧结束角度7:颜色8:粗细
+# 参数5和6决定了椭圆画的完不完整，如下就只画了上半椭圆，如果180改称360就是全部椭圆。
+# 参数8传了-1表示填充整个图形。
+cv.ellipse(img,(256,256),(100,50),0,0,180,255,-1)
+# 5.多边形Polygon:需要传入多边形的所有顶点vertex,这些顶点以数组array的形式传入
+# 第三个参数true表示这个多边形是闭合的，所以第一个和最后一个vertex会连起来。
+pts = np.array([[10,5],[20,30],[70,20],[50,10]], np.int32)
+pts = pts.reshape((-1,1,2))
+cv.polylines(img,[pts],True,(0,255,255))
+# 6.文字：参数2是要输入的文字
+font = cv.FONT_HERSHEY_SIMPLEX
+# 参数3是开始的坐标，4字体，5颜色，6粗细，7线的类型
+cv.putText(img,'OpenCV',(10,500), font, 4,(255,255,255),2,cv.LINE_AA)
+cv.imshow("Display window", img)
+k = cv.waitKey(0)
+```
+
+### 1.3 Mouse as Paint-Brush
+
+#### 1.3.1 Functions to learn
+
+- **[cv.setMouseCallback()](https://docs.opencv.org/4.6.0/d7/dfc/group__highgui.html#ga89e7806b0a616f6f1d502bd8c183ad3e)**
+
+- Callback function will be executed when a mouse event take place. Check which events are available:
+
+  in python terminal:
+
+  ```
+  import cv2 as cv
+  events = [i for i in dir(cv) if 'EVENT' in i]
+  print( events )
+  ```
+
+   
+
+#### 1.3.2 Klick->Draw Circle
+
+```python
+import numpy as np
+import cv2 as cv
+# 1.设定一个画圈圈的回调函数
+def draw_circle(event,x,y,flags,param):
+    if event == cv.EVENT_LBUTTONDBLCLK:
+        cv.circle(img,(x,y),100,(255,0,0),-1)
+        
+# 2.创建一个窗口
+img = np.zeros((512,512,3), np.uint8)
+cv.namedWindow('image')
+# 3.将回调函数绑定到这个窗口，在这个窗口中发生事件就会调用回调函数
+cv.setMouseCallback('image',draw_circle)
+while(1):
+    cv.imshow('image',img)
+    if cv.waitKey(20) & 0xFF == 27:
+        break
+cv.destroyAllWindows()
+```
+
+#### 1.3.3 Klick->Draw different thing
+
+```python
+import numpy as np
+import cv2 as cv
+drawing = False # true if mouse is pressed
+mode = True # if True, draw rectangle. Press 'm' to toggle to curve
+ix,iy = -1,-1
+# 1.创建回调函数，不同的事件作不同的事
+def draw_circle(event,x,y,flags,param):
+    global ix,iy,drawing,mode
+    # 1.1左键按下获得鼠标的坐标
+    if event == cv.EVENT_LBUTTONDOWN:
+        drawing = True
+        ix,iy = x,y
+    # 1.2鼠标按住移动画矩形/圆，按下m来改变模式
+    elif event == cv.EVENT_MOUSEMOVE:
+        if drawing == True:
+            if mode == True:
+                cv.rectangle(img,(ix,iy),(x,y),(0,255,0),-1)
+            else:
+                cv.circle(img,(x,y),5,(0,0,255),-1)
+    # 1.3鼠标提起画下最后一点
+    elif event == cv.EVENT_LBUTTONUP:
+        drawing = False
+        if mode == True:
+            cv.rectangle(img,(ix,iy),(x,y),(0,255,0),-1)
+        else:
+            cv.circle(img,(x,y),5,(0,0,255),-1)
+# 2.创建窗口
+img = np.zeros((512,512,3), np.uint8)
+cv.namedWindow('image')
+# 3.将回调函数和窗口绑定
+cv.setMouseCallback('image',draw_circle)
+while(1):
+    cv.imshow('image',img)
+    k = cv.waitKey(1) & 0xFF
+    if k == ord('m'):
+        mode = not mode
+    elif k == 27:
+        break
+cv.destroyAllWindows()
+```
+
+### 1.4 Trackbar as Color Palette
+
+轨迹条作为调色板
+
+#### 1.4.1 Functions to learn
+
+- **[cv.getTrackbarPos()](https://docs.opencv.org/4.6.0/d7/dfc/group__highgui.html#ga122632e9e91b9ec06943472c55d9cda8)**, 
+- **[cv.createTrackbar()](https://docs.opencv.org/4.6.0/d7/dfc/group__highgui.html#gaf78d2155d30b728fc413803745b67a9b)** 
+
+#### 1.4.2 Code
+
+```python
+import numpy as np
+import cv2 as cv
+def nothing(x):
+    pass
+# 1.创建一个窗口
+img = np.zeros((300,512,3), np.uint8)
+cv.namedWindow('image')
+# 2.创建三个轨迹条
+# 参数1轨迹条名字，2依附的窗口名，3初始值，4最大值，5回调函数
+cv.createTrackbar('R','image',0,255,nothing)
+cv.createTrackbar('G','image',0,255,nothing)
+cv.createTrackbar('B','image',0,255,nothing)
+# 3.create switch for ON/OFF functionality
+# 因为openCV中无按钮，所以可以用轨迹条代替作为按钮选择的功能
+switch = '0 : OFF \n1 : ON'
+cv.createTrackbar(switch, 'image',0,1,nothing)
+while(1):
+    cv.imshow('image',img)
+    k = cv.waitKey(1) & 0xFF
+    if k == 27:
+        break
+    # 4.get current positions of four trackbars
+    r = cv.getTrackbarPos('R','image')
+    g = cv.getTrackbarPos('G','image')
+    b = cv.getTrackbarPos('B','image')
+    s = cv.getTrackbarPos(switch,'image')
+    # 5.只有按钮选择为1时才会变色
+    if s == 0:
+        img[:] = 0
+    else:
+        img[:] = [b,g,r]
+cv.destroyAllWindows()
+```
+
+
+
+## 2. Core Operation
+
+### 2.1 Basic operations on Images
+
+#### 2.1.1 Goal
+
+- Access pixel values and modify them
+- Access image properties
+- Set a Region of Interest (ROI)
+- Split and merge images
+  - **[cv.split](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#ga8027f9deee1e42716be8039e5863fbd9)**
+  - **[cv.merge](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#ga61f2f2bde4a0a0154b2333ea504fab1d)**
+- Making Borders for Images (Padding)
+  -  **[cv.copyMakeBorder()](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#ga2ac1049c2c3dd25c2b41bffe17658a36)**
+    - **src** - input image
+    - **top**, **bottom**, **left**, **right** - border width in number of pixels in corresponding directions
+    - **borderType**- Flag defining what kind of border to be added. It can be following types:
+      - **[cv.BORDER_CONSTANT](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#gga209f2f4869e304c82d07739337eae7c5aed2e4346047e265c8c5a6d0276dcd838)** - Adds a constant colored border. The value should be given as next argument.
+      - **[cv.BORDER_REFLECT](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#gga209f2f4869e304c82d07739337eae7c5a815c8a89b7cb206dcba14d11b7560f4b)** - Border will be mirror reflection of the border elements, like this : *fedcba|abcdefgh|hgfedcb*
+      - **[cv.BORDER_REFLECT_101](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#gga209f2f4869e304c82d07739337eae7c5ab3c5a6143d8120b95005fa7105a10bb4)** or **[cv.BORDER_DEFAULT](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#gga209f2f4869e304c82d07739337eae7c5afe14c13a4ea8b8e3b3ef399013dbae01)** - Same as above, but with a slight change, like this : *gfedcb|abcdefgh|gfedcba*
+      - **[cv.BORDER_REPLICATE](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#gga209f2f4869e304c82d07739337eae7c5aa1de4cff95e3377d6d0cbe7569bd4e9f)** - Last element is replicated throughout, like this: *aaaaaa|abcdefgh|hhhhhhh*
+      - **[cv.BORDER_WRAP](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#gga209f2f4869e304c82d07739337eae7c5a697c1b011884a7c2bdc0e5caf7955661)** - Can't explain, it will look like this : *cdefgh|abcdefgh|abcdefg*
+    - **value** - Color of border if border type is [cv.BORDER_CONSTANT](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#gga209f2f4869e304c82d07739337eae7c5aed2e4346047e265c8c5a6d0276dcd838)
+
+#### 2.1.2 Code
+
+```python
+import numpy as np
+import cv2 as cv
+img = cv.imread('messi5.jpg')
+# 1.Access pixel values and modify them
+## 	1.1用row and column coordinates来获得图片的像素值，BGR返回三通道值，grayscale返回intensity.
+px = img[100,100]		#返回[137 117 112]
+print( px )		
+blue = img[100,100,0]	#返回137，通过数组index返回特定通道的值
+print(blue)		
+img[100,100] = [255,255,255] 	#设置图片的像素值为255，255，255
+## 	1.2用函数（更推荐）
+img.item(10,10,2)	#获得图片(10,10)处的红色像素值
+img.itemset((10,10,2),100)	#设置图片(10,10)处的红色像素值为100
+
+# 2.Access image properties
+print( img.shape )	#shape of an image 
+print( img.size )	#Total number of pixels 
+print( img.dtype )	#Image datatype 
+
+# 3.Image ROI
+ball = img[280:340, 330:390]	#划出一块区域为球
+img[273:333, 100:160] = ball	#把另一块区域替换为球
+
+# 4.Split and merge images
+b,g,r = cv.split(img)	#将一个多通道的数组，划分成多个单通道数组
+img = cv.merge((b,g,r))	#将多个单通道数组合并为一个多通道数组
+
+# 5.Making Borders for Images (Padding)
+from matplotlib import pyplot as plt
+BLUE = [255,0,0]
+img1 = cv.imread('opencv-logo.png')
+## copyMakeBorder()的各个参数作用见上面
+replicate = cv.copyMakeBorder(img1,10,10,10,10,cv.BORDER_REPLICATE)
+reflect = cv.copyMakeBorder(img1,10,10,10,10,cv.BORDER_REFLECT)
+reflect101 = cv.copyMakeBorder(img1,10,10,10,10,cv.BORDER_REFLECT_101)
+wrap = cv.copyMakeBorder(img1,10,10,10,10,cv.BORDER_WRAP)
+constant= cv.copyMakeBorder(img1,10,10,10,10,cv.BORDER_CONSTANT,value=BLUE)
+plt.subplot(231),plt.imshow(img1,'gray'),plt.title('ORIGINAL')
+plt.subplot(232),plt.imshow(replicate,'gray'),plt.title('REPLICATE')
+plt.subplot(233),plt.imshow(reflect,'gray'),plt.title('REFLECT')
+plt.subplot(234),plt.imshow(reflect101,'gray'),plt.title('REFLECT_101')
+plt.subplot(235),plt.imshow(wrap,'gray'),plt.title('WRAP')
+plt.subplot(236),plt.imshow(constant,'gray'),plt.title('CONSTANT')
+plt.show()
+```
+
+
+
+### 2.2 Arithmetic Operations on Images
+
+#### 2.2.1 Goal
+
+Arithmetic operations:
+
+- addition,subtraction, bitwise operations,
+  - **[cv.add()](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#ga10ac1bfb180e2cfda1701d06c24fdbd6)**
+  - **[cv.addWeighted()](https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#gafafb2513349db3bcff51f54ee5592a19)**
+
+#### 2.2.2 Code
+
+```python
+# 1.addition
+>>> x = np.uint8([250])
+>>> y = np.uint8([10])
+# 相比于Numpy的加法是modulo operation模运算，cv的加法是saturated operation饱和运算
+>>> print( cv.add(x,y) ) # 250+10 = 260 => 255
+[[255]]
+>>> print( x+y )          # 250+10 = 260 % 256 = 4
+[4]
+
+# 2. Image Blending混合
+# 即分别给2张照片1个权重，让他们叠加起来
+img1 = cv.imread('ml.png')
+img2 = cv.imread('opencv-logo.png')
+dst = cv.addWeighted(img1,0.7,img2,0.3,0)	#这里给了img1 0.7的权重，img2 0.3的权重，第三个参数是一个添加给每个加法的标量
+cv.imshow('dst',dst)
+cv.waitKey(0)
+cv.destroyAllWindows()
+
+# 3. Bitwise Operations
+## Image Blending可以实现2个图片和起来，互相透明transparent的效果。
+## 使用2.1里的划定ROI可以实现不透明opaque的叠加2个矩形图片。
+## 而使用Bitwise Operations可以实现无规则图形不透明叠加
+#### 整个过程是:将logo的黑白BGR图转换为灰度图，并将强度大于10的即非黑色的像素点全都转换成白色后的图案作为mask。如此得到的mask:logo处都是255的白色点，非logo处都是0的黑色点。然后背景图与运算用mask_inv作mask，logo出都是0的黑点不会进行与运算，所以背景图会出现一个黑色logo，这里的黑色是虚无的相当于一个缺口。然后logo与运算用mask作mask，logo处都是255的白点会进行与运算，于是logo图只剩下了白色的logo周围都被没被提取。最后将与运算后的背景图和logo图合二为一。
+# Load two images
+img1 = cv.imread('messi5.jpg')
+img2 = cv.imread('opencv-logo-white.png')
+# I want to put logo on top-left corner, So I create a ROI
+rows,cols,channels = img2.shape
+roi = img1[0:rows, 0:cols]
+# Now create a mask of logo and create its inverse mask also
+img2gray = cv.cvtColor(img2,cv.COLOR_BGR2GRAY)	#转灰度图像
+ret, mask = cv.threshold(img2gray, 10, 255, cv.THRESH_BINARY)	#给每个矩阵元素添加1个阈值，返回值mask是目标图像，ret是True/False代表是否成功，10是阈值，255是最大值，超过了阈值根据cv.THRESH_BINARY转换
+mask_inv = cv.bitwise_not(mask)		# 非运算：转换数组的每一个元素
+# Now black-out the area of logo in ROI
+img1_bg = cv.bitwise_and(roi,roi,mask = mask_inv)	#如果mask不为0，会做与运算
+# Take only region of logo from logo image.
+img2_fg = cv.bitwise_and(img2,img2,mask = mask)
+# Put logo in ROI and modify the main image
+dst = cv.add(img1_bg,img2_fg)
+img1[0:rows, 0:cols ] = dst
+cv.imshow('res',img1)
+cv.waitKey(0)
+cv.destroyAllWindows()
+```
+
+### 2.3 Performance Measurement and Improvement Techniques
+
+#### 2.3.1 Goal
+
+- Measure and improve the performance of the code
+  -  **[cv.getTickCount](https://docs.opencv.org/4.6.0/db/de0/group__core__utils.html#gae73f58000611a1af25dd36d496bf4487)**: returns the number of clock-cycles after a reference event (like the moment the machine was switched ON) to the moment this function is called. 
+  - **[cv.getTickFrequency](https://docs.opencv.org/4.6.0/db/de0/group__core__utils.html#ga705441a9ef01f47acdc55d87fbe5090c)**: returns the frequency of clock-cycles, or the number of clock-cycles per second. 
+
+#### 2.3.2 Code
+
+```python
+import numpy as np
+import cv2 as cv
+img1 = cv.imread('test.jpg')
+# 1.得到当前时钟周期
+e1 = cv.getTickCount()
+# 2.要测试性能的代码
+for i in range(5,49,2):
+    img1 = cv.medianBlur(img1,i)
+# 3.得到现在的时钟周期
+e2 = cv.getTickCount()
+# 4.时间周期 除以 时间周期/秒 = 秒
+t = (e2 - e1)/cv.getTickFrequency()
+print( t )
+```
+
+- 也可以用Python的time.time()函数来实现相同的功能
+
+#### 2.3.3 Optimization
+
+- OpenCV函数通常支持SSE2,AVX。编译时会默认使用他们来优化
+
+  ```python
+  # check if optimization is enabled
+  In [5]: cv.useOptimized()	#检查是否开启了优化
+  Out[5]: True
+  In [6]: %timeit res = cv.medianBlur(img,49)
+  10 loops, best of 3: 34.9 ms per loop
+  # Disable it
+  In [7]: cv.setUseOptimized(False)	#关闭或打开优化
+  In [8]: cv.useOptimized()
+  Out[8]: False
+  In [9]: %timeit res = cv.medianBlur(img,49)
+  10 loops, best of 3: 64.1 ms per loop
+  ```
+
+- python中的优化技巧：
+
+  - [Python Optimization Techniques](https://wiki.python.org/moin/PythonSpeed/PerformanceTips)
+  - Scipy Lecture Notes - [Advanced Numpy](https://scipy-lectures.github.io/advanced/advanced_numpy/index.html#advanced-numpy)
+  - [Timing and Profiling in IPython](http://pynash.org/2013/03/06/timing-and-profiling/)
+
+## 3. [Image Processing in OpenCV](https://docs.opencv.org/4.6.0/d2/d96/tutorial_py_table_of_contents_imgproc.html)
+
+## 4. [Feature Detection and Description](https://docs.opencv.org/4.6.0/db/d27/tutorial_py_table_of_contents_feature2d.html)
+
+### 4.1 [Harris Corner Detection](https://docs.opencv.org/4.6.0/dc/d0d/tutorial_py_features_harris.html)
+
+#### 4.1.1 Functions to learn
+
+- **[cv.cornerHarris()](https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#gac1fc3598018010880e370e2f709b4345)**:Harris Corner Detector 
+- **[cv.cornerSubPix()](https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#ga354e0d7c86d0d9da75de9b9701a9a87e)**:further refines the corners detected with sub-pixel accuracy. 更精确的找到角点的坐标
+
+#### 4.1.2 Theory
+
+- 哈里斯角点检测的基本思想：
+
+  算法基本思想是使用一个固定窗口在图像上进行任意方向上的滑动，比较滑动前与滑动后两种情况，窗口中的像素灰度变化程度，如果存在任意方向上的滑动，都有着较大灰度变化，那么我们可以认为该窗口中存在角点。
+
+- Change in the image segment段：当窗口发生u移动时，那么滑动前与滑动后对应的窗口中的像素点灰度变化描述如下：
+
+  $$
+  S(u)=\displaystyle\int_W(I(x+u)-I(x))^2dx\\
+  也开写成：
+  \\
+  S(u_1,u_2)=\displaystyle\sum_{x,y}w(x,y)[I(x+u_1,y+u_2)-I(x,y)]^2
+  $$
+
+  - 其中x,y是像素点，u1u2是任意方法向的移动
+  - **W** :window function
+  - **I** :Intensity
+
+- 要找变化最大的方向，即要让上式最大化，应用泰勒展开后可得：
+  $$
+  S(u_1,u_2)\approx[u_1\ u_2]M\left[\begin{matrix}u_1\\u_2\end{matrix}\right]
+  $$
+
+  - 其中M称之为哈里斯矩阵Harris Matrix
+    $$
+    M=\sum_{x,y}w(x,y) \left[
+     \begin{matrix}
+       I_{x}I_x & I_{x}I_{y} \\
+       I_{x}I_{y} & I_{y}I_y  \\
+      \end{matrix}
+      \right]
+    $$
+
+    - Ix and Iy are image derivatives in x and y directions respectively. (These can be easily found using **[cv.Sobel()](https://docs.opencv.org/4.6.0/d4/d86/group__imgproc__filter.html#gacea54f142e81b6758cb6f375ce782c8d)**).
+    - Sobel索伯算子可以计算灰度图像在x,y方向上的导数
+
+- 评判是角点/边缘/平面的依据：
+  $$
+  R=det(M)-k(trace(M)^2
+  $$
+
+  - 其中
+    - $det(M)=\lambda_1\lambda_2$
+    - $trace(M)=\lambda_1+\lambda_2$
+    - $\lambda_1和\lambda_2$是M的eigenvalues
+    
+  - 判断R：
+    - When |R| is small, which happens when λ1 and λ2 are small, the region is flat.
+    - When R<0, which happens when λ1>>λ2 or vice versa, the region is edge.
+    - When R is large, which happens when λ1 and λ2 are large and λ1∼λ2, the region is a corner.
+    
+    ![](https://docs.opencv.org/4.6.0/harris_region.jpg)
+
+#### 4.1.3 Code
+
+```python
+import numpy as np
+import cv2 as cv
+filename = 'chessboard.png'
+img = cv.imread(filename)
+gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
+gray = np.float32(gray)
+# 参数1:图片，2:角点检测的邻域大小，3:索伯算子用到的Aperture参数，4:判据中的k
+dst = cv.cornerHarris(gray,2,3,0.04)
+#result is dilated for marking the corners, not important
+dst = cv.dilate(dst,None)
+# Threshold for an optimal value, it may vary depending on the image.
+img[dst>0.01*dst.max()]=[0,0,255]
+cv.imshow('dst',img)
+if cv.waitKey(0) & 0xff == 27:
+    cv.destroyAllWindows()
+```
+
+更精准的找角
+
+```python
+import numpy as np
+import cv2 as cv
+filename = 'chessboard2.jpg'
+img = cv.imread(filename)
+gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
+# find Harris corners
+gray = np.float32(gray)
+dst = cv.cornerHarris(gray,2,3,0.04)
+dst = cv.dilate(dst,None)
+ret, dst = cv.threshold(dst,0.01*dst.max(),255,0)
+dst = np.uint8(dst)
+# find centroids中心点
+## connectedComponentsWithStats()：求得最大连通域。用于过滤原始图像中轮廓分析后较小的区域，留下较大区域。
+ret, labels, stats, centroids = cv.connectedComponentsWithStats(dst)
+# define the criteria to stop and refine the corners
+# criteria是一个枚举集合：参数1:终止标准,2:迭代的最大次数,3:希望的准确度
+criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 100, 0.001)
+# 参数1:图片，2:输入角点的初始坐标和为输出提供的细化坐标，3:寻找窗口边长的一般，4:搜索区域中间的死区大小的一半（-1,-1）表示这里没有这区域
+corners = cv.cornerSubPix(gray,np.float32(centroids),(5,5),(-1,-1),criteria)
+# Now draw them
+res = np.hstack((centroids,corners))
+res = np.int0(res)
+img[res[:,1],res[:,0]]=[0,0,255]
+img[res[:,3],res[:,2]] = [0,255,0]
+cv.imwrite('subpixel5.png',img)
+```
+
+### 4.2 [Shi-Tomasi Corner Detector ](https://docs.opencv.org/4.6.0/d4/d8c/tutorial_py_shi_tomasi.html)
+
+#### 4.2.1 Functions to learn
+
+- **[cv.goodFeaturesToTrack()](https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#ga1d6bb77486c8f92d79c8793ad995d541)**:使用Shi-Tomasi(默认)或者Harris Corner角点检测来找N个最强的角点
+
+#### 4.2.2 Theory
+
+- **Shi-Tomasi**角点检测与**Harris**角点检测的相比只有判据变了：
+  $$
+  R=min(\lambda_1,\lambda_2)
+  $$
+
+  - $\lambda_1和\lambda_2$是哈里斯矩阵M的eigenvalues，见4.1.2
+
+  ![](https://docs.opencv.org/4.6.0/shitomasi_space.png)
+
+  - 如果两个特征值大于$\lambda_{min}$时，即绿色区域，才被认为是角点
+
+#### 4.2.3 Code 
+
+```python
+import numpy as np
+import cv2 as cv
+from matplotlib import pyplot as plt
+img = cv.imread('blox.jpg')
+gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
+# 参数1:图片2:要找出的角点个数3:质量等级0到1的某一个值，低于这个值会被忽略4:2个角点间最小的欧几里德距离
+corners = cv.goodFeaturesToTrack(gray,25,0.01,10)
+corners = np.int0(corners)
+# 在角点处画圆
+for i in corners:
+    x,y = i.ravel()
+    cv.circle(img,(x,y),3,255,-1)
+plt.imshow(img),plt.show()
+```
+
+### 4.3 [SIFT (Scale-Invariant Feature Transform)](https://docs.opencv.org/4.6.0/da/df5/tutorial_py_sift_intro.html)
+
+#### 4.3.1 Functions to learn
+
+- [cv.SIFT_create()](https://docs.opencv.org/4.6.0/d7/d60/classcv_1_1SIFT.html)
+
+#### 4.3.2 Theory
+
+[reference](https://www.cnblogs.com/Alliswell-WP/p/SIFT.html)
+
+上面的Harris 和 Shi-Tomasi都和是Rotation-incariant,即图片旋转后角还是点角点。但他们不是Scale-Invariant的，即图片拉伸后之前的角点可能就不是角点了。
+
+Scale Invariant Feature Transform (SIFT)尺度不变特征变换,是图像处理领域中的一种**局部特征描述**算法(用于得到关键点描述符)。由4步组成：
+
+1. Scale-space Extrema Detection尺度空间极值检测
+
+   找出所有潜在关键点
+
+   - 显然不能用一个大小的窗口区检测不同尺度下的关键点，即小角用小窗口，大角用大窗口
+
+   - 可以用Laplacian of Gaussian(LoG)高斯拉普拉斯来做scale-space filtering，但成本太大
+
+   - SIFT中使用**Difference of Gaussian(DoG)**来识别出具有尺度和方向不变性的潜在关键点。
+
+     就是把图像做不同程度的高斯模糊blur，平滑的区域或点肯定变化不大，而纹理复杂的比如边缘，点，角之类区域肯定变化很大，这样变化很大的点就是关键点。然为了找到足够的点，还需要把图像放大缩小几倍(Image Pyramids)来重复这个步骤找关键点。
+
+2. Keypoint localization关键点定位：
+
+   剔除一部分关键点
+
+   - 第一步找到了潜在关键点后，使用Taylor series expansion泰勒级数展开来找到更精确的极值extrema的位置，如果极值的强度Intensity小于某一个阈值threshold，那么这些关键点会被消除。这个阈值在OpenCV中称之为**contrastThreshold**.
+
+   - DoG对于边界也有很高的敏感度，所以还需要用一个类似Harris的方法来去除边界edge:使用一个2x2的**Hessian matrix**来计算principal curvature主曲率，如果关键点处的ratio比率大于一个阈值就认为是边界要被剔除。这个阈值在OpenCV中称为**edgeThreshold**
+   - 由此low-contrast keypoints 和 edge keypoints都被剔除了 
+
+3. Orientation Assignment方向分配
+
+   给关键点及其周围像素增加方向信息
+
+   - 为了具有旋转不变性，，需要利用图像的局部特征为给每一个关键点分配一个基准方向。使用图像梯度的方法求取局部结构的稳定方向。
+   - 计算某一关键点的梯度后，使用直方图统计领域内像素的梯度和方向。梯度直方图将0~360度的方向范围分为36个柱(bins)，其中每柱10度。直方图的峰值方向代表了关键点的主方向。为了增强匹配的鲁棒性，只保留峰值大于主方向峰值80％的方向作为该关键点的辅方向。
+
+4. Keypoint Descriptor关键点描述符
+
+   根觉方向信息创建关键点描述符。
+
+   - 取关键点周围的16X16邻域，将区域划分为4×4的子块，对每一子块进行8个方向(上下左右，左上左下，右上右下)的直方图统计操作，获得每个方向的梯度幅值，总共可以组成128维描述向量.
+
+5. Keypoint Matching关键点匹配
+
+   - 得到描述符后就可以通过identify识别2张图片的关键点的邻域(关键点描述符)来匹配关键点。
+
+#### 4.3.3 Code
+
+```python
+import numpy as np
+import cv2 as cv
+img = cv.imread('home.jpg')
+gray= cv.cvtColor(img,cv.COLOR_BGR2GRAY)
+# 1.创建sift类对象
+sift = cv.SIFT_create()
+# 2.寻找关键点
+kp = sift.detect(gray,None)
+# 3.计算关键点描述符
+kp, des = sift.compute(gray,kp)
+# 2,3步也可以直接合二为一：
+kp, des = sift.detectAndCompute(gray,None)
+
+# 如果给drawKeypoints()下面这个flag:不仅可以画出关键点的大小还可以画出它的方向
+img=cv.drawKeypoints(gray,kp,img,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+#img=cv.drawKeypoints(gray,kp,img)
+cv.imwrite('sift_keypoints.jpg',img)
+
+```
+
+- **kp**: a list of keypoints
+- **des**: descriptor, a numpy array of shape (Number of Keypoints)×128.
+
+### 4.4 [SURF (Speeded-Up Robust Features)](https://docs.opencv.org/4.6.0/df/dd2/tutorial_py_surf_intro.html)
+
+#### 4.4.1 Theory
+
+- SURF加速稳健特征是SIFT的提速版本，相比于SIFT使用Difference of Gaussian(DoG)来近似Laplacian of Gaussian(LoG)，SURF使用积分图和Boxfilter计算hessian矩阵，通过比较hessian矩阵行列式的大小来选择特征点的位置和尺度,金字塔构建时通过改变boxfilter的尺寸和滤波器的方差来实现不同的尺度图像的获取。
+
+- 积分图integral image：积分图的每一点（x, y）的值是原图中对应位置的左上角区域的所有灰度值的和
+  $$
+  I_\sum(x)=\sum_{i=0}^{i\leq x}\sum_{j=0}^{j\leq y}I(i,j)
+  $$
+
+  - 好处：一旦积分图计算完毕，对任意矩形区域的和的计算就可以在常数时间内完成。
+
+    ![](https://pic2.zhimg.com/80/v2-e5f90518f99f3f102650140626857895_720w.webp)
+
+    绿色区域的的灰度和：$\sum=A-B-C+D$
+
+**SURF steps:**
+
+[参考](https://zhuanlan.zhihu.com/p/365403867)
+
+1. Hessian矩阵
+   $$
+   H(x,\sigma)=\left[\begin{matrix}
+   			L_{xx}(x,\sigma) & L_{xy}(x,\sigma)\\
+   			L_{yx}(x,\sigma) & L_{yy}(x,\sigma)\\				
+   			\end{matrix}\right]
+   $$
+
+   - 其中$L_{xx}(x,\sigma)$是x处图像和二阶高斯核$G(\sigma)=\frac{\partial^2g(\sigma)}{\partial x^2}或\frac{\partial^2g(\sigma)}{\partial x\partial y}或\frac{\partial^2g(\sigma)}{\partial y^2}$的卷积：$L(x,\sigma)=G(\sigma)*I(x)$
+
+   得到Hessian矩阵的行列式值(Determinant of Hessian, DoH) :
+   $$
+   detH=L_{xx}L_{yy}-L^2_{xy}
+   $$
+
+   - DoH的极值点可用于图像斑点检测 (Blob Detection)
+
+2. Hessian矩阵的近似
+
+   从高斯滤波器 转为 盒子滤波器[boxfilter](https://docs.opencv.org/3.4/d4/d86/group__imgproc__filter.html#gad533230ebf2d42509547d514f7d3fbc3)
+
+   ![](https://docs.opencv.org/4.6.0/surf_boxfilter.jpg)
+
+   - 相比左边的是高斯滤波器。右边的盒子滤波器只由几个矩形区域组成，矩形区域内填充同一值：白色1，黑色-1/-2，灰色0。
+
+   - 使用盒子滤波器而不使用高斯滤波的目的是，在卷积时，可以使用积分图中的元素来加快计算。
+
+   - 简化后的Doh为：
+     $$
+     det(H_{approx})=D_{xx}D_{yy}-(wD_{xy})^2
+     $$
+
+     - 权重w=0.9：用于平衡因使用盒式滤波器近似所带来的误差
+
+3. Scale space representation构建尺度空间
+
+   - 尺度空间scale space:
+     - 图像的尺度是指图像内容的粗细程度。尺度的概念是用来模拟观察者距离物体的远近的程度。
+     - 图像的尺度空间是指同一张图像不同尺度的集合。在该集合中，**细尺度图像通过filter形成粗尺度图像，即粗尺度图像的形成过程是高频信息被过滤的过程**，不会引入新的杂质信息，因此任何存在于粗尺度图像下的内容都能在细尺度图像下找到。
+     - 如果你想看一颗树而不是叶子，可以故意删除图像中的某些细节（例如树叶树枝等），在摆脱这些细节时，必须确保不引入新的虚假细节。做到这一点的唯一方法是使用**高斯模糊/过滤**
+     - **综上，图像的尺度空间是一幅图像经过几个不同高斯核后形成的模糊图片的集合，用来模拟人眼看到物体的远近程度以及模糊程度。 图像尺度的改变不等于图像分辨率的改变。**
+   - 图像金字塔Image pyramid
+     - 图像金字塔(image pyramid)是同一张图片不同分辨率子图的集合，是通过对原图像不断地下采样而产生的。高分辨率原始图像在底部，自底向上，分辨率（尺寸）逐渐降低，堆叠起来便形成了金字塔状。通常情况下，每向上移动一级，图像的宽和高都降低为原来的1/2。
+   - 要想检测不同尺度的极值点，必须建立图像的尺度空间金字塔。一般的方法是通过采用不同 $\sigma$的高斯函数，对图像进行平滑滤波，然后重采样获得更高一层的金字塔图像。
+     - SIFT算法中是通过相邻两层高斯金字塔图像相减得到DoG图像，然后在DoG金字塔图像上进行特征点检测.
+     - 与SIFT特征不同的是，SURF算法不需要通过降采样的方式得到不同尺寸大小的图像建立金字塔，而是借助于盒式滤波和积分图像，不断增大盒式滤波模板，通过积分图快速计算盒式滤波的响应图像。然后在响应图像上采用非极大值抑制，检测不同尺度的特征点。
+
+4. Keypoint localization关键点定位
+
+   - 将经过盒式滤波处理过的响应图像中每个像素点与其3维邻域中的26个像素点进行比较，若是最极大值点，则认为是该区域的局部特征点。然后，采用3维线性插值法得到亚像素级的特征点，同时去掉一些小于给定阈值的点，使得极值检测出来的特征点更稳健。
+   - 和SIFT中用到的DoG不同的是不用剔除边缘导致的极值点了，因为Hessian矩阵的行列式就已经考虑到边缘的问题了，而DoG计算只是把不同方向变化趋势给出来，后续还需要使用Hessian矩阵的特征值剔除边缘产生的影响。
+
+5. Orientation Assignment方向分配
+
+   - 在以特征点为中心，以6s (s为特征点的尺度，计算过程为：$s=1.2\times \frac{L}{9}$  )为半径的区域内，计算图像的[Haar小波响应](https://zhuanlan.zhihu.com/p/386322623)，实际上就是对图像进行梯度运算，只不过需要利用积分图，提高梯度计算效率。
+
+   - 使用$\sigma=2s$的高斯函数对Haar小波的响应值进行加权
+
+   - 为了求主方向，设计一个以特征点为中心，张角为60度的扇形窗口，以一定旋转角度 $\theta$ 旋转窗口，并对窗口内的Haar小波响应值dx,dy进行累加，得到一个矢量  :$m_w,\theta_w$
+     $$
+     m_w=\sum_wdx+\sum_wdy \\
+     \theta_w=arctan(\sum_wdy/\sum_wdx)
+     $$
+
+     - 主方向即最大haar响应累加值所对应的方向$\theta=\theta_w|max\{m_w\}$
+     - 累加值大于主方向80%的认为是该关键点的副方向
+
+     ![](https://docs.opencv.org/4.6.0/surf_orientation.jpg)
+
+6. Keypoint Descriptor关键点描述符
+
+   - 首先将20s的窗口划分为4×4个子窗口，每个子窗口大小为5s×5s，使用尺寸为2s的Haar小波计算子窗口的响应值；
+
+   - 然后，以特征点为中心，用 $\sigma\frac{20s}{6}$的高斯核函数对 dx,dy 进行加权计算；
+
+   - 最后，分别对每个子块的加权响应值进行统计，得到每个子块的向量
+     $$
+     V_i=[\sum dx,\sum|dx|,\sum dy,\sum|dy|]
+     $$
+     ![](https://pic3.zhimg.com/80/v2-a43774666dde849a16408e231b69ff12_720w.webp)
+
+     - 由于共有4×4个子块，特征描述子的特征维数为4×4×4=64。
+     - SURF描述子不仅具有尺度和旋转不变性，还具有光照不变性，这由小波响应本身决定，而对比度不变性则是通过将特征向量归一化来实现。
+
+   - 还有一个U-SURF: 不计算特征点的方向信息，所有点统一认为方向向上，只需要将设为0即可。
+
+#### 4.4.2 Code
+
+```python
+# 1.SURF
+>>> img = cv.imread('fly.png',0)
+# Create SURF object. You can specify params here or later.
+# Here I set Hessian Threshold to 400
+>>> surf = cv.xfeatures2d.SURF_create(400)
+# Find keypoints and descriptors directly
+>>> kp, des = surf.detectAndCompute(img,None)
+>>> len(kp)
+ 699
+    
+# Check present Hessian threshold
+>>> print( surf.getHessianThreshold() )
+400.0
+# We set it to some 50000. Remember, it is just for representing in picture.
+# In actual cases, it is better to have a value 300-500
+>>> surf.setHessianThreshold(50000)
+# Again compute keypoints and check its number.
+>>> kp, des = surf.detectAndCompute(img,None)
+>>> print( len(kp) )
+47
+# 将关键点画在图上
+>>> img2 = cv.drawKeypoints(img,kp,None,(255,0,0),4)
+>>> plt.imshow(img2),plt.show()
+
+# 2.U-SURF：
+# Check upright flag, if it False, set it to True
+>>> print( surf.getUpright() )
+False
+>>> surf.setUpright(True)
+# Recompute the feature points and draw it
+>>> kp = surf.detect(img,None)
+>>> img2 = cv.drawKeypoints(img,kp,None,(255,0,0),4)
+>>> plt.imshow(img2),plt.show()
+
+# 3.Check the descriptor size and change it to 128 if it is only 64-dim. 
+# Find size of descriptor
+>>> print( surf.descriptorSize() )
+64
+# That means flag, "extended" is False.
+>>> surf.getExtended()
+ False
+# So we make it to True to get 128-dim descriptors.
+>>> surf.setExtended(True)
+>>> kp, des = surf.detectAndCompute(img,None)
+>>> print( surf.descriptorSize() )
+128
+>>> print( des.shape )
+(47, 128)
+```
+
+
+
+### 4.5 [FAST (Features from Accelerated Segment Test)](https://docs.opencv.org/4.6.0/df/d0c/tutorial_py_fast.html)
+
+#### 4.5.1 Theory
+
+
+
+### 4.6 [BRIEF (Binary Robust Independent Elementary Features)](https://docs.opencv.org/4.6.0/dc/d7d/tutorial_py_brief.html)
+
+### 4.7 [ORB (Oriented FAST and Rotated BRIEF)](https://docs.opencv.org/4.6.0/d1/d89/tutorial_py_orb.html)
+
+### 4.8 [Feature Matching](https://docs.opencv.org/4.6.0/dc/dc3/tutorial_py_matcher.html)
+
+### 4.9 [Feature Matching + Homography to find Objects](https://docs.opencv.org/4.6.0/d1/de0/tutorial_py_feature_homography.html)
+
+## 5. [Video analysis (video module)](https://docs.opencv.org/4.6.0/da/dd0/tutorial_table_of_content_video.html)
+
+## 6. [Camera Calibration and 3D Reconstruction](https://docs.opencv.org/4.6.0/d9/db7/tutorial_py_table_of_contents_calib3d.html)
+
+## 7. [Machine Learning](https://docs.opencv.org/4.6.0/d6/de2/tutorial_py_table_of_contents_ml.html)
+
+## 8. [Computational Photography](https://docs.opencv.org/4.6.0/d0/d07/tutorial_py_table_of_contents_photo.html)
+
+## 9. [Object Detection (objdetect module)](https://docs.opencv.org/4.6.0/d2/d64/tutorial_table_of_content_objdetect.html)
+
+## 10. [OpenCV-Python Bindings](https://docs.opencv.org/4.6.0/df/da2/tutorial_py_table_of_contents_bindings.html)
