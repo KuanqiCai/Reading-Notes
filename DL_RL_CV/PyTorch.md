@@ -6,6 +6,14 @@
   - [Cuda](https://developer.nvidia.com/cuda-toolkit-archive),下载对应的版本
   - [cuDNN](https://developer.nvidia.com/rdp/cudnn-download),下载后解压到cuda[安装的路径](C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.3)下
 
+- Windows CuDNN版本卸载：
+
+  - `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA`删除版本
+
+  - app管理中卸载版本对应的驱动
+
+  - 环境变量中删除
+
 - PyTorch安装
 
   - [PyTorch](https://pytorch.org/get-started/locally/)官网，查看安装指令
@@ -29,6 +37,8 @@
 
     - 命令行：`nvcc --version`
 
+    - nvidia driver:`nvidia-smi`
+    
       
     
 

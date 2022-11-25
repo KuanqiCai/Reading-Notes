@@ -1,3 +1,9 @@
+# 零、学习资源整理
+
+1. [OpenAI Spinning Up](https://spinningup.openai.com/en/latest/index.html)
+2. [本笔记所学习的课](https://github.com/huggingface/deep-rl-class)
+3. [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/RLbook2020.pdf)(已保存在onedrive)
+
 # 一、深度强化学习
 
 网课：https://github.com/huggingface/deep-rl-class#the-hugging-face-deep-reinforcement-learning-class-
@@ -216,7 +222,7 @@ model.learn(total_timesteps=int(2e5))
 
 ### 1.3 一个自动降落的智能飞机
 
-运行在colab
+运行在colab：https://colab.research.google.com/github/huggingface/deep-rl-class/blob/main/unit1/unit1.ipynb
 
 #### 1.3.1 安装用于colab虚拟界面显示
 
@@ -256,6 +262,7 @@ model.learn(total_timesteps=int(2e5))
   from huggingface_hub import notebook_login # To log to our Hugging Face account to be able to upload models to the Hub.
   
   from stable_baselines3 import PPO
+  from stable_baselines3 import DQN	# 扩展部分：尝试使用另个算法DQN
   from stable_baselines3.common.evaluation import evaluate_policy
   from stable_baselines3.common.env_util import make_vec_env
   ```
@@ -293,8 +300,11 @@ print("Sample observation", env.observation_space.sample()) # Get a random obser
 print("\n _____ACTION SPACE_____ \n")
 print("Action Space Shape", env.action_space.n)
 print("Action Space Sample", env.action_space.sample()) # Take a random action
+
+
 # 向量化环境
 # We create a vectorized environment (method for stacking multiple independent environments into a single environment) of 16 environments, this way, we'll have more diverse experiences during the training.
+# 重要的就下面这一句，上面的用于学习
 env = make_vec_env('LunarLander-v2', n_envs=16)
 ```
 
@@ -302,7 +312,9 @@ env = make_vec_env('LunarLander-v2', n_envs=16)
 
 #### 1.3.5 **建立RL算法模型**
 
-- 使用 [Stable Baselines3 (SB3)](https://stable-baselines3.readthedocs.io/en/master/)，SB3 is a set of **reliable implementations of reinforcement learning algorithms in PyTorch**.这里使用[PPO算法](https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#example%5D)
+- 使用 [Stable Baselines3 (SB3)](https://stable-baselines3.readthedocs.io/en/master/)，SB3 is a set of **reliable implementations of reinforcement learning algorithms in PyTorch**.
+
+##### 1.[PPO算法](https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#example%5D)
 
 ```python
 # We use MultiLayerPerceptron (MLPPolicy) because the input is a vector,
@@ -319,15 +331,44 @@ model = PPO(
   verbose=1)
 ```
 
-#### 1.3.6 **训练模型**
+##### 2.DQN算法
 
 ```python
-# Train it for 500,000 timesteps
-model.learn(total_timesteps=500000)
-# Save the model
-model_name = "ppo-LunarLander-v2"
-model.save(model_name)
+model = DQN(
+    policy='MlpPolicy',
+    env = env,
+    verbose=1,
+    batch_size= 64  
+)
 ```
+
+
+
+#### 1.3.6 **训练模型**
+
+1. PPO:
+
+   ```python
+   # Train it for 500,000 timesteps
+   model.learn(total_timesteps=500000)
+   # Save the model
+   model_name = "ppo-LunarLander-v2"
+   model.save(model_name)
+   ```
+
+   
+
+2. DQN:
+
+   ```python
+   # Train it for 500,000 timesteps
+   model.learn(total_timesteps=500000)
+   # Save the model
+   model_name = "dqn-LunarLander-v2"
+   model.save(model_name)
+   ```
+
+   
 
 #### 1.3.7 **评估训练完的智能体**
 
