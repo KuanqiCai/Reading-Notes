@@ -2,6 +2,19 @@
 
 Anaconda是一个环境管理软件，解决不同代码需要不同的环境时重复卸载安装环境的需求。
 
+# 安装与卸载
+
+## 1. 安装
+
+- 下载包：https://docs.conda.io/en/latest/miniconda.html
+- 双击运行下载(不添加环境变量)
+
+## 2. 卸载
+
+- 直接app and features中卸载
+
+
+
 # 基本指令
 
 - 查看版本号
@@ -41,6 +54,10 @@ Anaconda是一个环境管理软件，解决不同代码需要不同的环境时
 
   - `conda uninstall xx`
 
+- 升级包
+
+  - `conda update xx`
+
 - conda安装本地软件包
 
   - `conda install --use-local package.tar.bz2`
@@ -73,3 +90,34 @@ Anaconda是一个环境管理软件，解决不同代码需要不同的环境时
 
 - 用txt一键安装我们所需要的环境
   - 在激活某一环境后：`pip install -r requirements.txt`
+
+# Jupyter相关
+
+## 1. 安装
+
+### 1.1jupyter安装
+
+`conda install jupyter`
+
+### 1.2插件安装
+
+https://github.com/ipython-contrib/jupyter_contrib_nbextensions
+第一步：conda install -c conda-forge jupyter_contrib_nbextensions
+第二步：jupyter contrib nbextension install --user
+第三步：conda install -c conda-forge jupyter_nbextensions_configurator
+
+## 2. 删除核
+
+1. 查看所有核心:
+
+   ```
+   jupyter kernelspec list
+   ```
+
+2. 卸载指定核心
+
+   ```
+   jupyter kernelspec remove tensorflow-gpu
+   ```
+
+   
