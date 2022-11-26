@@ -291,9 +291,9 @@ model.learn(total_timesteps=int(2e5))
 -  建立并查看环境
 
 ```python
-# We create our environment with gym.make("<name_of_the_environment>")
+# 使用gym创建环境
 env = gym.make("LunarLander-v2")
-env.reset()
+env.reset()	#将环境重置
 print("_____OBSERVATION SPACE_____ \n")
 print("Observation Space Shape", env.observation_space.shape)
 print("Sample observation", env.observation_space.sample()) # Get a random observation
@@ -302,9 +302,8 @@ print("Action Space Shape", env.action_space.n)
 print("Action Space Sample", env.action_space.sample()) # Take a random action
 
 
-# 向量化环境
+# 使用stable baseline3向量化环境
 # We create a vectorized environment (method for stacking multiple independent environments into a single environment) of 16 environments, this way, we'll have more diverse experiences during the training.
-# 重要的就下面这一句，上面的用于学习
 env = make_vec_env('LunarLander-v2', n_envs=16)
 ```
 
@@ -452,3 +451,85 @@ print(f"mean_reward={mean_reward:.2f} +/- {std_reward}")
 1. Try different hyperparameters of `PPO`. You can see them at https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#parameters.
 2. Check the [Stable-Baselines3 documentation](https://stable-baselines3.readthedocs.io/en/master/modules/dqn.html) and try another models such as DQN.
 3. Try to **change the environment**, why not using CartPole-v1, MountainCar-v0 or CarRacing-v0? Check how they works [using the gym documentation](https://www.gymlibrary.dev/) and have fun
+
+### 1.4 倒立摆cartpole
+
+#### 1.4.1 环境
+
+```python
+!sudo apt-get update
+!apt install python-opengl
+!apt install ffmpeg
+!apt install xvfb
+!pip3 install pyvirtualdisplay
+
+# Virtual display
+from pyvirtualdisplay import Display
+
+virtual_display = Display(visible=0, size=(1400, 900))
+virtual_display.start()
+
+!pip install importlib-metadata==4.13.0
+!pip install gym[classic_control]
+!pip install stable-baselines3[extra]
+!pip install huggingface_sb3
+!pip install pyglet==1.5.1
+!pip install ale-py==0.7.4 # To overcome an issue with gym (https://github.com/DLR-RM/stable-baselines3/issues/875)
+
+!pip install pickle5
+```
+
+#### 1.4.2 加载库
+
+```python
+import gym
+
+from huggingface_sb3 import load_from_hub, package_to_hub, push_to_hub
+from huggingface_hub import notebook_login # To log to our Hugging Face account to be able to upload models to the Hub.
+
+from stable_baselines3 import PPO
+from stable_baselines3 import DQN	# 扩展部分：尝试使用另个算法DQN
+from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.env_util import make_vec_env
+```
+
+#### 1.4.3 创建环境
+
+```python
+env = gym.make('CartPole-v1')
+env.reset()
+print("_____OBSERVATION SPACE_____ \n")
+print("Observation Space Shape", env.observation_space.shape)
+print("Sample observation", env.observation_space.sample()) # Get a random observation
+print("\n _____ACTION SPACE_____ \n")
+print("Action Space Shape", env.action_space.n)
+print("Action Space Sample", env.action_space.sample()) # Take a random action
+env = make_vec_env('CartPole-v1', n_envs=16)
+```
+
+#### 1.4.4 创建模型
+
+```python
+model = PPO(
+  policy = 'MlpPolicy',
+  env = env,
+  n_steps = 1024,
+  batch_size = 64,
+  n_epochs = 4,
+  gamma = 0.999,
+  gae_lambda = 0.98,
+  ent_coef = 0.01,
+  verbose=1)
+```
+
+
+
+#### 1.4.5 训练模型
+
+```
+# Train it for 500,000 timesteps
+model.learn(total_timesteps=500000)
+model_name = "ppo-CartPole-v1"
+model.save(model_name)
+```
+
