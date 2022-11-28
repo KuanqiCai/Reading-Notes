@@ -137,43 +137,179 @@
 
 ### 1.7 强化学习的三种方法：
 
+记住：RL的目标是找到一个optimal policy π.有下面3种方法，但现实中只用前2种
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/two-approaches%20to%20find%20policy.jpg?raw=true)
+
 #### 1.7.1 基于价值(value-based)
 
-目标是**优化价值函数V(s)**: 价值函数会告诉我们，智能体在每个状态里得出的未来奖励最大预期 (maximum expected future reward) 。
+- 目标是**优化价值函数V(s)**: 价值函数value function会告诉我们，智能体在每个状态里得出的未来奖励最大预期 (maximum expected future reward) 。In Value-based methods, instead of training a policy function, **we train a value function that maps a state to the expected value of being at that state**.
 
-一个状态下的**函数值**，是智能体**可以预期的未来奖励积累总值**，从当前状态开始算。
-$$
-V_\pi = E_\pi[R_{t+1}+\gamma R_{t+2}+\gamma^2R_{t+3}+... | S_t=s]
-$$
+- 有两种基于价值的方法：
 
-- E: Expected
-- S: State
+  1. The State-Value function
+     $$
+     V_\pi(s) = E_\pi[R_{t+1}+\gamma R_{t+2}+\gamma^2R_{t+3}+... | S_t=s]
+     $$
+     For each state, the state-value function outputs the expected return if the agent **starts at that state,** and then follow the policy forever after (for all future timesteps if you prefer).
 
+     - E: Expected
+     - S: State
+     - R：reward
 
+  2. The Action-Value function
+     $$
+     Q_\pi(s,a) = E_\pi[R_{t+1}+\gamma R_{t+2}+\gamma^2R_{t+3}+... | S_t=s,A_t=a]
+     $$
+     In the Action-value function, for each state and action pair, the action-value function **outputs the expected return** if the agent starts in that state and takes action, and then follows the policy forever after.
+
+  3. Difference:
+
+     - In state-value function, we calculate **the value of a state $S_t$**
+     - In action-value function, we calculate **the value of the state-action pair $(S_t,A_t)$** hence the value of taking that action at that state.
+
+- 所以基于价值的方法：
+
+  - don't train the policy
+  - The policy is a function defined by hand.
+
+- Value 和 Policy之间的联系
+  $$
+  \pi^*(s)=arg\ \underset{a}{max}Q^*(s,a)
+  $$
+  
 
 #### 1.7.2 基于策略 (policy-based)
 
-目标是 **优化策略函数$\pi(s)$** , 策略就是评判智能体在特定时间点的表现。把每一个状态和它所对应的最佳行动建立联系。
+- The Policy π **is the brain of our Agent**, it’s the function that tell us what action to take given the state we are. So it defines the agent’s behavior at a given time.
+- This policy function will **map from each state to the best corresponding action at that state**. Or a **probability distribution over the set of possible actions at that state**.
 
-策略分为两种
+- 目标是 **优化策略函数$\pi(s)$** , 策略就是评判智能体在特定时间点的表现。把每一个状态和它所对应的最佳行动建立联系。
 
-- **确定性**策略：某一个特定状态下的策略，永远都会给出同样的行动。
+  策略分为两种
 
-- **随机性**策略：策略给出的是多种行动的可能性分布。
-  $$
-  Stochastic\ Policy:\pi(a|s)=P[A_t=a|S_t=s]
-  $$
+  - **确定性**策略：某一个特定状态下的策略，永远都会给出同样的行动。
 
-  - S: State
-  - A: Action
 
- 
+  - **随机性**策略：策略给出的是多种行动的可能性分布。
+    $$
+    Stochastic\ Policy:\pi(a|s)=P[A_t=a|S_t=s]
+    $$
+
+    - S: State
+    - A: Action
+
+
+- 所以基于策略的方法
+  - Train directly the policy
+  - The policy is a Neural Network.
 
 #### 1.7.3 基于模型(model-based)
 
 这种方法是对环境建模。这表示，我们要创建一个模型，来表示环境的行为。
 
 问题是，**每个环境**都会需要一个不同的模型 (马里奥每走一步，都会有一个新环境) 。这也是这个方法在强化学习中并不太常用的原因。
+
+#### 1.7.4 总结对比
+
+- Consequently, whatever method you use to solve your problem, **you will have a policy**, but in the case of value-based methods you don't train it, your policy **is just a simple function that you specify** (for instance greedy policy) and this policy **uses the values given by the value-function to select its actions.**
+- So the difference is:
+  - In policy-based, **the optimal policy is found by training the policy directly.**
+  - In value-based, **finding an optimal value function leads to having an optimal policy.**
+
+## 2. Q-Learning
+
+Q-learning是一种基于价值的算法。
+
+### 2.1 贝尔曼方程
+
+Bellman Equation: simplify our value estimation
+
+1.7.1中提到的2种基于价值的函数(state-value or action-value function)，都需要sum all the rewards an agent can get if it starts at that state.这就非常的tedious冗长的。因此用贝尔曼方程来简化价值函数的计算。
+$$
+V_\pi(s)=E_\pi [R_{t+1}+\gamma V_\pi(S_{t+1})|S_t=s]
+$$
+
+- $R_{t+1}$: immediate reward
+- $\gamma V_\pi(S_{t+1})$:  discounted value of the next state
+-  the idea of the Bellman equation is that instead of calculating each value as the sum of the expected return, **which is a long process**
+-  
+
+### 2.2 两种训练价值函数的策略strategies
+
+- RL agent都是通过使用之前的经验来学习，于此他们的区别是：
+  - Monte Carlo uses **an entire episode of experience before learning**
+  - Temporal Difference uses **only a step$(S_t,A_t,R_{t+1},S_{t+1})$ to learn**
+
+#### 2.2.1蒙特卡洛(Monte Carlo)
+
+Monte Carlo waits until the end of the episode, calculates $G_t$(expected return) and uses it as **a target for updating $V(S_t)$.**So it requires a **complete entire episode of interaction before updating our value function.**
+
+在玩完一局后才总结学习。
+
+- 公式：
+  $$
+  V(S_t)\leftarrow V(S_t)+\alpha[G_t-V(S_t)]
+  $$
+
+  - $V(S_t)$: value of state t
+
+    - 左侧的那个是：新的状态价值
+    - 右侧的2个是：之前估计的estimate的状态价值
+
+  - $G_t$: sum of the total rewards at timestep
+
+- 流程：
+
+  1. 在一个episode关卡结束后，我们得到这一局一系列的state,action,reward和new state
+  2. agent将所有reward相加，得到$G_t$
+  3. 利用上面的公式更新价值函数$V(S_t)$
+  4. 用新学到的知识开始新一轮的游戏。
+
+#### 2.2.2时间差分(Temporal Difference)
+
+Temporal difference, on the other hand, waits for only one interaction (one step)$S_{t+1}$ to form a TD target and update $V(S_t)$ using $R_{t+1}$ and $\gamma V(S_{t+1})$。
+
+每走一步学习一次。
+
+- 公式：
+  $$
+  V(S_t) \leftarrow V(S_t) + \alpha[R_{t+1}+\gamma V(S_{t+1})-V(S_t)]
+  $$
+
+  - $V(S_t)$: value of state 
+    - 左侧的那个是：新的状态价值
+    - 右侧的2个是：之前估计的estimate的状态价值
+  - $V(S_{t+1})$: value of next state
+  - $\gamma$: discount
+  - $R_{t+1}$: reward
+
+- 流程
+
+  1. 每一步结束后，我们会得到state,action,reward和new state
+
+  2. 将$V(S_{t+1})$和$R_{t+1}$用于estimate $G_t$,并利用上式更新新的价值函数$V(S_t)$
+
+     
+
+### 2.3 [Q-Learning](https://huggingface.co/blog/deep-rl-q-part2#what-is-q-learning)是什么
+
+- Q-Learning是一个off-policy, value-based函数并使用Temporal Difference方法来训练它的action-value function.
+
+- Q-Learning是一个用来训练Q-function的算法。
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/Q-function.jpg?raw=true)
+
+  - Q-function是一个action-value function。它determine了在一个particular state和采取specific action时的value。
+  - Q-table记录了所有的state-action pair values ,是Q-function的memory。
+    - 在给予了一个action和state后Q-function会搜索这个Q-table并输出一个值。
+    - 一开始Q-table通常会全都初始为0，在explore环境时更新Q-table
+
+### 2.4 Q-Learning算法
+
+### 2.5 对比：off-policy和on-policy
+
+
 
 # 二、一的代码
 
