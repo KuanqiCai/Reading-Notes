@@ -701,6 +701,8 @@ model.save(model_name)
 
 ## 2. Q-Learning
 
+代码地址：https://colab.research.google.com/github/huggingface/deep-rl-class/blob/main/unit2/unit2.ipynb
+
 ### 2.1 Frozen Lake
 
 #### 2.1.1 安装环境
@@ -1106,7 +1108,7 @@ def push_to_hub(repo_id,
   # Step 4: Record a video
   video_path =  repo_local_path / "replay.mp4"
   record_video(env, model["qtable"], video_path, video_fps)
-  
+
   # Push everything to hub
   print(f"Pushing repo {repo_name} to the Hugging Face Hub")
   repo.push_to_hub(commit_message=commit_message)
@@ -1149,8 +1151,6 @@ push_to_hub(
     model=model,
     env=env)
 ```
-
-
 
 ### 2.2 Taxi-v3
 
