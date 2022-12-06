@@ -219,7 +219,7 @@
 
 ## 2. Q-Learning
 
-Q-learning是一种基于价值的算法。
+Q-learning是一种基于价值的算法。The **Q comes from "the Quality" of that action at that state.**
 
 ### 2.1 贝尔曼方程
 
@@ -327,7 +327,7 @@ Temporal difference, on the other hand, waits for only one interaction (one step
 
    - 因为Q-Learning是时间差分算法TD，所以根据2.2.2,用如下公式更新
      $$
-     Q(S_t,A_t) \leftarrow Q(S_t,A_t) + \alpha[R_{t+1}+\gamma\ \underset{a}{max} Q(S_{t+1},a)-Q(S_t,A_t)]
+     Q(S_t,A_t) \leftarrow Q(S_t,A_t) + \alpha[\underbrace{\underbrace{R_{t+1}+\gamma\ \underset{a}{max} Q(S_{t+1},a)}_{TD\ Target}-Q(S_t,A_t)}_{TD\ Error}]\\
      $$
 
    - $\underset{a}{max} Q(S_{t+1},a)$: 这里更新算法时，我们总是选择带来highest state-action value的动作, 所以用到的是**greedy policy**而不是第二步中用到的 epsilon greedy policy。因为epsilon greeedy policy只有在一个随机数大于$\epsilon$时才原则最大值。
@@ -338,6 +338,128 @@ Temporal difference, on the other hand, waits for only one interaction (one step
   - Q-Learning中用greedy policy来更新，用epsilon greedy policy来行动
 - on-policy:using the **same policy for acting and updating.**
   - 另一个value-based的强化学习算法：sarsa,就是更新和行动都使用epsilon greedy policy
+
+
+
+
+
+## 3. Deep Q-learning
+
+### 3.1 与Q-learning的对比
+
+- 传统的Q-learning在需要巨大的state space问题时，需要花大量时间生成和更新Q-table，所以传统的Q-Learning变得ineffective。为了解决大state space的问题，Deep Q-learning不会使用Q-table，而是由一个神经网络获取状态并根据状态为每一个动作近似一个Q-value。
+- Deep Q-Learning **uses a deep neural network to approximate the different Q-values for each possible action at a state** (value-function estimation).
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/deep%20q%20and%20q%20learning.jpg?raw=true)
+
+
+
+### 3.2 Deep Q-Network(DQN)
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/deep-q-network.jpg?raw=true)
+
+- **Preprocess the input** is an essential step since we want to reduce the complexity of our state.
+  - 比如上面这个像素游戏，
+    - 可以grayscale将3通道rgb转为1个通道，因为颜色在这个游戏环境中不重要。
+    - 还可以将分辨率从160X210压缩到84X84.
+    - 还可以crop一部分游戏屏幕，因为不是所有地方都是有用信息
+
+- **temporal limitation**时间限制
+  - 只有1frame帧图(一个时刻)，我们不知道小球的运动方向，但如果将多帧放在一起看，我们就可以知道：啊，小球在向右上方飞。
+  - 所以为了得到temporal information时间信息，we stack four frames together.
+- stacked frames会被3个convolutional layers处理
+  - These layers **allow us to capture and exploit spatial relationships in images**
+  - Because frames are stacked together, **you can exploit some spatial properties across those frames**.
+
+- 最后经过全连接层，得到某1个state下每一个可能动作的Q-value
+
+### 3.3 Deep Q-Learning Algorithm
+
+相比于2.4Q-Learning算法的第四步，Deep Q-learning使用一个Loss function比较 predicted Q-value和Q-target。然后用gradient descent来更新Q-Networks的权重，如此反复得以更好的近似Q-values
+
+Q-Target: 
+$$
+y_j=r_j+\gamma max_{a'}\hat{Q}(\phi_{j+1},a';\theta^-)
+$$
+Q-Loss:
+$$
+y_j-Q(\phi_j,a_j;\theta)
+$$
+对比普通Q-learning的 td-target(q-target)和 td-error(q-loss)
+$$
+Q(S_t,A_t) \leftarrow Q(S_t,A_t) + \alpha[\underbrace{\underbrace{R_{t+1}+\gamma\ \underset{a}{max} Q(S_{t+1},a)}_{TD\ Target}-Q(S_t,A_t)}_{TD\ Error}]\\
+$$
+
+
+Deep Q-Learning算法有2个步骤
+
+- **Sampling**: we perform actions and **store the observed experiences tuples元组 in a replay memory**.
+- **Training**: Select the **small batch of tuple randomly and learn from it using a gradient descent update step**.
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/deep%20q%20algorithm.jpg?raw=true)
+
+由于引进了 Neural Network,相比Q-Learning更不稳定，所以需要加入如下3种措施
+
+1. *Experience Replay*, to make more **efficient use of experiences**.
+2. *Fixed Q-Target* **to stabilize the training**.
+3. *Double Deep Q-Learning*, to **handle the problem of the overestimation高估 of Q-values**.
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/stable%20deep%20q.jpg?raw=true)
+
+#### 3.3.1 Experience Replay
+
+experience replay:初始化第一行，sampling的最后1行 和 training的第一行 
+
+在Deep Q-learning中experience replay有2个功能
+
+1. **Make more efficient use of the experiences during the training**.
+
+   - Usually, in online reinforcement learning, we interact in the environment, get experiences (state, action, reward, and next state), learn from them (update the neural network) and discard them.
+   - But with experience replay, we create a replay buffer缓冲 D that saves experience samples **that we can reuse during the training.**=》This allows us to **learn from individual experiences multiple times**.
+
+2. **Avoid forgetting previous experiences and reduce the correlation相关性 between experiences**.
+
+   - The problem we get if we give sequential samples of experiences to our neural network is that it tends to forget **the previous experiences as it overwrites new experiences.** For instance, if we are in the first level and then the second, which is different, our agent can forget how to behave and play in the first level.
+
+   - This prevents **the network from only learning about what it has immediately done.**
+
+   - 也避免了action values oscillate震荡和diverge发散
+
+     
+
+#### 3.3.2 Fixed Q-Target
+
+- 当我们计算TD Error(Q-loss)时,我们计算**TD target (Q-Target)和current Q-value (estimation of Q)**的区别。
+
+  但我们不知道真正的TD Target是什么，所以我们也需要用如下公式更新TD Target：
+  $$
+  y_j=r_j+\gamma max_{a'}\hat{Q}(\phi_{j+1},a';\theta^-)
+  $$
+
+- 但我们在更新TD Target和Q value时，用的是同一组parameter。这就导致在训练的每一步，我们的Q-Value在shif的同时，Q-target也在shift。就像是在追逐一个会动的目标。
+
+  这会导致significant oscillation震荡 in training.
+
+- 为了解决上述问题，就需要fixed Q-target:
+
+  - Use a **separate network with a fixed parameter** for estimating the TD Target
+  - **Copy the parameters from our Deep Q-Network at every C step** to update the target network.
+
+#### 3.3.3 Double DQN
+
+Double DQNs, or Double Learning 由[Hado van Hasselt](https://papers.nips.cc/paper/3964-double-q-learning)提出，解决了**overestimation高估 of Q-values**的问题。
+
+- 我们在更新TD target时，要如何确认我们选择了**the best action for the next state is the action with the highest Q-value**？
+  - The accuracy of Q values depends on what action we tried **and** what neighboring states we explored.
+  - 因为一开始我们没有足够得分explore环境，所以我们选择最大Q Value时，可能是不准确的(noisy)，从而导致false positives。
+  - 如果non-optimal actions are regularly **given a higher Q value than the optimal best action, the learning will be complicated.**
+- 为了解决上述问题，需要使用2个神经网络来让 `动作action的选择` 和 `target Q value的生成` 解耦decouple:
+  - Use our **DQN network** to select the best action to take for the next state (the action with the highest Q value).
+  - Use our **Target network** to calculate the target Q value of taking that action at the next state.
+
+
+
+
 
 # 二、一的代码
 
@@ -1076,7 +1198,6 @@ def push_to_hub(repo_id,
 
   model_card += """
   ## Usage
-  ```python
   """
 
   model_card += f"""model = load_from_hub(repo_id="{repo_id}", filename="q-learning.pkl")
@@ -1087,9 +1208,7 @@ def push_to_hub(repo_id,
   evaluate_agent(env, model["max_steps"], model["n_eval_episodes"], model["qtable"], model["eval_seed"])
   """
 
-  model_card +="""
-  ```
-  """
+  model_card +=""" """
 
   readme_path = repo_local_path / "README.md"
   readme = ""
@@ -1309,5 +1428,149 @@ evaluate_agent(env, model["max_steps"], model["n_eval_episodes"], model["qtable"
 model = load_from_hub(repo_id="TUMxudashuai/q-FrozenLake-v1-4x4-noSlippery", filename="q-learning.pkl")
 env = gym.make(model["env_id"], is_slippery=False)
 evaluate_agent(env, model["max_steps"], model["n_eval_episodes"], model["qtable"], model["eval_seed"])
+```
+
+
+
+## 3. Deep Q-Learning
+
+https://colab.research.google.com/github/huggingface/deep-rl-class/blob/main/unit3/unit3.ipynb
+
+### 3.1 Atari' Space Invaders
+
+#### 3.1.1 setup a virtual display
+
+```python
+%%capture
+!pip install pyglet==1.5.1 
+!apt install python-opengl
+!apt install ffmpeg
+!apt install xvfb
+!pip3 install pyvirtualdisplay
+
+# Additional dependencies for RL Baselines3 Zoo
+!apt-get install swig cmake freeglut3-dev 
+
+# Virtual display
+from pyvirtualdisplay import Display
+
+virtual_display = Display(visible=0, size=(1400, 900))
+virtual_display.start()
+```
+
+
+
+#### 3.1.2 下载[RL-Baseline3 Zoo](https://github.com/DLR-RM/rl-baselines3-zoo)
+
+```python
+!git clone https://github.com/DLR-RM/rl-baselines3-zoo
+%cd /content/rl-baselines3-zoo/
+!pip install -r requirements.txt
+!pip install huggingface_sb3
+```
+
+- 如果遇到AutoROM的问题，导致无法下载stable-baseline3[extra]
+
+  - 第一步：
+
+    ```
+    pip install autorom
+    AutoROM --install-dir /path/to/install	#安装地址
+    AutoROM --accept-license
+    ```
+
+  - 第二步：
+
+    ```
+    pip install sb3-contrib
+    pip install optuna
+    ```
+
+  - 第三步：
+
+    修改/home/xuy1fe/.conda/envs/RL-learning/lib/python3.8/site-packages/stable_baselines3/common/atari_wrappers.py的第36行
+
+    ```
+    原来：noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)
+    改为：noops = self.unwrapped.np_random.integers(1, self.noop_max + 1)
+    ```
+
+#### 3.1.3 设置hyperparameters
+
+使用RL-Baseline3 Zoo框架做RL时，在[rl-baselines3-zoo/hyperparams/dqn.yml](https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/dqn.yml)处定义超参。
+
+```yml
+atari:
+  env_wrapper:
+    - stable_baselines3.common.atari_wrappers.AtariWrapper
+  frame_stack: 4
+  policy: 'CnnPolicy'
+  n_timesteps: !!float 1e6
+  buffer_size: 100000
+  learning_rate: !!float 1e-4
+  batch_size: 32
+  learning_starts: 100000
+  target_update_interval: 1000
+  train_freq: 4
+  gradient_steps: 1
+  exploration_fraction: 0.1
+  exploration_final_eps: 0.01
+  # If True, you need to deactivate handle_timeout_termination
+  # in the replay_buffer_kwargs
+  optimize_memory_usage: False
+```
+
+- 各个参数的意义见[stable-baseline3](https://stable-baselines3.readthedocs.io/en/master/modules/dqn.html#parameters) 
+  - 我们将4个frame stack起来
+  - 我们使用CnnPolicy来训练
+  - 训练1million steps
+
+#### 3.1.4 train
+
+使用RL-Baseline3 Zoo框架做RL时，使用[rl-baselines3-zoo/train.py](https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/train.py)来训练
+
+```
+python train.py --algo dqn  --env SpaceInvadersNoFrameskip-v4 -f logs/
+```
+
+#### 3.1.5 Evaluate
+
+使用RL-Baseline3 Zoo框架做RL时，使用[rl-baselines3-zoo/enjoy.py](https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/enjoy.py)来评估
+
+```
+python enjoy.py  --algo dqn  --env SpaceInvadersNoFrameskip-v4  --no-render  --n-timesteps 5000  --folder logs/
+```
+
+#### 3.1.6 上传到Huggingface
+
+Token: https://huggingface.co/settings/tokens
+
+1. 登陆账号
+
+```shell
+# 如果直接用终端
+huggingface-cli login
+
+# 如果用jupyter
+from huggingface_hub import notebook_login # To log to our Hugging Face account to be able to upload models to the Hub.
+notebook_login()
+!git config --global credential.helper store
+```
+
+2. 上传
+
+```
+python -m rl_zoo3.push_to_hub  --algo dqn  --env SpaceInvadersNoFrameskip-v4  --repo-name dqn-SpaceInvadersNoFrameskip-v4  -orga TUMxudashuai  -f logs/
+```
+
+
+
+#### 3.1.7 从Huggingface下载模型
+
+```shell
+# Download model and save it into the logs/ folder
+python -m rl_zoo3.load_from_hub --algo dqn --env BeamRiderNoFrameskip-v4 -orga sb3 -f rl_trained/
+# 评估下载的模型
+python enjoy.py --algo dqn --env BeamRiderNoFrameskip-v4 -n 5000  -f rl_trained/
 ```
 
