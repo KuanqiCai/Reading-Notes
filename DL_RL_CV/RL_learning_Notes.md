@@ -459,9 +459,19 @@ Double DQNs, or Double Learning 由[Hado van Hasselt](https://papers.nips.cc/pap
 
 
 
+## 4. Unity MLAgents
 
+- [Unity ML-Agents toolkit](https://github.com/Unity-Technologies/ml-agents) is a plugin based on the game engine Unity that allows us to use the **Unity Game Engine as an environment builder to train agents.**
 
-# 二、一的代码
+  [Unity ML-Agents Toolkit with hugging face](https://github.com/huggingface/ml-agents) 可以让我们不用下载unity直接使用mlagent
+
+### 4.1 Four components
+
+Unity ML-Agents has four essential components.
+
+1. 
+
+# 二、Stable-baseline3实现一、的代码
 
 ## 1. Foundation:
 
@@ -1462,6 +1472,8 @@ virtual_display.start()
 
 #### 3.1.2 下载[RL-Baseline3 Zoo](https://github.com/DLR-RM/rl-baselines3-zoo)
 
+RL Baselines3 Zoo: A Training Framework for Stable Baselines3 Reinforcement Learning Agents
+
 ```python
 !git clone https://github.com/DLR-RM/rl-baselines3-zoo
 %cd /content/rl-baselines3-zoo/
@@ -1572,5 +1584,467 @@ python -m rl_zoo3.push_to_hub  --algo dqn  --env SpaceInvadersNoFrameskip-v4  --
 python -m rl_zoo3.load_from_hub --algo dqn --env BeamRiderNoFrameskip-v4 -orga sb3 -f rl_trained/
 # 评估下载的模型
 python enjoy.py --algo dqn --env BeamRiderNoFrameskip-v4 -n 5000  -f rl_trained/
+```
+
+
+
+## 4. Unity MLAgents
+
+https://colab.research.google.com/github/huggingface/deep-rl-class/blob/main/unit4/unit4.ipynb
+
+
+
+# !!! Optuna: hyperparameter optimization
+
+[Optuna](https://github.com/optuna/optuna) is an automatic hyperparameter optimization software framework, particularly designed for machine learning.
+
+## 0. 自动超参搜索 资料汇总
+
+1. [深度学习模型超参数搜索实用指南](https://zhuanlan.zhihu.com/p/45353509)
+
+   主要有4种搜索策略
+
+   1. **Babysitting (或Grad student Descent)**人工搜索
+   2. **网格搜索 Grid Search**
+   3. **随机搜索 Random Search**
+   4. **贝叶斯优化 Bayesian Optimization**
+
+## 1. 下载依赖
+
+```shell
+!pip install stable-baselines3
+# Optional: install SB3 contrib to have access to additional algorithms
+!pip install sb3-contrib
+# Optuna will be used in the last part when doing hyperparameter tuning
+!pip install optuna
+```
+
+## 2. 导入库和算法
+
+```python
+import gym
+import numpy as np
+from stable_baselines3 import PPO, A2C, SAC, TD3, DQN
+# Algorithms from the contrib repo
+# https://github.com/Stable-Baselines-Team/stable-baselines3-contrib
+from sb3_contrib import QRDQN, TQC
+from stable_baselines3.common.env_util import make_vec_env	# Parallel environments
+from stable_baselines3.common.evaluation import evaluate_policy
+```
+
+## 3. The Importance of tuned Hyperparameters
+
+- When compared with Supervised Learning, Deep Reinforcement Learning is far more sensitive to the choice of hyper-parameters such as learning rate, number of neurons, number of layers, optimizer ... etc.
+
+- 除了超参，算法的选择也是很重要的。
+
+- 下面是用不同算法的选择 和 调整参数 对学习[Pendulum](https://www.gymlibrary.dev/environments/classic_control/pendulum/)的影响比较：
+
+  首先导入环境
+
+  ```python
+  env_id = "Pendulum-v1"
+  # Env used only for evaluation
+  eval_envs = make_vec_env(env_id, n_envs=10)
+  # 4000 training timesteps
+  budget_pendulum = 4000
+  ```
+
+### 3.1 PPO
+
+1. 训练4000步(20 episodes)
+
+    ```python
+    ppo_model = PPO("MlpPolicy", env_id, seed=0, verbose=0).learn(budget_pendulum)
+    mean_reward, std_reward = evaluate_policy(ppo_model, eval_envs, n_eval_episodes=100, deterministic=True)
+    
+    print(f"PPO Mean episode reward: {mean_reward:.2f} +/- {std_reward:.2f}")
+    ```
+
+    得到：PPO Mean episode reward: -1146.01 +/- 253.07
+
+    可见效果不好，尝试步骤2：
+
+2. 训练的更长40000步
+
+    ```python
+    new_budget = 10 * budget_pendulum
+    ppo_model = PPO("MlpPolicy", env_id, seed=0, verbose=0).learn(new_budget)
+    mean_reward, std_reward = evaluate_policy(ppo_model, eval_envs, n_eval_episodes=100, deterministic=True)
+    
+    print(f"PPO Mean episode reward: {mean_reward:.2f} +/- {std_reward:.2f}")
+    ```
+
+    得到：PPO Mean episode reward: -1164.48 +/- 205.87
+
+    可见效果一般，尝试步骤3：
+
+3.  tune Hyperparameters
+
+    ```python
+    tuned_params = {
+        "gamma": 0.9,
+        "use_sde": True,
+        "sde_sample_freq": 4,
+        "learning_rate": 1e-3,
+    }
+    
+    # budget = 10 * budget_pendulum
+    ppo_tuned_model = PPO("MlpPolicy", env_id, seed=1, verbose=1, **tuned_params).learn(50_000, log_interval=5)
+    
+    mean_reward, std_reward = evaluate_policy(ppo_tuned_model, eval_envs, n_eval_episodes=100, deterministic=True)
+    
+    print(f"Tuned PPO Mean episode reward: {mean_reward:.2f} +/- {std_reward:.2f}")
+    ```
+
+    得到：Tuned PPO Mean episode reward: -173.78 +/- 99.40
+
+    可见效果好了很多
+
+### 3.2 [A2C](https://stable-baselines3.readthedocs.io/en/master/modules/a2c.html)
+
+```python
+a2c_model = A2C("MlpPolicy",env_id,verbose=1)
+mean_reward, std_reward = evaluate_policy(a2c_model, eval_envs, n_eval_episodes=100, deterministic=True)
+
+print(f"A2C Mean episode reward: {mean_reward:.2f} +/- {std_reward:.2f}")
+```
+
+得到：A2C Mean episode reward: -1210.47 +/- 331.78
+
+
+
+## 4. Grad Student Descent
+
+这种方法是**100％手动**，是研究人员，学生和业余爱好者最广泛采用的方法。
+
+- 用A2C算法学习CartPole-v1任务：
+
+  ```python
+  budget = 20_000
+  eval_envs_cartpole = make_vec_env("CartPole-v1", n_envs=10)
+  model = A2C("MlpPolicy", "CartPole-v1", seed=8, verbose=1).learn(budget)
+  mean_reward, std_reward = evaluate_policy(model, eval_envs_cartpole, n_eval_episodes=50, deterministic=True)
+  
+  print(f"mean_reward:{mean_reward:.2f} +/- {std_reward:.2f}")
+  ```
+
+  得到mean_reward:140.40 +/- 54.13
+
+  然后我们尝试手动调参，打败上面这个分数，最优解得分是500：
+
+- Grad Student Descent
+
+  ```python
+  import torch.nn as nn
+  policy_kwargs = dict(
+      net_arch=[
+        dict(vf=[64, 64], pi=[64, 64]), # network architectures for actor/critic
+      ],
+      activation_fn=nn.Tanh,
+  )
+  
+  hyperparams = dict(
+      n_steps=5, # number of steps to collect data before updating policy
+      learning_rate=7e-4,
+      gamma=0.99, # discount factor
+      max_grad_norm=0.5, # The maximum value for the gradient clipping
+      ent_coef=0.0, # Entropy coefficient for the loss calculation
+  )
+  
+  model = A2C("MlpPolicy", "CartPole-v1", seed=8, verbose=1, **hyperparams).learn(budget)
+  
+  mean_reward, std_reward = evaluate_policy(model, eval_envs_cartpole, n_eval_episodes=50, deterministic=True)
+  
+  print(f"mean_reward:{mean_reward:.2f} +/- {std_reward:.2f}")
+  ```
+
+  得到mean_reward:132.30 +/- 34.88
+
+  显然手动调很麻烦
+
+## 5. Automatic Hyperparameter Tuning
+
+ Create a script that allows to search for the best hyperparameters automatically.
+
+### 5.1 导入optuna库
+
+```python
+import optuna
+from optuna.pruners import MedianPruner
+from optuna.samplers import TPESampler
+from optuna.visualization import plot_optimization_history, plot_param_importances
+```
+
+### 5.2 Config
+
+设置optuna的参数
+
+```python
+N_TRIALS = 100  # Maximum number of trials
+N_JOBS = 1 # Number of jobs to run in parallel
+N_STARTUP_TRIALS = 5  # Stop random sampling after N_STARTUP_TRIALS
+N_EVALUATIONS = 2  # Number of evaluations during the training
+N_TIMESTEPS = int(2e4)  # Training budget
+EVAL_FREQ = int(N_TIMESTEPS / N_EVALUATIONS)
+N_EVAL_ENVS = 5
+N_EVAL_EPISODES = 10
+TIMEOUT = int(60 * 15)  # 15 minutes
+
+ENV_ID = "CartPole-v1"
+
+DEFAULT_HYPERPARAMS = {
+    "policy": "MlpPolicy",
+    "env": ENV_ID,
+}
+```
+
+### 5.3 Define search space
+
+定义optuna想要找那些超参，以及他们的范围
+
+```python
+from typing import Any, Dict
+import torch
+import torch.nn as nn
+# 变量名后面的冒号是：类型注解，3.6以后加入的，冒号右边是类型，仅仅是注释，有些鸡肋
+def sample_a2c_params(trial: optuna.Trial) -> Dict[str, Any]:
+    """
+    Sampler for A2C hyperparameters.
+
+    :param trial: Optuna trial object
+    :return: The sampled hyperparameters for the given trial.
+    """
+    # Discount factor between 0.9 and 0.9999
+    gamma = 1.0 - trial.suggest_float("gamma", 0.0001, 0.1, log=True)
+    max_grad_norm = trial.suggest_float("max_grad_norm", 0.3, 5.0, log=True)
+    # 8, 16, 32, ... 1024
+    n_steps = 2 ** trial.suggest_int("exponent_n_steps", 3, 10)
+
+    ### YOUR CODE HERE
+    # TODO:
+    # - define the learning rate search space [1e-5, 1] (log) -> `suggest_float`
+    # - define the network architecture search space ["tiny", "small"] -> `suggest_categorical`
+    # - define the activation function search space ["tanh", "relu"]
+    learning_rate =trial.suggest_float("lr",1e-5, 1, log=True)
+    net_arch = trial.suggest_categorical("net_arch",["tiny","small"])
+    activation_fn = trial.suggest_categorical("activation_fn",["tanh","relu"])
+
+    ### END OF YOUR CODE
+
+    # Display true values
+    trial.set_user_attr("gamma_", gamma)
+    trial.set_user_attr("n_steps", n_steps)
+
+    net_arch = [
+        {"pi": [64], "vf": [64]}
+        if net_arch == "tiny"
+        else {"pi": [64, 64], "vf": [64, 64]}
+    ]
+
+    activation_fn = {"tanh": nn.Tanh, "relu": nn.ReLU}[activation_fn]
+
+    return {
+        "n_steps": n_steps,
+        "gamma": gamma,
+        "learning_rate": learning_rate,
+        "max_grad_norm": max_grad_norm,
+        "policy_kwargs": {
+            "net_arch": net_arch,
+            "activation_fn": activation_fn,
+        },
+    }
+```
+
+### 5.4 Define the Callback function
+
+define a custom callback to report the results of periodic evaluations to Optuna:
+
+```python
+from stable_baselines3.common.callbacks import EvalCallback
+
+class TrialEvalCallback(EvalCallback):
+    """
+    Callback used for evaluating and reporting a trial.
+    
+    :param eval_env: Evaluation environement
+    :param trial: Optuna trial object
+    :param n_eval_episodes: Number of evaluation episodes
+    :param eval_freq:   Evaluate the agent every ``eval_freq`` call of the callback.
+    :param deterministic: Whether the evaluation should
+        use a stochastic or deterministic policy.
+    :param verbose:
+    """
+
+    def __init__(
+        self,
+        eval_env: gym.Env,
+        trial: optuna.Trial,
+        n_eval_episodes: int = 5,
+        eval_freq: int = 10000,
+        deterministic: bool = True,
+        verbose: int = 0,
+    ):
+		# super() 函数是用于调用父类(超类)的一个方法。
+		# super() 是用来解决多重继承问题的，直接用类名调用父类方法在使用单继承的时候没问题，但是如果使用多继承，会涉及到查找顺序（MRO）、重复调用（钻石继承）等种种问题。
+        super().__init__(
+            eval_env=eval_env,
+            n_eval_episodes=n_eval_episodes,
+            eval_freq=eval_freq,
+            deterministic=deterministic,
+            verbose=verbose,
+        )
+        self.trial = trial
+        self.eval_idx = 0
+        self.is_pruned = False
+
+    def _on_step(self) -> bool:
+        if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
+            # Evaluate policy (done in the parent class)
+            # 评价体系在stable_baselines3.common.callbacks的EvalCallback中已定义，要找mean reward最高的
+            # 也是5.6中objective value的值
+            super()._on_step()
+            self.eval_idx += 1
+            # Send report to Optuna
+            self.trial.report(self.last_mean_reward, self.eval_idx)
+            # 根据trial的pruning algorithm来判断是否需要停止当前参数的训练
+            if self.trial.should_prune():
+                self.is_pruned = True
+                return False
+        return True
+```
+
+### 5.5 Define the objective function
+
+define the objective function that is in charge of sampling hyperparameters, creating the model and then returning the result to Optuna
+
+```python
+def objective(trial: optuna.Trial) -> float:
+    """
+    Objective function using by Optuna to evaluate
+    one configuration (i.e., one set of hyperparameters).
+
+    Given a trial object, it will sample hyperparameters,
+    evaluate it and report the result (mean episodic reward after training)
+
+    :param trial: Optuna trial object
+    :return: Mean episodic reward after training
+    """
+
+    kwargs = DEFAULT_HYPERPARAMS.copy()
+    ### YOUR CODE HERE
+    # TODO: 
+    # 1. Sample hyperparameters and update the keyword arguments
+    # 用5.3的取样函数，在搜索范围内排列组合参数，并返回
+    # 使用字典的update函数，将返回值更新到kwargs中去
+    kwargs.update(sample_a2c_params(trial))
+    # 创建RL model
+    model = A2C(**kwargs)
+
+    # 2. Create envs used for evaluation using `make_vec_env`, `ENV_ID` and `N_EVAL_ENVS`
+    eval_envs = make_vec_env(ENV_ID,N_EVAL_ENVS)
+
+    # 3. Create the `TrialEvalCallback` callback defined above that will periodically evaluate
+    # and report the performance using `N_EVAL_EPISODES` every `EVAL_FREQ`
+    # TrialEvalCallback signature:
+    # TrialEvalCallback(eval_env, trial, n_eval_episodes, eval_freq, deterministic, verbose)
+    # 使用5.4的回调函数，返回每个参数组合的效果
+    eval_callback = TrialEvalCallback(eval_envs,
+                                      trial, 
+                                      N_EVAL_EPISODES, 
+                                      EVAL_FREQ,
+                                      deterministic=True)
+
+    ### END OF YOUR CODE
+
+    nan_encountered = False
+    try:
+        # Train the model
+        model.learn(N_TIMESTEPS, callback=eval_callback)
+    except AssertionError as e:
+        # Sometimes, random hyperparams can generate NaN
+        print(e)
+        nan_encountered = True
+    finally:
+        # Free memory
+        model.env.close()
+        eval_envs.close()
+
+    # Tell the optimizer that the trial failed
+    if nan_encountered:
+        return float("nan")
+
+    if eval_callback.is_pruned:
+        raise optuna.exceptions.TrialPruned()
+
+    return eval_callback.last_mean_reward
+```
+
+### 5.6 optimization loop
+
+调用5.3，5.4，5.5的代码，不断循环找出最优的参数设置
+
+```python
+import torch as th
+
+# Set pytorch num threads to 1 for faster training
+th.set_num_threads(1)
+# Select the sampler, can be random, TPESampler, CMAES, ...
+sampler = TPESampler(n_startup_trials=N_STARTUP_TRIALS)
+# Do not prune before 1/3 of the max budget is used
+# 在1/3 budget预算后，会prune the least promising trials
+# 每个trials代表一组参数设置组合
+pruner = MedianPruner(
+    n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=N_EVALUATIONS // 3
+)
+# Create the study and start the hyperparameter optimization
+study = optuna.create_study(sampler=sampler, pruner=pruner, direction="maximize")
+
+try:
+    study.optimize(objective, n_trials=N_TRIALS, n_jobs=N_JOBS, timeout=TIMEOUT)
+except KeyboardInterrupt:
+    pass
+
+print("Number of finished trials: ", len(study.trials))
+
+print("Best trial:")
+trial = study.best_trial
+
+print(f"  Value: {trial.value}")
+
+print("  Params: ")
+for key, value in trial.params.items():
+    print(f"    {key}: {value}")
+
+print("  User attrs:")
+for key, value in trial.user_attrs.items():
+    print(f"    {key}: {value}")
+
+# Write report
+study.trials_dataframe().to_csv("study_results_a2c_cartpole.csv")
+
+fig1 = plot_optimization_history(study)
+fig2 = plot_param_importances(study)
+
+fig1.show()
+fig2.show()
+```
+
+最后得到
+
+```python
+Number of finished trials:  60
+Best trial:
+  Value: 500.0
+  Params: 
+    gamma: 0.007193710709881038
+    max_grad_norm: 1.971438140124285
+    exponent_n_steps: 8
+    lr: 0.007340303426309211
+    net_arch: tiny
+    activation_fn: relu
+  User attrs:
+    gamma_: 0.9928062892901189
+    n_steps: 256
 ```
 
