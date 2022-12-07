@@ -3,6 +3,9 @@
 1. [OpenAI Spinning Up](https://spinningup.openai.com/en/latest/index.html)
 2. [本笔记所学习的课](https://github.com/huggingface/deep-rl-class)
 3. [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/RLbook2020.pdf)(已保存在onedrive)
+4. 李宏毅深度强化学习：
+   - [笔记](https://github.com/changliang5811/leedeeprl-notes)
+   - [课程](http://speech.ee.ntu.edu.tw/~tlkagk/courses_MLDS18.html)，[bilibili](https://www.bilibili.com/video/BV1MW411w79n/)
 
 # 一、深度强化学习
 
@@ -469,7 +472,88 @@ Double DQNs, or Double Learning 由[Hado van Hasselt](https://papers.nips.cc/pap
 
 Unity ML-Agents has four essential components.
 
-1. 
+1. **Learning environment**:
+
+    **contains the Unity scene (the environment) and the environment elements** (game characters)**.**
+
+2. **Python API**
+
+   contains the **low-level Python interface** for **interacting and manipulating the environment**. It’s the API we use to launch the training.
+
+3. **communicator**
+
+   connects the environment (C#) with the Python API (Python).
+
+4. **Python trainers**
+
+   the RL algorithms made with PyTorch (PPO, SAC…).
+
+### 4.2 Inside the Learning Component
+
+There are three important elements
+
+1. Agent:
+
+   the actor of the scene
+
+2. Brain:
+
+   the policy we optimize to train the agent
+
+3. Academy:
+
+   - This element **orchestrates策划 agents and their decision-making process.** 
+
+   - 可以把academy想象成一个maestro音乐大师，负责处理来自python api的请求。比如python api说"we need some observations", academy就让agents去搜集一些observations。
+
+   - The Academy **will be the one that will send the order to our Agents and ensure that agents are in sync**同步:
+
+     - Collect Observations
+
+     - Select your action using your policy
+
+     - Take the Action
+
+     - Reset if you reached the max step or if you’re done.
+
+### 4.3 Pyramid Environment
+
+我们这里用来训练的环境
+
+- The goal in this environment is to train our agent **to get the gold brick金砖 on the top of the Pyramid金字塔.** 为了实现这个目标，我们需要：
+
+  - a button to spawn a pyramid
+  - navigate to the Pyramid
+  - knock it over
+  - move to the gold brick at the top
+
+- reward system:
+
+  - -0.001: for every step
+
+    given this negative reward for every step, will push our agent to go faster
+
+  - +2 for moving to golden brick
+
+  - 为了训练agent能seeks that button and then the Pyramid to destroy，这里使用2种Rewards
+
+    1. The *extrinsic外在 one* given by the environment.
+    2. But also an *intrinsic内在 one* called *curiosity*. **This second will push our agent to be curious, or in other terms, to better explore its environment.** 关于Deep RL中的curiosity见副2
+
+- Observation:
+
+  - Instead of normal vision(frame), we use 148 raycasts光线投射 that can each detect objects (switch, bricks, golden brick, and walls.)
+  - a **boolean variable indicating表明 the switch state** (did we turn on or not the switch to spawn the Pyramid) 
+  -  a vector that **contains agent’ speed.**
+
+- Action space:
+
+  - Forward Motion: Up/Down
+  - Rotation: Rotate left / Rotate right
+
+## 5. Policy Gradient with Pytorch
+
+
 
 # 二、Stable-baseline3实现一、的代码
 
@@ -1452,14 +1536,14 @@ https://colab.research.google.com/github/huggingface/deep-rl-class/blob/main/uni
 
 ```python
 %%capture
-!pip install pyglet==1.5.1 
-!apt install python-opengl
-!apt install ffmpeg
-!apt install xvfb
-!pip3 install pyvirtualdisplay
+pip install pyglet==1.5.1 
+sudo apt install python-opengl
+sudo apt install ffmpeg
+sudo apt install xvfb
+pip3 install pyvirtualdisplay
 
 # Additional dependencies for RL Baselines3 Zoo
-!apt-get install swig cmake freeglut3-dev 
+apt-get install swig cmake freeglut3-dev 
 
 # Virtual display
 from pyvirtualdisplay import Display
@@ -1592,9 +1676,97 @@ python enjoy.py --algo dqn --env BeamRiderNoFrameskip-v4 -n 5000  -f rl_trained/
 
 https://colab.research.google.com/github/huggingface/deep-rl-class/blob/main/unit4/unit4.ipynb
 
+cuda版本有问题，未找到如何在本地跑的方法
+
+### 4.1 下载ml-agents
+
+```shell
+git clone https://github.com/huggingface/ml-agents/
+cd ml-agents
+pip3 install -e ./ml-agents-envs
+pip3 install -e ./ml-agents
+```
+
+### 4.2 下载训练环境pyramids
+
+```shell
+# 存放环境的地址
+mkdir ./trained-envs-executables/linux -p
+# 用wget从google drive：https://drive.google.com/uc?export=download&id=1UiFNdKlsH0NTu32xV-giYUEVKV4-vc7H 下载环境
+# 也可以直接下载然后放到上面那个文件夹
+!wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1UiFNdKlsH0NTu32xV-giYUEVKV4-vc7H' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1UiFNdKlsH0NTu32xV-giYUEVKV4-vc7H" -O ./trained-envs-executables/linux/Pyramids.zip && rm -rf /tmp/cookies.txt
+# 解压下载的文件
+unzip -d ./trained-envs-executables/linux/ ./trained-envs-executables/linux/Pyramids.zip
+# 给文件权限
+chmod -R 755 ./trained-envs-executables/linux/Pyramids/Pyramids
+```
+
+### 4.3 修改hyerparameters
+
+ML-Agents训练用的超参，保存在ml-agents/config/的对应yaml文件中。ML-Agent各个超参的定义见[官网](https://github.com/Unity-Technologies/ml-agents/blob/main/docs/Training-Configuration-File.md)
+
+这里我们修改ml-agents/config/ppo/PyramidsRND.yaml文件
+
+```
+max_steps: 3000000
+改成
+max_steps: 500000
+```
+
+### 4.4 训练agent
+
+设置4个参数：
+
+1. `mlagents-learn <config>`: the path where the hyperparameter config file is.
+2. `--env`: where the environment executable is.
+3. `--run_id`: the name you want to give to your training run id.
+4. `--no-graphics`: to not launch the visualization during the training.
+
+```shell
+mlagents-learn ./config/ppo/PyramidsRND.yaml --env=./trained-envs-executables/linux/Pyramids/Pyramids --run-id="Pyramids Training" --no-graphics
+```
 
 
-# !!! Optuna: hyperparameter optimization
+
+### 4.5 上传到hugging face
+
+- 登陆
+
+    ```shell
+    # if no jupyter:huggingface-cli login
+    from huggingface_hub import notebook_login
+    notebook_login()
+    ```
+    
+- 上传
+
+  使用`mlagents-push-to-hf`上传，设置如下参数：
+  
+  - `--run-id`: the name of the training run id.
+  - `--local-dir`: where the agent was saved, it’s results/, so in my case results/First Training.
+  - `--repo-id`: the name of the Hugging Face repo you want to create or update. It’s always / If the repo does not exist **it will be created automatically**
+  - `--commit-message`: since HF repos are git repository you need to define a commit message.
+  
+  ```shell
+  !mlagents-push-to-hf --run-id="Pyramids Training" --local-dir="./results/Pyramids Training" --repo-id="TUMxudashuai/testpyramidsrnd" --commit-message="First Pyramids"
+  ```
+  
+  
+### 4.6 Visual agent online
+
+https://huggingface.co/spaces/unity/ML-Agents-Pyramids
+
+在上述网址，选择4.5中上传的模型
+
+
+
+## 5. Policy Gradient with PyTorch
+
+https://colab.research.google.com/github/huggingface/deep-rl-class/blob/main/unit5/unit5.ipynb
+
+
+
+# 副1、 Optuna: hyperparameter optimization
 
 [Optuna](https://github.com/optuna/optuna) is an automatic hyperparameter optimization software framework, particularly designed for machine learning.
 
@@ -2047,4 +2219,65 @@ Best trial:
     gamma_: 0.9928062892901189
     n_steps: 256
 ```
+
+
+
+# 副2、 Curiosity-Driven Learning
+
+[Curiosity-Driven Learning through Next State Prediction](https://medium.com/data-from-the-trenches/curiosity-driven-learning-through-next-state-prediction-f7f4e2f592fa)
+
+[Random Network Distillation: a new take on Curiosity-Driven Learning](https://medium.com/data-from-the-trenches/curiosity-driven-learning-through-random-network-distillation-488ffd8e5938)
+
+## 1. Two Major Problems in Modern RL
+
+### 1.1 [sparse rewards](https://zhuanlan.zhihu.com/p/558034131)稀疏奖励  problem
+
+对应于dense rewards稠密奖励
+
+- most rewards do not contain information, and hence are set to zero.完成目标事件的次数太少或者完成目标的步数太长，导致奖励空间中的负奖励样本远远多于正奖励样本数。
+
+- 问题的原因：
+
+  RL是基于reward hypothesis的算法，也就是说RL的目标是最大化cumulative rewards。因此如果Rewards一直都是0，agent也就不知道他们的action是否appropriate恰当，最后agent进步缓慢。
+
+- 例子：
+
+  1. 在围棋中，从开始下棋到棋局结束才能判断胜负，此时智能体才能获得奖励，棋局中间过程中的奖励很难评价；
+  2. 在导航任务中，智能体只有在规定的时间步内到达指定位置才能得到奖励，中间过程的每一步都是无奖励的；
+  3. 在机械臂抓取任务中，机械臂通过完成一系列复杂的位姿控制成功抓取目标后才能获得奖励，中间任何一步的失败都导致无法获得奖励。
+
+  在这些任务过程中，如果agent没有得到有效的反馈(dense rewards), 它会花费大量时间学习最优策略并且到处乱试却找不到目标。
+
+### 1.2  extrinsic reward function is handmade手工的
+
+- 在每一个环境中，人们必须手动Implement实施 reward function。但我们如何scale度量一个大而复杂的环境呢？
+
+## 2. What is Curiosity
+
+- 为了解决上面这两个问题，我们需要开发一个reward function，它对于agent是intrinsic内在的(generated by the agent itself). The agent will act as a self-learner since it will be the student, but also its own feedback master.
+
+  这个intrinsic reward mechanism机制，也被称为 **curiosity**, 因为它的reward会不断让agent去explore novel/unfamiliar states.
+
+   In order to achieve that, our agent will receive a high reward when exploring new trajectories.
+
+## 3. 两种计算curiosity的方法
+
+### 3.1 Curiosity-Driven Learning through Next State Prediction
+
+[Curiosity-Driven Learning through Next State Prediction](https://medium.com/data-from-the-trenches/curiosity-driven-learning-through-next-state-prediction-f7f4e2f592fa)是一个经典方法。
+$$
+IR=||predicted(s_{t+1})-s_{t+1} ||
+$$
+
+- Intrinsic reward(IR): prediction error in predicting $s_{t+1}$ given $s_t$ and $a_t$
+- 我们会得到
+  - small IR in familiar states: 因为 easy to predict next state
+  - big IR in unfamiliar states: 因为 hard to predict next state in unknown trajectories
+- Using curiosity will push our agent to favor transitions with high prediction error (which will be higher in areas where the agent has spent less time, or in areas with complex dynamics) **and consequently better explore our environment.**
+
+### 3.2 Random Network Distillation
+
+ML-Agents使用了一个更先进的方法：[Random Network Distillation: a new take on Curiosity-Driven Learning](https://medium.com/data-from-the-trenches/curiosity-driven-learning-through-random-network-distillation-488ffd8e5938)
+
+
 
