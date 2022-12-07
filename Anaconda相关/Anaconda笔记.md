@@ -120,4 +120,25 @@ https://github.com/ipython-contrib/jupyter_contrib_nbextensions
    jupyter kernelspec remove tensorflow-gpu
    ```
 
-   
+# conda install VS pip install
+- conda install xxx：这种方式安装的库都会放在.conda/pkgs目录下，这样的好处就是，当在某个环境下已经下载好了某个库，再在另一个环境中还需要这个库时，就可以直接从pkgs目录下将该库复制至新环境而不用重复下载。
+- pip install xxx：分两种情况，一种情况就是当前conda环境的python是conda安装的，和系统的不一样，那么xxx会被安装到.conda/envs/current_env/lib/python3.x/site-packages文件夹中，如果当前conda环境用的是系统的python，那么xxx会通常会被安装到~/.local/lib/python3.x/site-packages文件夹中
+- 使用site模块查看安装路径的优先级  
+  `python -m site`  
+  得到:  
+  ```
+  sys.path = [
+    '/home/xuy1fe/Desktop/Ball_plate/Work_Space/RL-learning/rl-baselines3-zoo',
+    '/home/xuy1fe/.conda/envs/RL-learning/lib/python38.zip',
+    '/home/xuy1fe/.conda/envs/RL-learning/lib/python3.8',
+    '/home/xuy1fe/.conda/envs/RL-learning/lib/python3.8/lib-dynload',
+    '/home/xuy1fe/.local/lib/python3.8/site-packages',
+    '/home/xuy1fe/.conda/envs/RL-learning/lib/python3.8/site-packages',
+  ]
+  USER_BASE: '/home/xuy1fe/.local' (exists)
+  USER_SITE: '/home/xuy1fe/.local/lib/python3.8/site-packages' (exists)
+  ENABLE_USER_SITE: True
+
+  ```  
+  这里的USER_BASE 和USER_SITE其实就是用户自定义的启用Python脚本和依赖安装包的基础路径，从上面的输出可以看到，import xxx时，先找的是当前文件夹然后是.conda/pkgs目录.
+  
