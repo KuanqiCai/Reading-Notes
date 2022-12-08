@@ -553,7 +553,108 @@ There are three important elements
 
 ## 5. Policy Gradient with Pytorch
 
+前面的Q-Learning和Deep Q-Learning都是value based方法。他们需要estimate估计一个value function作为intermediate step然后再去寻找最优的policy。而policy-based方法，就可以直接optimize policy。
 
+这里学习第一个policy-based method：Reinforce.
+
+### 5.1 Policy Gradients 
+
+#### 5.1.1 Overview
+
+- Policy gradient策略梯度是policy based Mehods的一种。Policy gradient通过estimate the weights of the optimal policy using Gradient Ascent梯度上升 来优化Policy。
+
+- RL的目的是找到一个有着optimal behavior的policy(strategy)来最大化expected cumulative reward.
+
+  而policy是一个给定state,outputs和distribution over actions的函数。
+  $$
+  \pi(a|s)=P[A|s]
+  $$
+
+  - stochastic policy: output a probability distribution over actions.
+
+- Policy Gradients的目标是：to control the probability distribution of actions by tuning the policy such that以便 **good actions (that maximize the return) are sampled more frequently in the future.**
+
+- Policy Gradient 算法：
+
+  ![](https://huggingface.co/blog/assets/85_policy_gradient/pg_bigpicture.jpg)
+
+
+
+#### 5.1.2 Policy Gradients advantage
+
+三个优点：
+
+1. The simplicity of the integration: **we can estimate the policy directly without storing additional data (action values).**
+
+2. Policy gradient methods can **learn a stochastic policy while value functions can't**.、
+
+   带来的2个好处：
+
+   1. We **don't need to implement an exploration/exploitation trade-off by hand**. Since we output a probability distribution over actions, the agent explores **the state space without always taking the same trajectory.**
+   2. We also get rid of the problem of **perceptual aliasing**感知混淆. Perceptual aliasing is when two states seem (or are) the same but need different actions.
+
+3. Policy gradients are **more effective in high-dimensional action spaces and continuous actions spaces**
+
+   比如自动驾驶，当我们使用Deep Q-learning时需要要为每一个运动的选择(15°, 17.2°, 19,4°, honking, etc.)计算一个Q-Value。而policy gradient则输出一个**probability distribution over actions.**
+
+#### 5.1.3 Policy Gradients disadvantages
+
+1. **Policy gradients converge a lot of time on a local maximum instead of a global optimum.**
+2. Policy gradient goes faster, **step by step: it can take longer to train (inefficient).**
+3. Policy gradient can have high variance (solution baseline).
+
+### 5.2 Reinforce 算法
+
+[更多数学细节](https://www.youtube.com/watch?v=AKbX1Zvo7r8)
+
+#### 5.2.1 policy 和 objective function
+
+- Reinforce, also called Monte-Carlo Policy Gradient, **uses an estimated return from an entire episode to update the policy parameter** $\theta$.
+
+  We have our policy π which has a parameter θ. This π, given a state, **outputs a probability distribution of actions**:
+  $$
+  \pi_\theta(a|s) = P[a|s;\theta]
+  $$
+
+  - $\pi_\theta(a_t|s_t)$是给定policy下，agent在状态$s_t$下选择某动作$a_t$的概率
+
+- score/objective function$J(\theta)$
+
+  $J(\theta)$被用来measure一个policy的好与坏：
+  $$
+  J(\theta)=E_{\tau-\pi}[R(\tau)]\\
+  R(\tau)=r_{t+1}+\gamma r_{t+2} + \gamma^2 r_{t+3} + \gamma^3r_{t+4} 
+  $$
+
+  - $\tau$ ： trajectory, sequence of states and actions
+  - $R(\tau)$：cumulative reward
+  - $\gamma$：discount rate
+
+#### 5.2.2 Reinforce algorithm
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!插图：Reinforce Algorithm
+
+- 算法流程：
+
+  1. Use the policy $\pi_\theta$ to collect an episode $\tau$.
+
+  2. Use the episode to estimate the gradient $\hat{g}=\bigtriangledown_{\theta}J(\theta)$
+     $$
+     \bigtriangledown_{\theta}J(\theta)=\sum_{t=0}\bigtriangledown_\theta log\pi_\theta(a_t|s_t)R(\tau)
+     $$
+
+     - $\bigtriangledown_\theta log\pi_\theta(a_t|s_t)$  is the direction of **steepest陡峭的 increase of the (log) probability** of selecting action at from state st. => 
+
+       This tells use **how we should change the weights of policy** if we want to increase/decrease the log probability of selecting action at at state st.
+
+     - $R(\tau)$: is the scoring function
+
+       - If the return is high, it will push up推高 the probabilities of the (state, action) combinations.
+       - Else, if the return is low, it will push down the probabilities of the (state, action) combinations.
+
+  3. Update the weights of the policy: $\theta \leftarrow \theta + \alpha \hat{g}$
+
+  
 
 # 二、Stable-baseline3实现一、的代码
 
@@ -1763,6 +1864,595 @@ https://huggingface.co/spaces/unity/ML-Agents-Pyramids
 ## 5. Policy Gradient with PyTorch
 
 https://colab.research.google.com/github/huggingface/deep-rl-class/blob/main/unit5/unit5.ipynb
+
+### 5.1 下载依赖
+
+```python
+!apt install python-opengl
+!apt install ffmpeg
+!apt install xvfb
+!pip3 install pyvirtualdisplay
+
+# Virtual display
+from pyvirtualdisplay import Display
+
+virtual_display = Display(visible=0, size=(500, 500))
+virtual_display.start()
+
+!pip install gym
+!pip install git+https://github.com/ntasfi/PyGame-Learning-Environment.git
+!pip install git+https://github.com/qlan3/gym-games.git
+!pip install huggingface_hub
+!pip install pyyaml==6.0 # avoid key error metadata
+!pip install pyglet # Virtual Screen
+```
+
+### 5.2 导入库
+
+```python
+import numpy as np
+from collections import deque
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.distributions import Categorical
+
+import gym
+import gym_pygame
+
+from huggingface_hub import notebook_login # To log to our Hugging Face account to be able to upload models to the Hub.
+
+import imageio	#To generate a replay video
+
+# 检查下现在用的是否是gpu
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(device)
+```
+
+
+
+### 5.3 Agent1: CartPole-v1 
+
+- 为什么从简单的环境开始：
+
+  As explained in [Reinforcement Learning Tips and Tricks](https://stable-baselines3.readthedocs.io/en/master/guide/rl_tips.html), when you implement your agent from scratch从零开始 you need **to be sure that it works correctly and find bugs with easy environments before going deeper**. Since finding bugs will be much easier in simple environments.
+
+#### 5.3.1 创建环境
+
+```python
+env_id = "CartPole-v1"
+# Create the env
+env = gym.make(env_id)
+
+# Create the evaluation env
+eval_env = gym.make(env_id)
+
+# Get the state space and action space
+s_size = env.observation_space.shape[0]
+a_size = env.action_space.n
+
+print("_____OBSERVATION SPACE_____ \n")
+print("The State Space is: ", s_size)
+print("Sample observation", env.observation_space.sample()) # Get a random observation
+
+print("\n _____ACTION SPACE_____ \n")
+print("The Action Space is: ", a_size)
+print("Action Space Sample", env.action_space.sample()) # Take a random action
+```
+
+#### 5.3.2 构建Policy
+
+参考：
+
+- [PyTorch official Reinforcement Learning example](https://github.com/pytorch/examples/blob/main/reinforcement_learning/reinforce.py)
+- [Udacity Reinforce](https://github.com/udacity/deep-reinforcement-learning/blob/master/reinforce/REINFORCE.ipynb)
+
+结构：
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!插图：Reinforce Architecture
+
+- Two fully connected layers (fc1 and fc2).
+- Using ReLU as activation function of fc1
+- Using Softmax to output a probability distribution over actions
+
+```python
+class Policy(nn.Module):
+    def __init__(self, s_size, a_size, h_size):
+        # py3可以直接写super().__init__(),下面是Py2的写法
+        super(Policy, self).__init__()
+        # Create two fully connected layers
+        self.fc1 = nn.Linear(s_size,h_size)
+        self.fc2 = nn.Linear(h_size,a_size)
+
+
+    def forward(self, x):
+        # Define the forward pass
+        # state goes to fc1 then we apply ReLU activation function
+        x = F.relu(self.fc1(x))
+        # fc1 outputs goes to fc2
+        x = self.fc2(x)
+        # We output the softmax
+        return F.softmax(x,dim=1)
+        
+    def act(self, state):
+        """
+        Given a state, take action
+        """
+        # torch.tensor.to():将tensor类型implement到device(gpu/cpu)上
+        # torch.unsqueeze(input,dim):在dim处插入input，并返回这个tensor
+        # torch.from_numpy():将numpy的数组转换为tensor
+        state = torch.from_numpy(state).float().unsqueeze(0).to(device)
+        probs = self.forward(state).cpu()
+        # Creates a categorical distribution分类分布parameterized by either probs or logits 
+        m = Categorical(probs)
+        # 这里我们需要从动作概率的分布中，选择一个运动
+        # 而不是选择概率最大的那个动作: action = np.argmax(m)
+        action = m.sample()
+        return action.item(), m.log_prob(action)
+```
+
+#### 5.3.3 构建Reinforce Training Algorithm
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!插图：Reinforce Algorithm
+
+- We want to maximize our utility function $J(\theta)$ but in PyTorch like in Tensorflow it's better to **minimize an objective function.**
+    - So let's say we want to reinforce action 3 at a certain timestep. Before training this action P is 0.25.
+    - So we want to modify $\theta$ such that $\pi_\theta(a_3|s; \theta) > 0.25$
+    - Because all P must sum to 1, max $\pi_\theta(a_3|s; \theta)$ will **minimize other action probability.**
+    - So we should tell PyTorch **to min $1 - \pi_\theta(a_3|s; \theta)$.**
+    - This loss function approaches 0 as $\pi_\theta(a_3|s; \theta)$ nears 1.
+    - So we are encouraging the gradient to max $\pi_\theta(a_3|s; \theta)$
+
+```python
+def reinforce(policy, optimizer, n_training_episodes, max_t, gamma, print_every):
+    # Help us to calculate the score during the training
+    # deque是Python标准库 collections 中的一个类，实现了两端都可以操作的队列，相当于双端队列
+    scores_deque = deque(maxlen=100)
+    scores = []
+    # Line 3 of pseudocode
+    for i_episode in range(1, n_training_episodes+1):
+        saved_log_probs = []
+        rewards = []
+        state = env.reset() # TODO: reset the environment
+        # Line 4 of pseudocode
+        for t in range(max_t):
+            action, log_prob = policy.act(state)# TODO get the action
+            saved_log_probs.append(log_prob)
+            state, reward, done, _ = env.step(action)# TODO: # Take the action and get the new observation space
+            rewards.append(reward)
+            if done:
+                break 
+        scores_deque.append(sum(rewards))
+        scores.append(sum(rewards))
+        
+        # Line 6 of pseudocode: calculate the return
+        ## Here, we calculate discounts for instance [0.99^1, 0.99^2, 0.99^3, ..., 0.99^len(rewards)]
+        discounts = [gamma**i for i in range(len(rewards)+1)]
+        ## We calculate the return by sum(gamma[t] * reward[t]) 
+        # The zip() function takes iterables (can be zero or more), aggregates them in a tuple, and returns it.
+        R = sum([a*b for a,b in zip( discounts , rewards  )]) # TODO: what do we need to put in zip() remember that we calculate gamma[t] * reward[t]
+        
+        # Line 7:
+        policy_loss = []
+        for log_prob in saved_log_probs:
+            policy_loss.append(-log_prob * R)
+        policy_loss = torch.cat(policy_loss).sum()
+        
+        # Line 8: PyTorch prefers 
+        optimizer.zero_grad()
+        policy_loss.backward()
+        optimizer.step()
+        
+        if i_episode % print_every == 0:
+            print('Episode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_deque)))
+        
+    return scores
+```
+
+#### 5.3.4 给定Hyperparameters
+
+```python
+cartpole_hyperparameters = {
+    "h_size": 16,
+    "n_training_episodes": 1000,
+    "n_evaluation_episodes": 10,
+    "max_t": 1000,
+    "gamma": 1.0,
+    "lr": 1e-2,
+    "env_id": env_id,
+    "state_space": s_size,
+    "action_space": a_size,
+}
+```
+
+#### 5.3.5 Train
+
+```python
+# Create policy and place it to the device
+cartpole_policy = Policy(cartpole_hyperparameters["state_space"], cartpole_hyperparameters["action_space"], cartpole_hyperparameters["h_size"]).to(device)
+cartpole_optimizer = optim.Adam(cartpole_policy.parameters(), lr=cartpole_hyperparameters["lr"])
+
+scores = reinforce(cartpole_policy,
+                   cartpole_optimizer,
+                   cartpole_hyperparameters["n_training_episodes"], 
+                   cartpole_hyperparameters["max_t"],
+                   cartpole_hyperparameters["gamma"], 
+                   100)
+```
+
+#### 5.3.6 Evaluation
+
+```python
+def evaluate_agent(env, max_steps, n_eval_episodes, policy):
+  """
+  Evaluate the agent for ``n_eval_episodes`` episodes and returns average reward and std of reward.
+  :param env: The evaluation environment
+  :param n_eval_episodes: Number of episode to evaluate the agent
+  :param policy: The Reinforce agent
+  """
+  episode_rewards = []
+  for episode in range(n_eval_episodes):
+    state = env.reset()
+    step = 0
+    done = False
+    total_rewards_ep = 0
+    
+    for step in range(max_steps):
+      action, _ = policy.act(state)
+      new_state, reward, done, info = env.step(action)
+      total_rewards_ep += reward
+        
+      if done:
+        break
+      state = new_state
+    episode_rewards.append(total_rewards_ep)
+  mean_reward = np.mean(episode_rewards)
+  std_reward = np.std(episode_rewards)
+
+  return mean_reward, std_reward
+
+evaluate_agent(eval_env, 
+               cartpole_hyperparameters["max_t"], 
+               cartpole_hyperparameters["n_evaluation_episodes"],
+               cartpole_policy)
+```
+
+#### 5.3.7 上传到hugging face
+
+- 准备工作：
+
+```python
+%%capture
+from huggingface_hub import HfApi, HfFolder, Repository
+from huggingface_hub.repocard import metadata_eval_result, metadata_save
+from pathlib import Path
+import datetime
+import json
+import imageio
+
+def record_video(env, policy, out_directory, fps=30):
+  images = []  
+  done = False
+  state = env.reset()
+  img = env.render(mode='rgb_array')
+  images.append(img)
+  while not done:
+    # Take the action (index) that have the maximum expected future reward given that state
+    action, _ = policy.act(state)
+    state, reward, done, info = env.step(action) # We directly put next_state = state for recording logic
+    img = env.render(mode='rgb_array')
+    images.append(img)
+  imageio.mimsave(out_directory, [np.array(img) for i, img in enumerate(images)], fps=fps)
+
+
+import os
+def package_to_hub(repo_id, 
+                model,
+                hyperparameters,
+                eval_env,
+                video_fps=30,
+                local_repo_path="hub",
+                commit_message="Push Reinforce agent to the Hub",
+                token= None
+                ):
+  _, repo_name = repo_id.split("/")
+  
+  # Step 1: Clone or create the repo
+  # Create the repo (or clone its content if it's nonempty)
+  api = HfApi()
+  
+  repo_url = api.create_repo(
+        repo_id=repo_id,
+        token=token,
+        private=False,
+        exist_ok=True,)
+  
+  # Git pull
+  repo_local_path = Path(local_repo_path) / repo_name
+  repo = Repository(repo_local_path, clone_from=repo_url, use_auth_token=True)
+  repo.git_pull()
+  
+  repo.lfs_track(["*.mp4"])
+
+  # Step 1: Save the model
+  torch.save(model, os.path.join(repo_local_path,"model.pt"))
+
+  # Step 2: Save the hyperparameters to JSON
+  with open(Path(repo_local_path) / "hyperparameters.json", "w") as outfile:
+    json.dump(hyperparameters, outfile)
+  
+  # Step 2: Evaluate the model and build JSON
+  mean_reward, std_reward = evaluate_agent(eval_env, 
+                                           hyperparameters["max_t"],
+                                           hyperparameters["n_evaluation_episodes"], 
+                                           model)
+
+  # First get datetime
+  eval_datetime = datetime.datetime.now()
+  eval_form_datetime = eval_datetime.isoformat()
+
+  evaluate_data = {
+        "env_id": hyperparameters["env_id"], 
+        "mean_reward": mean_reward,
+        "n_evaluation_episodes": hyperparameters["n_evaluation_episodes"],
+        "eval_datetime": eval_form_datetime,
+  }
+  # Write a JSON file
+  with open(Path(repo_local_path) / "results.json", "w") as outfile:
+      json.dump(evaluate_data, outfile)
+
+  # Step 3: Create the model card
+  # Env id
+  env_name = hyperparameters["env_id"]
+  
+  metadata = {}
+  metadata["tags"] = [
+        env_name,
+        "reinforce",
+        "reinforcement-learning",
+        "custom-implementation",
+        "deep-rl-class"
+    ]
+
+  # Add metrics
+  eval = metadata_eval_result(
+      model_pretty_name=repo_name,
+      task_pretty_name="reinforcement-learning",
+      task_id="reinforcement-learning",
+      metrics_pretty_name="mean_reward",
+      metrics_id="mean_reward",
+      metrics_value=f"{mean_reward:.2f} +/- {std_reward:.2f}",
+      dataset_pretty_name=env_name,
+      dataset_id=env_name,
+    )
+
+  # Merges both dictionaries
+  metadata = {**metadata, **eval}
+
+  model_card = f"""
+  # **Reinforce** Agent playing **{env_id}**
+  This is a trained model of a **Reinforce** agent playing **{env_id}** .
+  To learn to use this model and train yours check Unit 5 of the Deep Reinforcement Learning Class: https://github.com/huggingface/deep-rl-class/tree/main/unit5
+  """
+
+  readme_path = repo_local_path / "README.md"
+  readme = ""
+  if readme_path.exists():
+      with readme_path.open("r", encoding="utf8") as f:
+        readme = f.read()
+  else:
+    readme = model_card
+
+  with readme_path.open("w", encoding="utf-8") as f:
+    f.write(readme)
+
+  # Save our metrics to Readme metadata
+  metadata_save(readme_path, metadata)
+
+  # Step 4: Record a video
+  video_path =  repo_local_path / "replay.mp4"
+  record_video(env, model, video_path, video_fps)
+  
+  # Push everything to hub
+  print(f"Pushing repo {repo_name} to the Hugging Face Hub")
+  repo.push_to_hub(commit_message=commit_message)
+
+  print(f"Your model is pushed to the hub. You can view your model here: {repo_url}")
+```
+
+- 上传
+
+```python
+from huggingface_hub import notebook_login
+notebook_login()
+
+!pip install imageio-ffmpeg
+repo_id = "TUMxudashuai/Reinforce-CartPole-v1" #TODO Define your repo id {username/Reinforce-{model-id}}
+package_to_hub(repo_id,
+                cartpole_policy, # The model we want to save
+                cartpole_hyperparameters, # Hyperparameters
+                eval_env, # Evaluation environment
+                video_fps=30,
+                local_repo_path="hub",
+                commit_message="Push Reinforce agent to the Hub",
+                )
+```
+
+### 5.4 Agent2: PixelCopter
+
+- [The Environment documentation](https://pygame-learning-environment.readthedocs.io/en/latest/user/games/pixelcopter.html)
+
+#### 5.4.1 创建环境
+
+```python
+env_id = "Pixelcopter-PLE-v0"
+env = gym.make(env_id)
+eval_env = gym.make(env_id)
+s_size = env.observation_space.shape[0]
+a_size = env.action_space.n
+```
+
+#### 5.4.2 构建Policy
+
+```python
+class Policy(nn.Module):
+    def __init__(self, s_size, a_size, h_size):
+        super(Policy, self).__init__()
+        self.fc1 = nn.Linear(s_size, h_size)
+        self.fc2 = nn.Linear(h_size, a_size)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return F.softmax(x, dim=1)
+    
+    def act(self, state):
+        state = torch.from_numpy(state).float().unsqueeze(0).to(device)
+        probs = self.forward(state).cpu()
+        m = Categorical(probs)
+        action = m.sample()
+        return action.item(), m.log_prob(action)
+```
+
+#### 5.4.3 Hyperparameters
+
+```python
+pixelcopter_hyperparameters = {
+    "h_size": 64,
+    "n_training_episodes": 50000,
+    "n_evaluation_episodes": 10,
+    "max_t": 10000,
+    "gamma": 0.99,
+    "lr": 1e-4,
+    "env_id": env_id,
+    "state_space": s_size,
+    "action_space": a_size,
+}
+```
+
+#### 5.4.4 Train
+
+```python
+# Create policy and place it to the device
+# torch.manual_seed(50)
+pixelcopter_policy = Policy(pixelcopter_hyperparameters["state_space"], pixelcopter_hyperparameters["action_space"], pixelcopter_hyperparameters["h_size"]).to(device)
+pixelcopter_optimizer = optim.Adam(pixelcopter_policy.parameters(), lr=pixelcopter_hyperparameters["lr"])
+
+scores = reinforce(pixelcopter_policy,
+                   pixelcopter_optimizer,
+                   pixelcopter_hyperparameters["n_training_episodes"], 
+                   pixelcopter_hyperparameters["max_t"],
+                   pixelcopter_hyperparameters["gamma"], 
+                   1000)
+```
+
+
+
+#### 5.4.5 上传到Huggingface
+
+准备工作见5.3.7
+
+```python
+repo_id = "TUMxudashuai/Reinforce-PixelCopter" #TODO Define your repo id {username/Reinforce-{model-id}}
+package_to_hub(repo_id, 
+                pixelcopter_policy,
+                pixelcopter_hyperparameters,
+                eval_env,
+                video_fps=30,
+                local_repo_path="hub",
+                commit_message="Push Reinforce agent to the Hub",
+                )
+```
+
+### 5.5 Agent3: Pong
+
+- [The Environment documentation](https://pygame-learning-environment.readthedocs.io/en/latest/user/games/pong.html)
+
+#### 5.5.1 创建环境
+
+```python
+env_id = "Pong-PLE-v0"
+env = gym.make(env_id)
+eval_env = gym.make(env_id)
+s_size = env.observation_space.shape[0]
+a_size = env.action_space.n
+```
+
+#### 5.5.2 构建Policy
+
+```python
+class Policy(nn.Module):
+    def __init__(self, s_size, a_size, h_size):
+        super(Policy, self).__init__()
+        self.fc1 = nn.Linear(s_size, h_size)
+        self.fc2 = nn.Linear(h_size, h_size*2)
+        self.fc3 = nn.Linear(h_size*2, a_size)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return F.softmax(x, dim=1)
+    
+    def act(self, state):
+        state = torch.from_numpy(state).float().unsqueeze(0).to(device)
+        probs = self.forward(state).cpu()
+        m = Categorical(probs)
+        action = m.sample()
+        return action.item(), m.log_prob(action)
+```
+
+#### 5.5.3 Hyperparameters
+
+```python
+pong_hyperparameters = {
+    "h_size": 64,
+    "n_training_episodes": 20000,
+    "n_evaluation_episodes": 10,
+    "max_t": 5000,
+    "gamma": 0.99,
+    "lr": 1e-2,
+    "env_id": env_id,
+    "state_space": s_size,
+    "action_space": a_size,
+}
+```
+
+#### 5.5.4 Train
+
+```python
+# Create policy and place it to the device
+# torch.manual_seed(50)
+pong_policy = Policy(pong_hyperparameters["state_space"], pong_hyperparameters["action_space"], pong_hyperparameters["h_size"]).to(device)
+pong_optimizer = optim.Adam(pong_policy.parameters(), lr=pong_hyperparameters["lr"])
+
+scores = reinforce(pong_policy,
+                   pong_optimizer,
+                   pong_hyperparameters["n_training_episodes"], 
+                   pong_hyperparameters["max_t"],
+                   pong_hyperparameters["gamma"], 
+                   1000)
+```
+
+
+
+#### 5.5.5 上传到Huggingface
+
+```python
+repo_id = "TUMxudashuai/Reinforce-Pong" #TODO Define your repo id {username/Reinforce-{model-id}}
+package_to_hub(repo_id,
+                pong_policy, # The model we want to save
+                pong_hyperparameters, # Hyperparameters
+                eval_env, # Evaluation environment
+                video_fps=30,
+                local_repo_path="hub",
+                commit_message="Push Reinforce agent to the Hub",
+                )
+```
 
 
 
