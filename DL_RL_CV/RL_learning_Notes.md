@@ -1,3 +1,5 @@
+[toc]
+
 # 零、学习资源整理
 
 1. [OpenAI Spinning Up](https://spinningup.openai.com/en/latest/index.html)
@@ -6,6 +8,11 @@
 4. 李宏毅深度强化学习：
    - [笔记](https://github.com/changliang5811/leedeeprl-notes)
    - [课程](http://speech.ee.ntu.edu.tw/~tlkagk/courses_MLDS18.html)，[bilibili](https://www.bilibili.com/video/BV1MW411w79n/)
+5. RL平台：
+   1. [Stable-Baselines3](https://stable-baselines3.readthedocs.io/en/master/)
+   2. [RLlib](https://docs.ray.io/en/latest/rllib/index.html)
+   3. [天授](https://tianshou.readthedocs.io/zh/latest/)
+
 
 # 一、深度强化学习
 
@@ -236,7 +243,6 @@ $$
 - $R_{t+1}$: immediate reward
 - $\gamma V_\pi(S_{t+1})$:  discounted value of the next state
 -  the idea of the Bellman equation is that instead of calculating each value as the sum of the expected return, **which is a long process**
--  
 
 ### 2.2 两种训练价值函数的策略strategies
 
@@ -623,7 +629,7 @@ There are three important elements
   $J(\theta)$被用来measure一个policy的好与坏：
   $$
   J(\theta)=E_{\tau-\pi}[R(\tau)]\\
-  R(\tau)=r_{t+1}+\gamma r_{t+2} + \gamma^2 r_{t+3} + \gamma^3r_{t+4} 
+  R(\tau)=r_{t+1}+\gamma r_{t+2} + \gamma^2 r_{t+3} + \gamma^3r_{t+4}
   $$
 
   - $\tau$ ： trajectory, sequence of states and actions
@@ -632,7 +638,7 @@ There are three important elements
 
 #### 5.2.2 Reinforce algorithm
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!插图：Reinforce Algorithm
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/Reinforce%20Algorithm.png?raw=true)
 
 - 算法流程：
 
@@ -654,7 +660,108 @@ There are three important elements
 
   3. Update the weights of the policy: $\theta \leftarrow \theta + \alpha \hat{g}$
 
-  
+
+#### 5.2.3 The Problem of Varience in Reinforce
+
+- In Reinforce, we want to **increase the probability of actions in a trajectory proportional成比例的 to how high the return is**.
+
+  This return $R(\tau)$ is calculated using a [Monte-Carlo sampling](https://zhuanlan.zhihu.com/p/338103692). Indeed, we collect a trajectory and calculate the discounted return, **and use this score to increase or decrease the probability of every action taken in that trajectory**. If the return is good, all actions will be “reinforced” by increasing their likelihood of being taken: $R(\tau)=r_{t+1}+\gamma r_{t+2} + \gamma^2 r_{t+3} + \gamma^3r_{t+4}$
+
+- Adavantage:
+
+   **It’s unbiased偏离的. Since we’re not estimating the return**, we use only the true return we obtain.
+
+- Problem:
+
+  **The variance is high, since trajectories can lead to different returns** due to stochasticity of the environment (random events during episode) and stochasticity of the policy. 
+
+  Consequently, the same starting state can lead to very different returns. Because of this, **the return starting at the same state can vary significantly across episodes**在各集之间.
+
+- Solution:
+
+  Mitigate缓和 the variance by **using a large number of trajectories, hoping that the variance introduced in any one trajectory will be reduced in aggregate作为总体 and provide a "true" estimation of the return.**
+
+  However:
+
+  Increasing the batch size significantly **reduces sample efficiency**. So we need to find additional mechanisms to reduce the variance. ==>>A2C
+
+## 6. Advantage Actor Critic(A2C)
+
+A2C(同步)优势动作评价算法。
+
+- Actor Critic (AC)的进步型, Asynchronous Advantage Actor Critic(A3C)是它的异步型
+
+- 5.中的Reinforce算法是policy-gradient methods的一种，它通过**estimating the weights of the optimal policy using Gradient Ascent**来直接优化policy。它很好但有个缺点：**significant variance in policy gradient estimation**.
+
+- A2C：a **hybrid architecture** combining a value-based and policy-based methods that help to stabilize the training by **reducing the variance**
+
+  - *An Actor* that controls **how our agent behaves** (policy-based method)
+
+    actor是一个policy function$\pi_\theta(s,a)$
+
+  - *A Critic* that measures **how good the action taken is** (value-based method)
+
+    critic是一个value function$\hat{q}_w(s,a)$
+
+#### 6.1 Actor Critic(AC)
+
+1. 每一个timestep t, **Actor** 和 **Critic**从 **Environment**那得到state $s_t$ , 同时**Actor**根据policy作出action $A_t$传给**environment** 和 **critic**
+
+   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/A2C1.jpg?raw=true)
+
+2. **Critic**从**Environment**接收$s_t$，从**actor**接收$A_t$后，会计算 Q-Value: $\hat{q_w}(S_t,A_t)$
+
+   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/A2C2.jpg?raw=true)
+
+3. **Environment**在执行完$a_t$ 后，会输出one new state $S_{t+1}$ 和 one reward $R_{t+1}$
+
+   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/A2C3.jpg?raw=true)
+
+4. **Actor**会根据2的新Q-value来更新自己的policy parameters
+
+   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/A2C4.jpg?raw=true)
+
+5. Actor根据3的$S_{t+1}$做出新的Action $A_{t+1}$, Critic同时更新自己的value parameters并输出新的Q-value
+
+   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/A2C5.jpg?raw=true)
+
+#### 6.2 Advantage Actor Critic (A2C)
+
+- A2C相比AC，使用Advantage function作为Critic来代替AC中的Action value function
+
+- Idea: 
+
+  The Advantage function calculates **how better taking that action at a state is compared to the average value of the state**. It’s subtracting the mean value of the state from the state action pair:
+  $$
+  A(s,a) = Q(s,a)-V(s)
+  $$
+
+  - $Q(s,a)$: Q value for action $a$ in state $s$
+
+  - $V(s)$: Average value of that state
+
+- In other words, this function calculates **the extra reward we get if we take this action at that state compared to the mean reward we get at that state**.
+
+  - If A(s,a) > 0: our gradient is **pushed in that direction**.
+  - If A(s,a) < 0 (our action does worse than the average value of that state), **our gradient is pushed in the opposite direction**.
+
+#### 6.3 Problem
+
+The problem with implementing this advantage function is that it requires two value functions:$Q(s,a)$和$V(s)$.
+
+Solution:
+
+使用TD Error来估计advantage function:
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/Advantage%20function2.jpg?raw=true)
+
+
+
+## 7. Proximal Policy Optimization(PPO)
+
+PPO近端策略优化 is an  architecture that improves our agent's training stability by avoiding too large policy updates.
+
+- To do that, we use a ratio that will indicates the difference between our current and old policy and clip剔除 this ratio from a specific range $[1-\epsilon,1+\epsilon]$
 
 # 二、Stable-baseline3实现一、的代码
 
@@ -721,7 +828,7 @@ model.learn(total_timesteps=int(2e5))
   virtual_display.start()
   ```
 
-#### 1.3.2 **安装深度学习库**
+#### 1.3.2 安装深度学习库
 
   ```python
   !pip install importlib-metadata==4.12.0 # To overcome an issue with importlib-metadata https://stackoverflow.com/questions/73929564/entrypoints-object-has-no-attribute-get-digital-ocean
@@ -734,7 +841,7 @@ model.learn(total_timesteps=int(2e5))
   !pip install pickle5
   ```
 
-#### 1.3.3 **导入包**
+#### 1.3.3 导入包
 
   ```python
   import gym
@@ -748,7 +855,7 @@ model.learn(total_timesteps=int(2e5))
   from stable_baselines3.common.env_util import make_vec_env
   ```
 
-#### 1.3.4 **建立环境**
+#### 1.3.4 建立环境
 
 - 环境文档：https://www.gymlibrary.dev/environments/box2d/lunar_lander/
 
@@ -790,7 +897,7 @@ env = make_vec_env('LunarLander-v2', n_envs=16)
 
 
 
-#### 1.3.5 **建立RL算法模型**
+#### 1.3.5 建立RL算法模型
 
 - 使用 [Stable Baselines3 (SB3)](https://stable-baselines3.readthedocs.io/en/master/)，SB3 is a set of **reliable implementations of reinforcement learning algorithms in PyTorch**.
 
@@ -824,7 +931,7 @@ model = DQN(
 
 
 
-#### 1.3.6 **训练模型**
+#### 1.3.6 训练模型
 
 1. PPO:
 
@@ -850,7 +957,7 @@ model = DQN(
 
    
 
-#### 1.3.7 **评估训练完的智能体**
+#### 1.3.7 评估训练完的智能体
 
 ```python
 eval_env = gym.make("LunarLander-v2")
@@ -858,7 +965,7 @@ mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10, d
 print(f"mean_reward={mean_reward:.2f} +/- {std_reward}")
 ```
 
-#### 1.3.8 **发布模型到Huggingface上**
+#### 1.3.8 发布模型到Huggingface上
 
 - [Huggingface库](https://github.com/huggingface/huggingface_sb3/tree/main#hugging-face--x-stable-baselines3-v20)功能：
 
@@ -1953,7 +2060,7 @@ print("Action Space Sample", env.action_space.sample()) # Take a random action
 
 结构：
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!插图：Reinforce Architecture
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/Reinforce%20Architecture.png?raw=true)
 
 - Two fully connected layers (fc1 and fc2).
 - Using ReLU as activation function of fc1
@@ -1997,7 +2104,7 @@ class Policy(nn.Module):
 
 #### 5.3.3 构建Reinforce Training Algorithm
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!插图：Reinforce Algorithm
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/Reinforce%20Algorithm.png?raw=true)
 
 - We want to maximize our utility function $J(\theta)$ but in PyTorch like in Tensorflow it's better to **minimize an objective function.**
     - So let's say we want to reinforce action 3 at a certain timestep. Before training this action P is 0.25.
@@ -2452,6 +2559,139 @@ package_to_hub(repo_id,
                 local_repo_path="hub",
                 commit_message="Push Reinforce agent to the Hub",
                 )
+```
+
+
+
+## 6. A2C using Robotics Simulations with PyBullet
+
+### 6.1 下载依赖
+
+```python
+!pip install pybullet
+!pip install stable-baselines3[extra]
+!pip install huggingface_sb3
+!pip install huggingface_hub
+```
+
+### 6.2 导入库
+
+```python
+import gym
+import pybullet_envs
+
+import os
+
+from huggingface_sb3 import load_from_hub, package_to_hub
+
+from stable_baselines3 import A2C
+from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.env_util import make_vec_env
+
+from huggingface_hub import notebook_login
+
+import torch 
+from torch import nn
+```
+
+### 6.3 创建环境
+
+```python
+env_id = "AntBulletEnv-v0"
+# Create the env
+env = gym.make(env_id)
+# Get the state space and action space
+s_size = env.observation_space.shape[0]
+a_size = env.action_space
+print("_____OBSERVATION SPACE_____ \n")
+print("The State Space is: ", s_size)
+print("Sample observation", env.observation_space.sample()) # Get a random observation
+print("\n _____ACTION SPACE_____ \n")
+print("The Action Space is: ", a_size)
+print("Action Space Sample", env.action_space.sample()) # Take a random action
+```
+
+We need to [normalize input features](https://stable-baselines3.readthedocs.io/en/master/guide/rl_tips.html) For that, a wrapper exists and will compute a running average and standard deviation of input features.
+
+```python
+env = make_vec_env(env_id, n_envs=4)
+# Adding this wrapper to normalize the observation and the reward
+env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.)
+```
+
+### 6.4 创建A2C Model
+
+In this case, because we have a vector as input, we'll use an MLP (multi-layer perceptron) as policy.
+
+参数参考：[official trained agents by Stable-Baselines3 team](https://huggingface.co/sb3).
+
+```python
+model = A2C(policy = "MlpPolicy",
+            env = env,
+            gae_lambda = 0.9,
+            gamma = 0.99,
+            learning_rate = 0.00096,
+            max_grad_norm = 0.5,
+            n_steps = 8,
+            vf_coef = 0.4,
+            ent_coef = 0.0,
+            tensorboard_log = "./tensorboard",
+            policy_kwargs=dict(
+            log_std_init=-2, ortho_init=False),
+            normalize_advantage=False,
+            use_rms_prop= True,
+            use_sde= True,
+            verbose=1)
+```
+
+### 6.5 训练A2C agent
+
+```python
+model.learn(2_000_000)
+# Save the model and  VecNormalize statistics when saving the agent
+model.save("a2c-AntBulletEnv-v0")
+env.save("vec_normalize.pkl")
+```
+
+### 6.6 评价Agent
+
+```python
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+
+# Load the saved statistics
+eval_env = DummyVecEnv([lambda: gym.make("AntBulletEnv-v0")])
+eval_env = VecNormalize.load("vec_normalize.pkl", eval_env)
+
+#  do not update them at test time
+eval_env.training = False
+# reward normalization is not needed at test time
+eval_env.norm_reward = False
+
+# Load the agent
+model = A2C.load("a2c-AntBulletEnv-v0")
+
+mean_reward, std_reward = evaluate_policy(model, env)
+
+print(f"Mean reward = {mean_reward:.2f} +/- {std_reward:.2f}")
+```
+
+### 6.7 发布模型到Hugging face
+
+```python
+from huggingface_hub import notebook_login
+notebook_login()
+# 非jupyter: huggingface-cli login
+
+package_to_hub(
+    model=model,
+    model_name=f"a2c-{env_id}",
+    model_architecture="A2C",
+    env_id=env_id,
+    eval_env=eval_env,
+    repo_id=f"ThomasSimonini/a2c-{env_id}",
+    commit_message="Initial commit",
+)
 ```
 
 
@@ -2954,6 +3194,8 @@ Best trial:
 
 ### 3.1 Curiosity-Driven Learning through Next State Prediction
 
+[论文](https://pathak22.github.io/noreward-rl/)
+
 [Curiosity-Driven Learning through Next State Prediction](https://medium.com/data-from-the-trenches/curiosity-driven-learning-through-next-state-prediction-f7f4e2f592fa)是一个经典方法。
 $$
 IR=||predicted(s_{t+1})-s_{t+1} ||
@@ -2969,5 +3211,54 @@ $$
 
 ML-Agents使用了一个更先进的方法：[Random Network Distillation: a new take on Curiosity-Driven Learning](https://medium.com/data-from-the-trenches/curiosity-driven-learning-through-random-network-distillation-488ffd8e5938)
 
+[论文](https://arxiv.org/pdf/1808.04355.pdf)
 
 
+
+# 副3、Decision Transformer
+
+## 1. Offline Vs Online
+
+Deep Reinforcement Learning agents **learn with batches of experience.** The question is, how do they collect it?:
+
+- online reinforcement learning:
+
+  - **the agent gathers data directly**: it collects a batch of experience by interacting with the environment. Then, it uses this experience immediately (or via some replay buffer) to learn from it (update its policy).
+
+  - But this implies that either you train your agent directly in the real world or have a simulator. If you don’t have one, you need to build it, which can be very complex (how to reflect the complex reality of the real world in an environment?), expensive, and insecure since if the simulator has flaws, the agent will exploit them if they provide a competitive advantage.
+
+- offline reinforcement learning:
+
+  - the agent only uses data collected from other agents or human demonstrations示范. **It does not interact with the environment**.
+
+  - The process is as follows:
+
+    1. Create a dataset using one or more policies and/or human interactions.
+
+    2. Run offline RL on this dataset to learn a policy
+
+  - Drawback: the counterfactual反事实 queries疑问 problem.
+
+    What do we do if our agent decides to do something for which we don’t have the data? For instance, turning right on an intersection十字路口 but we don’t have this trajectory.
+
+    - [解决方案](https://www.youtube.com/watch?v=k08N5a0gG0A)
+
+## 2. [Decision Transformer](https://arxiv.org/abs/2106.01345)
+
+ Decision Transformer Model abstracts Reinforcement Learning as a **conditional-sequence条件序列 modeling problem**.
+
+- Main Idea:
+
+  - instead of training a policy using RL methods, such as fitting a value function, that will tell us what action to take to maximize the return (cumulative reward), we use a sequence modeling序列 algorithm ([Transformer](https://zhuanlan.zhihu.com/p/338817680)) that, given a desired return, past states, and actions, will generate future actions to achieve this desired return.
+
+    It’s an autoregressive自回归 model conditioned on the desired return, past states, and actions to generate future actions that achieve the desired return.
+
+  - in Decision Transformers, we don’t maximize the reward but rather generate a series of future actions that achieve the desired return.
+
+- Process
+  1. We feed the last K timesteps into the Decision Transformer with 3 inputs:
+     - Return-to-go
+     - State
+     - Action
+  2. The tokens are embedded either with a linear layer if the state is a vector or CNN encoder if it’s frames.
+  3. The inputs are processed by a [GPT-2 model](http://jalammar.github.io/illustrated-gpt2/) which predicts future actions via autoregressive modeling.
