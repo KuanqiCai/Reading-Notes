@@ -12,6 +12,7 @@
    1. [Stable-Baselines3](https://stable-baselines3.readthedocs.io/en/master/)
    2. [RLlib](https://docs.ray.io/en/latest/rllib/index.html)
    3. [天授](https://tianshou.readthedocs.io/zh/latest/)
+6. 各算法代码实现：[cleanrl](https://github.com/vwxyzjn/cleanrl)
 
 
 # 一、深度强化学习
@@ -759,9 +760,151 @@ Solution:
 
 ## 7. Proximal Policy Optimization(PPO)
 
+[相关论文](chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://fse.studenttheses.ub.rug.nl/25709/1/mAI_2021_BickD.pdf)
+
 PPO近端策略优化 is an  architecture that improves our agent's training stability by avoiding too large policy updates.
 
-- To do that, we use a ratio that will indicates the difference between our current and old policy and clip剔除 this ratio from a specific range $[1-\epsilon,1+\epsilon]$
+### 7.1 Intuition Behind PPO
+
+ **We want to avoid having too large policy updates.**2个原因：
+
+1. We know empirically that smaller policy updates during training are **more likely to converge to an optimal solution.**
+2. A too big step in a policy update can result in falling “off the cliff悬崖” (getting a bad policy) **and having a long time or even no possibility to recover.**
+
+To do that, we use a ratio that will indicates the difference between our current and old policy and clip夹住this ratio from a specific range $[1-\epsilon,1+\epsilon]$
+
+
+
+### 7.2 Clipped Surrogate Objective function
+
+被夹的替代目标函数。PPO的目标函数
+
+#### 7.2.1 Policy Objective Function
+
+- Reinforce要优化的目标函数是：
+  $$
+  L^{PG}(\theta)=E_t[log\pi_\theta(a_t|s_t)*A_t]
+  $$
+
+  - $log\pi_\theta(a_t|s_t)$: log probability of taking that action at that state
+  - $A_t$: if Adavantage > 0, the action is better than the other action possible at that state.
+
+  目的是要对此函数采取gradient ascent step梯度上升。我们会push智能体采取能带来更高回报的动作，并避免有害的动作。
+
+  但对step size:
+
+  - Too small, **the training process was too slow**
+  - Too high, **there was too much variability in the training**
+
+- PPO中使用：Clipped Surrogate Objective function
+
+  PPO的被夹的替代目标函数 会使用clip夹子限制policy change，以此避免destructive large weights update.
+  $$
+  L^{CLIP}(\theta)=\hat{\mathbb{E}}_t[min(\underbrace{r_t(\theta)\hat{A}_t}_{non-clipped},\underbrace{clip(r_t(\theta),1-\epsilon,1+\epsilon)\hat{A}_t}_{clipped}]
+  $$
+  我们会选取较小的那个ration 和 advangate组合。
+
+  - $r_t(\theta)$:ratio function
+    $$
+    r_t(\theta)=\frac{\pi_\theta(a_t|s_t)}{{\pi_\theta}_{old}(a_t|s_t)}
+    $$
+     It denotes the probability ratio between the current and old policy:
+
+    - If $r_t(\theta) > 1$, the action and state is more likely in the current policy than the old policy
+    - If $r_t(\theta) < 1$, the action and state is less likely for the current policy than the old one
+
+  - $clip(r_t(\theta),1-\epsilon,1+\epsilon)$: 
+
+    $\epsilon$:超参，ppo论文中取0.2。
+
+    将$r_t(\theta)$ clip在$[1-\epsilon,1+\epsilon]$之间，有2中方法
+
+    1. *TRPO (Trust Region Policy Optimization)* uses KL divergence constraints outside the objective function to constrain the policy update. But this method **is complicated to implement and takes more computation time.**
+    2. *PPO* clip probability ratio directly in the objective function with its **Clipped surrogate objective function.**
+
+#### 7.2.2 Clipped Surrogate Objective不同情况
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/Clipped%20Surrogate%20Objective.jpg?raw=true)
+
+为了在non-clipped和clipped objectives中选择更小的那个，有6种情况：
+
+##### 1. Case 1 and 2: the ratio is between the range
+
+在这种情况，clipping不会应用，因为ratio在$[1-\epsilon,1+\epsilon]$之间
+
+- 情况1：
+
+  Positive Advantage: the **action is better than the average** of all the actions in that state
+
+  - 所以，我们要鼓励当前的policy,来增加在那个状态下执行那个动作的概率
+  - 又因为ratio在区间内，所以 **we can increase our policy's probability of taking that action at that state.**
+
+- 情况2:
+
+   negative advantage: the action is worse than the average of all actions at that state.
+
+  - 所以我们要阻止agent在那个状态下执行那个动作
+  - 又因为ratio在区间内，所以 **we can decrease the probability that our policy takes that action at that state.**
+
+##### 2. Case 3 and 4: the ratio is below the range
+
+如果probability ratio低于$1-\epsilon$,说明新policy在那个状态下执行该动作的概率比旧Policy更小
+
+- 情况3：
+
+  the advantage estimate is positive (A>0), then **you want to increase the probability of taking that action at that state.**
+
+- 情况4：
+
+  the advantage estimate is negative, **we don't want to decrease further** the probability of taking that action at that state.
+
+  Therefore, the gradient is = 0 (since we're on a flat line), so we don't update our weights.
+
+##### 3. Case 5 and 6: the ratio is above the range
+
+如果probability ratio高于于$1+\epsilon$,说明新policy在那个状态下执行该动作的概率比旧Policy更大。
+
+- 情况5：
+
+  the advantage is positive, **we don't want to get too greedy**. We already have a higher probability of taking that action at that state than the former policy. 
+
+  Therefore, the gradient is = 0 (since we're on a flat line), so we don't update our weights.
+
+- 情况6：
+
+  the advantage is negative, we want to decrease the probability of taking that action at that state.
+
+##### 4. 总结
+
+- So we update our policy only if:
+
+  - Our ratio is in the range$[1 - \epsilon, 1 + \epsilon]$
+
+  - Our ratio is outside the range, but the advantage leads to getting closer to the range
+    - Being below the ratio but the advantage is > 0
+    - Being above the ratio but the advantage is < 0
+
+- 如上，我们只会更新unclipped objective part.如果当最小值是clipped objective时，我们不会更新policy因为gradient=0。
+
+  - 为什么最小值是clipped objective时，我们不会更新policy因为gradient=0？
+
+    因为当ratio被clip时，它的derivative是$(1-/+\epsilon)*A_t$而不是$r_t(\theta)$的导数，而前者导数永远=0。
+
+  - 因此，这restrict限制了 **the range that the current policy can vary from the old one**
+
+
+
+### 7.3 最终的PPO公式：
+
+$$
+L_t^{CLIP+VF+S}(\theta)=\hat{\mathbb{E}_t}[L_t^{CLIP}(\theta)-c_1L_t^{VF}(\theta)+c2S[\pi_\theta](s_t)]
+$$
+
+- $L_t^{CLIP}(\theta)$: Clipped Surrogate Objective function
+- $L_t^{VF}(\theta)$:  Value Loss Function
+  - Squared error value loss: $(V_\theta(s_t)-V_.^{targ})^2$
+- $S[\pi_\theta](s_t)$: Entropy熵 bonus
+  - To ensure sufficient exploitation
 
 # 二、Stable-baseline3实现一、的代码
 
@@ -1970,6 +2113,8 @@ https://huggingface.co/spaces/unity/ML-Agents-Pyramids
 
 ## 5. Policy Gradient with PyTorch
 
+from scratch
+
 https://colab.research.google.com/github/huggingface/deep-rl-class/blob/main/unit5/unit5.ipynb
 
 ### 5.1 下载依赖
@@ -2693,6 +2838,16 @@ package_to_hub(
     commit_message="Initial commit",
 )
 ```
+
+
+
+## 7.PPO
+
+from scratch
+
+https://colab.research.google.com/github/huggingface/deep-rl-class/blob/main/unit8/unit8.ipynb
+
+
 
 
 
