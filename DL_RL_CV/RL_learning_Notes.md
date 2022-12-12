@@ -906,6 +906,59 @@ $$
 - $S[\pi_\theta](s_t)$: Entropy熵 bonus
   - To ensure sufficient exploitation
 
+## 8. Decision Transformers
+
+### 8.1 Offline Vs Online
+
+Deep Reinforcement Learning agents **learn with batches of experience.** The question is, how do they collect it?:
+
+- online reinforcement learning:
+
+  - **the agent gathers data directly**: it collects a batch of experience by interacting with the environment. Then, it uses this experience immediately (or via some replay buffer) to learn from it (update its policy).
+
+  - But this implies that either you train your agent directly in the real world or have a simulator. If you don’t have one, you need to build it, which can be very complex (how to reflect the complex reality of the real world in an environment?), expensive, and insecure since if the simulator has flaws, the agent will exploit them if they provide a competitive advantage.
+
+- offline reinforcement learning:
+
+  - the agent only uses data collected from other agents or human demonstrations示范. **It does not interact with the environment**.
+
+  - The process is as follows:
+
+    1. Create a dataset using one or more policies and/or human interactions.
+
+    2. Run offline RL on this dataset to learn a policy
+
+  - Drawback: the counterfactual反事实 queries疑问 problem.
+
+    What do we do if our agent decides to do something for which we don’t have the data? For instance, turning right on an intersection十字路口 but we don’t have this trajectory.
+
+    - [解决方案](https://www.youtube.com/watch?v=k08N5a0gG0A)
+
+### 8.2 [Decision Transformer](https://arxiv.org/abs/2106.01345)
+
+ Decision Transformer Model abstracts Reinforcement Learning as a **conditional-sequence条件序列 modeling problem**.
+
+- Main Idea:
+
+  - instead of training a policy using RL methods, such as fitting a value function, that will tell us what action to take to maximize the return (cumulative reward), we use a sequence modeling序列 algorithm ([Transformer](https://zhuanlan.zhihu.com/p/338817680)) that, given a desired return, past states, and actions, will generate future actions to achieve this desired return.
+
+    It’s an autoregressive自回归 model conditioned on the desired return, past states, and actions to generate future actions that achieve the desired return.
+
+  - in Decision Transformers, we don’t maximize the reward but rather generate a series of future actions that achieve the desired return.
+
+- Process
+
+  1. We feed the last K timesteps into the Decision Transformer with 3 inputs:
+     - Return-to-go
+     - State
+     - Action
+  2. The tokens are embedded either with a linear layer if the state is a vector or CNN encoder if it’s frames.
+  3. The inputs are processed by a [GPT-2 model](http://jalammar.github.io/illustrated-gpt2/) which predicts future actions via autoregressive modeling.
+
+
+
+
+
 # 二、Stable-baseline3实现一、的代码
 
 ## 1. Foundation:
@@ -2847,7 +2900,26 @@ from scratch
 
 https://colab.research.google.com/github/huggingface/deep-rl-class/blob/main/unit8/unit8.ipynb
 
+### 7.1 下载依赖
 
+```python
+!pip install imageio-ffmpeg
+!pip install huggingface_hub
+!pip install gym[box2d]
+
+!apt install python-opengl
+!apt install ffmpeg
+!apt install xvfb
+!pip3 install pyvirtualdisplay
+
+# Virtual display
+from pyvirtualdisplay import Display
+
+virtual_display = Display(visible=0, size=(500, 500))
+virtual_display.start()
+```
+
+### 7.2 PPO from scratch
 
 
 
@@ -3370,50 +3442,3 @@ ML-Agents使用了一个更先进的方法：[Random Network Distillation: a new
 
 
 
-# 副3、Decision Transformer
-
-## 1. Offline Vs Online
-
-Deep Reinforcement Learning agents **learn with batches of experience.** The question is, how do they collect it?:
-
-- online reinforcement learning:
-
-  - **the agent gathers data directly**: it collects a batch of experience by interacting with the environment. Then, it uses this experience immediately (or via some replay buffer) to learn from it (update its policy).
-
-  - But this implies that either you train your agent directly in the real world or have a simulator. If you don’t have one, you need to build it, which can be very complex (how to reflect the complex reality of the real world in an environment?), expensive, and insecure since if the simulator has flaws, the agent will exploit them if they provide a competitive advantage.
-
-- offline reinforcement learning:
-
-  - the agent only uses data collected from other agents or human demonstrations示范. **It does not interact with the environment**.
-
-  - The process is as follows:
-
-    1. Create a dataset using one or more policies and/or human interactions.
-
-    2. Run offline RL on this dataset to learn a policy
-
-  - Drawback: the counterfactual反事实 queries疑问 problem.
-
-    What do we do if our agent decides to do something for which we don’t have the data? For instance, turning right on an intersection十字路口 but we don’t have this trajectory.
-
-    - [解决方案](https://www.youtube.com/watch?v=k08N5a0gG0A)
-
-## 2. [Decision Transformer](https://arxiv.org/abs/2106.01345)
-
- Decision Transformer Model abstracts Reinforcement Learning as a **conditional-sequence条件序列 modeling problem**.
-
-- Main Idea:
-
-  - instead of training a policy using RL methods, such as fitting a value function, that will tell us what action to take to maximize the return (cumulative reward), we use a sequence modeling序列 algorithm ([Transformer](https://zhuanlan.zhihu.com/p/338817680)) that, given a desired return, past states, and actions, will generate future actions to achieve this desired return.
-
-    It’s an autoregressive自回归 model conditioned on the desired return, past states, and actions to generate future actions that achieve the desired return.
-
-  - in Decision Transformers, we don’t maximize the reward but rather generate a series of future actions that achieve the desired return.
-
-- Process
-  1. We feed the last K timesteps into the Decision Transformer with 3 inputs:
-     - Return-to-go
-     - State
-     - Action
-  2. The tokens are embedded either with a linear layer if the state is a vector or CNN encoder if it’s frames.
-  3. The inputs are processed by a [GPT-2 model](http://jalammar.github.io/illustrated-gpt2/) which predicts future actions via autoregressive modeling.
