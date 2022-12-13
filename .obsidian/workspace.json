@@ -1,0 +1,153 @@
+{
+  "main": {
+    "id": "556fe4b8f11b7f04",
+    "type": "split",
+    "children": [
+      {
+        "id": "1d4f444a02347de1",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6e72d4eaaf872678",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "笔记软件/Obsidian.md",
+                "mode": "source",
+                "backlinks": true,
+                "source": false
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "5c3396b535ad4d05",
+    "type": "split",
+    "children": [
+      {
+        "id": "eb13ce00e9c75b9b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "28bd560b9bdae1bc",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "af2466834f1140ed",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "91900745136bb6c4",
+            "type": "leaf",
+            "state": {
+              "type": "starred",
+              "state": {}
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "0a08e02d85d46cb6",
+    "type": "split",
+    "children": [
+      {
+        "id": "4788ea51d196028d",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "86b16156d98f6017",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "笔记软件/Obsidian.md",
+                "collapseAll": true,
+                "extraContext": true,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "cdf83f5c6bd4d50d",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "笔记软件/Obsidian.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "42bceb5e0a4faafe",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              }
+            }
+          },
+          {
+            "id": "4102cf27416a7c2c",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "笔记软件/Obsidian.md"
+              }
+            }
+          }
+        ],
+        "currentTab": 3
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "active": "4102cf27416a7c2c",
+  "lastOpenFiles": [
+    "笔记配套图片/Algorithm/链表总结.png",
+    "笔记软件/Obsidian.md",
+    "数学笔记/线性代数.md",
+    "公式.md",
+    "DL_RL_CV/Comupter Vision.md",
+    "git小记.md",
+    "README.md",
+    "cmake笔记/CMake Practice.pdf",
+    "Slam+Ros笔记/ROS.md",
+    "Slam+Ros笔记/Docker.md"
+  ]
+}

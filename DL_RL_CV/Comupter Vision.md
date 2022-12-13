@@ -779,7 +779,7 @@ $$
 
   - $O,O'$是两个相机的中心
   - P点是物体所在
-    - 如果我们只看左边图像 ![[公式]](https://www.zhihu.com/equation?tex=%5Cpi) 上的点p，我们不能知道物体到底是在哪，点P1、P2或其他地方，可有了右边图像$\pi'$上的$p'$我们就能得到物体点P
+    - 如果我们只看左边图像$\pi$上的点p，我们不能知道物体到底是在哪，点P1、P2或其他地方，可有了右边图像$\pi'$上的$p'$我们就能得到物体点P
   - 基线：连线$OO'$
   - 对极平面Epipolar plane of P：极限$OO'$和观测物体$P$组成的平面$OO'P$
     - The epipolar plane is spanned by the position vectors of the image point and of the epipole :$span(p,e)$

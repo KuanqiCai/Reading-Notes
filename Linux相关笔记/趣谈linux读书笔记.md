@@ -705,7 +705,7 @@ https://elixir.bootlin.com/glibc/glibc-2.34.9000/source/sysdeps/unix/sysv/linux/
 
   - 这里面会使用两个脚本:
 
-  1. 第一个脚本 arch/x86/entry/syscalls/syscallhdr.sh，会在文件中生成 #define __NR_open
+  1. 第一个脚本 arch/x86/entry/syscalls/syscallhdr.sh，会在文件中生成 \#define __NR_open
   2. 第二个脚本 arch/x86/entry/syscalls/syscalltbl.sh，会在文件中生成 \__SYSCALL(__NR_open, sys_open)。
 
 - 在文件 arch/x86/entry/syscall_32.c，定义了这样一个表，里面 include 了这个头文件，从而所有的 sys_ 系统调用都在这个表里面了。

@@ -2006,7 +2006,7 @@ $ catkin_make
 
 # 二、ROS进阶
 
-## #、Autonomous Systems课程相关:
+## \#、Autonomous Systems课程相关:
 
 ### Lab2:Task2
 
@@ -2077,7 +2077,7 @@ int main(int argc, char** argv){
 
 
 
-## #、ROS中TF的使用
+## \#、ROS中TF的使用
 
 - 简介：
 
@@ -2436,7 +2436,7 @@ int main(int argc, char** argv){
 
   
 
-## #、读取YAML文件
+## \#、读取YAML文件
 
 - **在包内创建一个YAML文件**
 
