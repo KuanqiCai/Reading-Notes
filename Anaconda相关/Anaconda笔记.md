@@ -13,7 +13,15 @@ Anaconda是一个环境管理软件，解决不同代码需要不同的环境时
 
 - 直接app and features中卸载
 
+## 3. Windows环境配置
 
+将如下地址加入环境变量
+
+- anaconda安装的目录 D:\Download\ANACONDA
+
+- anaconda/scripts的目录 D:\Download\ANACONDA\Scripts
+
+- bin的目录 D:\Download\ANACONDA\Scripts\Library\bin
 
 # 基本指令
 
@@ -138,7 +146,6 @@ https://github.com/ipython-contrib/jupyter_contrib_nbextensions
   USER_BASE: '/home/xuy1fe/.local' (exists)
   USER_SITE: '/home/xuy1fe/.local/lib/python3.8/site-packages' (exists)
   ENABLE_USER_SITE: True
-
-  ```  
-  这里的USER_BASE 和USER_SITE其实就是用户自定义的启用Python脚本和依赖安装包的基础路径，从上面的输出可以看到，import xxx时，先找的是当前文件夹然后是.conda/pkgs目录.
   
+  ```
+  这里的USER_BASE 和USER_SITE其实就是用户自定义的启用Python脚本和依赖安装包的基础路径，从上面的输出可以看到，import xxx时，先找的是当前文件夹然后是.conda/pkgs目录.
