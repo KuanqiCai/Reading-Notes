@@ -13,14 +13,28 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "笔记软件/Obsidian.md",
+                "file": "DL_RL_CV/Reinforcement Learning/RL_Course_Notes.md",
+                "mode": "source",
+                "backlinks": true,
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "9a0d75aea46c6fde",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "DL_RL_CV/Reinforcement Learning/Gym.md",
                 "mode": "source",
                 "backlinks": true,
                 "source": false
               }
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -86,7 +100,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "笔记软件/Obsidian.md",
+                "file": "DL_RL_CV/Reinforcement Learning/Gym.md",
                 "collapseAll": true,
                 "extraContext": true,
                 "sortOrder": "alphabetical",
@@ -103,7 +117,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "笔记软件/Obsidian.md",
+                "file": "DL_RL_CV/Reinforcement Learning/Gym.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -126,7 +140,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "笔记软件/Obsidian.md"
+                "file": "DL_RL_CV/Reinforcement Learning/Gym.md"
               }
             }
           }
@@ -137,17 +151,17 @@
     "direction": "horizontal",
     "width": 300
   },
-  "active": "4102cf27416a7c2c",
+  "active": "9a0d75aea46c6fde",
   "lastOpenFiles": [
-    "笔记配套图片/Algorithm/链表总结.png",
+    "DL_RL_CV/Reinforcement Learning/RL_Course_Notes.md",
+    "DL_RL_CV/Reinforcement Learning/Gym.md",
+    "DL_RL_CV/RL_Course_Notes.md",
     "笔记软件/Obsidian.md",
+    "笔记配套图片/Algorithm/链表总结.png",
     "数学笔记/线性代数.md",
     "公式.md",
     "DL_RL_CV/Comupter Vision.md",
     "git小记.md",
-    "README.md",
-    "cmake笔记/CMake Practice.pdf",
-    "Slam+Ros笔记/ROS.md",
-    "Slam+Ros笔记/Docker.md"
+    "README.md"
   ]
 }
