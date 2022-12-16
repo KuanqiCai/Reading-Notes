@@ -30,6 +30,8 @@ env.close()							# 5.关闭环境
 
 用于定义 action 和 observation space，他们都要inherit from Space类。
 
+### 1.2.1 Space类型
+
 Gym有不同的Space类型：
 
 - `Box`: describes an n-dimensional continuous space连续空间. It’s a bounded space where we can define the upper and lower limits which describe the valid values our observations can take.
@@ -99,7 +101,24 @@ array([-0.30874878, -0.44607827,  1.8394998 ], dtype=float32)
 
 ```
 
+### 1.2.2 Space相关函数
 
+- 查看space状态
+
+  ```python
+  env = gym.make('CartPole-v1')
+  env.reset()
+  print("_____OBSERVATION SPACE_____ \n")
+  print("Observation Space Shape", env.observation_space.shape)	# 观察空间的形状
+  print("Sample observation", env.observation_space.sample()) # Get a random observation
+  
+  print("\n _____ACTION SPACE_____ \n")
+  print("Action Space Shape", env.action_space.n)			# 动作空间的形状
+  print("Action Space Sample", env.action_space.sample()) # Take a random action
+  env = make_vec_env('CartPole-v1', n_envs=16)
+  ```
+
+  
 
 ## 1.3 [Wrappers](https://www.gymlibrary.dev/api/wrappers/)
 
@@ -120,7 +139,108 @@ Box([0. 0. 0. 0.], [1. 1. 1. 1.], (4,), float32)
 >>> wrapped_env.unwrapped										# 3.将环境取消包装
 ```
 
+### 1.3.1 ActionWrapper
 
+如果我们想给环境的action space做点修改，可以继承ActionWrapper类，来覆写action方法。
+
+比如要把一个action space从字典类型转换成离散类型：
+
+```python
+import gym
+from gym.spaces import Discrete
+
+
+class DiscreteActions(gym.ActionWrapper):
+    def __init__(self, env, disc_to_cont):
+        super().__init__(env)
+        self.disc_to_cont = disc_to_cont
+        self.action_space = Discrete(len(disc_to_cont))
+
+    def action(self, act):
+        return self.disc_to_cont[act]
+```
+
+
+
+### 1.3.2 ObservationWrapper
+
+如果我们想给环境的observation space做点修改，可以继承ObservationWrapper类，来覆写observation方法。
+
+比如想要观察空间，返回目标和智能体之间的距离。
+
+```python
+import gym
+from gym.spaces import Box
+import numpy as np
+
+
+class RelativePosition(gym.ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        self.observation_space = Box(shape=(2,), low=-np.inf, high=np.inf)
+
+    def observation(self, obs):
+        return obs["target"] - obs["agent"]
+
+```
+
+### 1.3.3 RewardWrapper
+
+如果我们想给环境的Reward space做点修改，可以继承RewardWrapper类，来覆写reward方法。
+
+比如想要限制reward在一个范围内:
+
+```python
+import gym
+import numpy as np
+
+
+class ClipReward(gym.RewardWrapper):
+    def __init__(self, env, min_reward, max_reward):
+        super().__init__(env)
+        self.min_reward = min_reward
+        self.max_reward = max_reward
+        self.reward_range = (min_reward, max_reward)
+
+    def reward(self, reward):
+        return np.clip(reward, self.min_reward, self.max_reward)
+```
+
+### 1.3.4 General Wrapper
+
+如果想做些更复杂的修改，比如想要修改：
+
+- You can set a new action or observation space by defining `self.action_space` or `self.observation_space` in `__init__`, respectively
+- You can set new metadata and reward range by defining `self.metadata` and `self.reward_range` in `__init__`, respectively
+- You can override `step`, `render`, `close` etc. If you do this, you can access the environment that was passed to your wrapper (which *still* might be wrapped in some other wrapper) by accessing the attribute `self.env`.
+
+比如我们想要在创建环境时，可以传递权重参数：
+
+```python
+import gym
+
+
+class ReacherRewardWrapper(gym.Wrapper):
+    def __init__(self, env, reward_dist_weight, reward_ctrl_weight):
+        super().__init__(env)
+        self.reward_dist_weight = reward_dist_weight
+        self.reward_ctrl_weight = reward_ctrl_weight
+
+    def step(self, action):
+        obs, _, terminated, truncated, info = self.env.step(action)
+        reward = (
+            self.reward_dist_weight * info["reward_dist"]
+            + self.reward_ctrl_weight * info["reward_ctrl"]
+        )
+        return obs, reward, terminated, truncated, info
+
+```
+
+
+
+### 1.3.5 现有的一些wrapper
+
+https://www.gymlibrary.dev/api/wrappers/#available-wrappers
 
 ## 1.4 Playing within environment
 
@@ -454,7 +574,7 @@ register(
 
 ## 2.9 Create a package
 
-将我们的代码包装成一个python包
+将我们的代码包装成一个python包，详细的创建包的过程参见[[python小记#1.如何打包python项目]]
 
 参见2.1.1的文件结构：`gym-examples/setup.py`
 
@@ -481,4 +601,22 @@ setup(
   env = gym.make('gym_examples/GridWorld-v0')
   ```
 
-  
+
+## 2.10 Using Wrappers
+
+Wrapper可以直接改变环境，比如下面用FlattenObservation()，可以将观测空间展平为1维
+
+```python
+>>> import gym_examples
+>>> from gym.wrappers import FlattenObservation
+>>> import gym     
+
+>>> env = gym.make('gym_examples/GridWorld-v0')
+>>> print(env.reset())
+({'agent': array([2, 3]), 'target': array([4, 0])}, {'distance': 5.0})
+
+>>> wrapped_env = FlattenObservation(env)
+>>> print(wrapped_env.reset())
+(array([1, 4, 3, 2]), {'distance': 4.0})
+```
+
