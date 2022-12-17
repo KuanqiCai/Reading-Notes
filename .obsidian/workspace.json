@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "DL_RL_CV/Reinforcement Learning/RL_Course_Notes.md",
+                "file": "git小记.md",
                 "mode": "source",
                 "backlinks": true,
                 "source": false
@@ -70,7 +70,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 226.5
   },
   "right": {
     "id": "0a08e02d85d46cb6",
@@ -86,7 +86,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "DL_RL_CV/Reinforcement Learning/RL_Course_Notes.md",
+                "file": "git小记.md",
                 "collapseAll": true,
                 "extraContext": true,
                 "sortOrder": "alphabetical",
@@ -103,7 +103,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "DL_RL_CV/Reinforcement Learning/RL_Course_Notes.md",
+                "file": "git小记.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -126,7 +126,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "DL_RL_CV/Reinforcement Learning/RL_Course_Notes.md"
+                "file": "git小记.md"
               }
             }
           }
@@ -135,15 +135,15 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 298.5
   },
-  "active": "4102cf27416a7c2c",
+  "active": "6e72d4eaaf872678",
   "lastOpenFiles": [
+    "DL_RL_CV/Reinforcement Learning/RL_Course_Notes.md",
     "DL_RL_CV/Reinforcement Learning/Gym.md",
     "虚拟环境/venv虚拟环境.md",
     "编程语言相关/python小记.md",
     "README.md",
-    "DL_RL_CV/Reinforcement Learning/RL_Course_Notes.md",
     "DL_RL_CV/RL_Course_Notes.md",
     "笔记软件/Obsidian.md",
     "笔记配套图片/Algorithm/链表总结.png",

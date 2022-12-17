@@ -1,4 +1,6 @@
-githubt官方文档：https://docs.github.com/cn
+# 资料汇总：
+- githubt官方文档：https://docs.github.com/cn
+- 在线学习git网站：https://learngitbranching.js.org/?locale=zh_CN
 
 # 一、基本配置
 
@@ -49,7 +51,7 @@ githubt官方文档：https://docs.github.com/cn
 - windows下更新git 版本
    - git update-git-for-windows
 
-# 二、基本配置
+# 二、基本操作
 
 ## 2.1 通过git bash 上传文件
 
@@ -91,43 +93,297 @@ $ git rebase upstream/main
 
 [git merge和git fetch的区别](https://www.jianshu.com/p/f23f72251abc)
 
-## 2.3 退回某一个版本
+## 2.3 HEAD相关
 
-- 在git中，用HEAD表示当前版本也就是最新的commit id，上一个版本使HEAD^,上上个使HEAD^^,还可以用HEAD~100表示往上100个版本。HEAD指向的是分支，如master指向最新的提交，HEAD指向master就确定了当前分支的提交点。
+- 在git中，用HEAD表示当前版本也就是最新的commit id.
+  - HEAD和分支名称，如main,是两个东西。
+  - 一般他们指向同一个提交记录，被HEAD指向的分支名会带有*,比如`main*`
+  - 他们也可以分离，见下面
+    - checkout,rebase,都会造成分离
+
+- 查看HEAD当前的指向：
+
+  - `cat .git/HEAD`
+  - 如果指向的是一个引用可以用`git symbolic-ref HEAD `
+
+- 分离HEAD: 让其指向了某个具体的提交记录而不是分支名。
+
+  分离之前：HEAD->main->c1
+
+  使用`git checkout c1`进行分离,checkout可以用于让HEAD指向哪个提交记录
+
+  分离之后：HEAD->c1, mian->c1
+
+  - 使用`git log`来查看上面的c1:提交记录的哈希值
+    - `git log --graph`:可以看到分支合并图
+  - cheakout用于移动HEAD,而branch可以用来移动分支名(比如main)
+
+- 相对引用：使用哈希值来移动HEAD并不方便
+
+  - `HEAD^`上一个版本
+    - `main^`main的父节点
+  - `HEAD^^`上上个
+    - `main^^`main的父父节点
+  - `HEAD~100`往上100个版本。
+    - `main~100`main往上100个
+
+
+
+## 2.4 分支管理
+
+在 Git 2.23 版本中，引入了一个名为 `git switch` 的新命令，最终会取代 `git checkout`，因为 `checkout` 作为单个命令有点超载（它承载了很多独立的功能）。
+
+### 2.4.1 checkout切换分支
+
+- `git checkout -b dev`: 创建并切换到dev分支,相当于下面2条命令。
+
+- `git branch dev`：创建一个叫dev的新分支
+- `git checkout dev`
+
+### 2.4.2 switch切换分支
+
+参见：https://git-scm.com/docs/git-switch
+
+- `git switch -c dev`: 创建并切换到dev分支,相当于下面2条命令。
+  - `git branch dev`：创建一个叫dev的新分支
+  - `git switch dev`:切换到dev分支
+
+### 2.4.3 merger合并分支
+
+`git merge xx`: 将分支xx合并到当前分支。
+
+一个例子：
+
+```shell
+git switch -c dev 	# 从main创建并转到dev分支
+git commit 			# dev的HEAD前进了一步
+git switch main		# 切换回main分支
+git commit 			# main的HEAD也前进了一步
+
+git merge dev		# 将dev合并到main,main的HEAD并前进一步。但此时dev的HEAD还在原处
+git switch dev		# 转回到dev分支
+git merge main		# 这时dev的HEAD，也指向了main的HEAD所在的位置
+```
+
+### 2.4.4 rebase合并分支
+
+- Rebase 实际上就是取出一系列的提交记录，“复制”它们，然后在另外一个地方逐个的放下去。
+- Rebase 的优势就是可以创造更线性的提交历史
+
+`git rebase xx`:把当前分支里的工作直接移到 xx 分支上。移动以后会使得两个分支的功能看起来像是按顺序开发，但实际上它们是并行开发的。
+
+也可以`git rebase xx xxx`: 将xxx分支复制到xx分支下
+
+一个例子：
+
+```shell
+git switch -c dev 	# 从main创建并转到dev分支
+git commit 			# dev的HEAD前进了一步
+git switch main		# 切换回main分支
+git commit 			# main的HEAD也前进了一步
+git switch dev		# 切换会dev分支
+
+git rebase main		# 直接将dev分支复制到main分支之下，这时dev的HEAD指向main的HEAD
+git switch main
+git rebase dev		# 由于dev继承自main，所以 Git 只是简单的把 main 分支的引用向前移动了一下而已。
+```
+
+### 2.4.3 branch分支操作：
+
+- `git branch`:查看当前分支
+- `git branch -d dev` : 删除当前分支
+- `git branch -f main HEAD~3`:强行将main分支指向HEAD的第三级父提交
+
+### 2.4.6其他相关命令
+
+2. `git stash`: 将当前工作现场储存起来，等以后恢复现场继续工作
+   1. `git stash list` 查看储存起来的工作现场
+   2. `git stash pop`: 恢复工作现场，并删除stash内容
+   3. `git stash apply`: 恢复工作现场，不删除stash内容，得输入`git stash drop`来删除。
+3. `git cherry-pick <commit id>`: 在master分支上修复了bug，而dev其他工作开发了一半，显然不可能从master重新分出来，在dev上再修复bug很麻烦。该命令可以把修复bug的那一次修改复制到dev分支来。
+
+## 2.5 撤销变更
+
+### 2.5.1 reset 本地撤销
+
+`git reset` 通过把分支记录回退几个提交记录来实现撤销改动。你可以将这想象成“改写历史”。`git reset` 向上移动分支，原来指向的提交记录就跟从来没有提交过一样。
+
+**可以用它来回退版本：**
+
 1. `git reset --hard HEAD^` : 退回到上一个版本
+   - 注意：分离后的HEAD就不能使用reset重置了，而要用checkout
 2. `git reset --hard 版本号` : 回到指定的版本,也可以在后悔回退到过去时由此退回到未来
 3. `git reflog`: 查看git记录下的每一条命令。如果忘了之前的版本号，由此查看。
 
 - 撤销删改
-   1. `git checkout -- file`: 撤销文件在工作区的全部修改，回到最近一个git commit 或git add时的状态。
+  1. `git checkout -- file`: 撤销文件在工作区的全部修改，回到最近一个git commit 或git add时的状态。
 
-   2. `git reset HEAD 文件名`: 如果add到缓存区了，可以用这个名利把缓存区的修改撤销掉unstage,重新回到工作区 
+  2. `git reset HEAD 文件名`: 如果add到缓存区了，可以用这个名利把缓存区的修改撤销掉unstage,重新回到工作区 
 
-   3. `git rm 文件名` 从版本库中删除文件，和add一样之后要跟commit。
+  3. `git rm 文件名` 从版本库中删除文件，和add一样之后要跟commit。
 
-   4. `git remote -v`:查看远程库的信息
+  4. `git remote -v`:查看远程库的信息
 
-   5. `git remote rm 库名`:删除本地与远程库的绑定关系
+  5. `git remote rm 库名`:删除本地与远程库的绑定关系
 
-## 2.4 分支管理
+### 2.5.2 revert 远程撤销
 
-- `git checkout -b dev`: 创建并切换到dev分支,相当于下面2条命令。
+本地可以使用reset,但是不能应用于大家一起使用的远程分支。
 
-- `git branch dev`
-- `git checkout dev`
-    2. `git branch`:查看当前分支
-    3. `git merge xx`: 将分支xx合并到当前分支。
-    4. `git branch -d dev` : 删除当前分支
-    5. `git switch -c dev`:创建并切换到dev分支，和checkout的一个功能一致但因为checkout还有其他作用，所以switch更易理解。
-    6. `git switch master`: 切换到master分支 
-    7. `git log --graph`:可以看到分支合并图
-    8. `git stash`: 将当前工作现场储存起来，等以后恢复现场继续工作
-       1. `git stash list` 查看储存起来的工作现场
-       2. `git stash pop`: 恢复工作现场，并删除stash内容
-       3. `git stash apply`: 恢复工作现场，不删除stash内容，得输入`git stash drop`来删除。
-    9. `git cherry-pick <commit id>`: 在master分支上修复了bug，而dev其他工作开发了一半，显然不可能从master重新分出来，在dev上再修复bug很麻烦。该命令可以把修复bug的那一次修改复制到dev分支来。
+为了撤销更改并**分享**给别人，我们需要使用 `git revert`。
 
-## 2.5 多人协作
+- **举例：**
+
+  初始状态：c2->c1->c0
+
+  `git revert HEAD`后得到：c2'->c2->c1->c0
+
+  新提交记录 `C2'` 引入了**更改** —— 这些更改刚好是用来撤销 `C2` 这个提交的。也就是说 `C2'` 的状态与 `C1` 是相同的。
+
+- 撤销后，再push，大家pull了后就相当于让大家都撤销了。
+
+
+
+## 2.6 整理提交记录
+
+解决问题：“我想要把这个提交放到这里, 那个提交放到刚才那个提交的后面”
+
+### 2.6.1 cherry-pick
+
+当我们知道所需要的提交记录 和 这些记录的哈希值时使用
+
+`git cherry-pick <提交号>...`: 将一些提交复制到当前所在的位置（`HEAD`）下面
+
+**举例**：
+
+1. 有一个git仓库结构：
+
+   ```mermaid
+   flowchart BT
+       c4-->c3
+       c3-->c2
+       c2-->c1
+       c1-->c0
+       c5-->c1
+   ```
+
+   - 此时分支side指向c4
+   - 分支main*指向c5，（注意HEAD此时和main指向同一个提交记录，所以main后有个\*）
+
+2. 运行命令`git cherry-pick c2 c4`后,得到
+
+   ```mermaid
+   flowchart BT
+       c4-->c3
+       c3-->c2
+       c2-->c1
+       c1-->c0
+       c5-->c1
+       c2'-->c5
+       c4'-->c2'
+   ```
+
+   - 此时分支side指向c4
+   - 分支main*指向c4'
+   - 命令cherry brick直接把提交记录复制到当前HEAD之下了
+
+### 2.6.2 交互式rebase
+
+- 2.4.4中rebase可以合并分支。交互式 rebase 指的是使用带参数 `--interactive` 的 rebase 命令, 简写为 `-i`，会打开一个UI界面。
+- 打开UI界面后，可以干三件事：
+  - 调整提交记录的顺序（通过鼠标拖放来完成）
+  - 删除你不想要的提交（通过切换 `pick` 的状态来完成，关闭就意味着你不想要这个提交记录）
+  - 合并提交。 遗憾的是由于某种逻辑的原因，我们的课程不支持此功能，因此我不会详细介绍这个操作。简而言之，它允许你把多个提交记录合并成一个。
+
+**举例：**
+
+`git rebase -i HEAD~4`: 重排最新的4次提交记录
+
+
+
+### 2.6.3 只push一个本地记录
+
+- 使用场景：
+
+  我正在解决某个特别棘手的 Bug，为了便于调试而在代码中添加了一些调试命令并向控制台打印了一些信息。
+
+  这些调试和打印语句都在它们各自的提交记录里。最后我终于找到了造成这个 Bug 的根本原因，解决掉以后觉得沾沾自喜！
+
+  最后就差把 `bugFix` 分支里的工作合并回 `main` 分支了。你可以选择通过 fast-forward 快速合并到 `main` 分支上，但这样的话 `main` 分支就会包含我这些调试语句了。你肯定不想这样，应该还有更好的方式……
+
+- 解决方案：
+
+  使用2.6.1/2的命令，只提交最终解决问题的那**一个**记录
+
+**举例：**
+
+有一结构：c4(bugfix*)->c3->c2->c1(main)->c0
+
+要变成:c4(main*/bugfix)->c1->c0
+
+1. 解法1：
+
+   ```
+   git rebase -i main c4 	#或者 git rebase -i HEAD~3
+   # 将中间的c3,c2都用鼠标omit掉（隐藏掉）
+   git rebase bugFix main	# 合并分支main到bugFix下，但bugFix(c4)本身就指向main(c1),所以main就移了下来。
+   ```
+
+2. 解法2
+
+   ```
+   git checkout main
+   git cherry-pick c4
+   ```
+
+### 2.6.4 修改之前的提交记录
+
+- 使用场景：
+
+  在 `newImage` 分支上进行了一次提交，然后又基于它创建了 `caption` 分支，然后又提交了一次。
+
+  此时你想对某个以前的提交记录进行一些小小的调整。比如设计师想修改一下 `newImage` 中图片的分辨率，尽管那个提交记录并不是最新的了。
+
+- 解决方案
+
+  - 先用 `git rebase -i` 将提交重新排序，然后把我们想要修改的提交记录挪到最前
+  - 然后用 `git commit --amend` 来进行一些小修改
+  - 接着再用 `git rebase -i` 来将他们调回原来的顺序
+  - 最后我们把 main 移到修改的最前端（用你自己喜欢的方法），就大功告成啦！
+
+举例：
+
+有一结构:c3(caption*)->c2(newimage)->c1(main)->c0
+
+现在想稍微修改c2一下：
+
+1. 方法1：
+
+   ```shell
+   git rebase -i c1 c3  # 互换c3,c2的顺序,此时HEAD指向c2'
+   git commit --amend 	 # 修改c2',得到c2''
+   git rebase -i HEAD^^ # 再次互换c2'',c3'的顺序,此时HEAD指向c3''
+   git branch -f main HEAD	# 将main和HEAD合并
+   ```
+
+   
+
+2. 方法2：
+
+   相比于方法1，不需要2次互换顺序，rebase稍不留意就会冲突。
+
+   ```shell
+   git checkout main	# 将HEAD指向C1(main)
+   git cherry-pick c2	# 将c2复制一个c2' 到main下, 此时HEAD指向c2'
+   git commit --amend  # 修改c2'
+   git cherry-pick c3	# 将c3复制到head(c2'')下
+   ```
+
+   
+
+
+
+## 2.6 多人协作
 
 1. 查看远程库信息，使用`git remote -v`；
 2. 首先，试图用`git push origin <branch-name>`推送自己的修改
@@ -138,10 +394,14 @@ $ git rebase upstream/main
     - 建立本地分支和远程分支的关联，使用`git branch --set-upstream branch-name origin/branch-name`；
 - `git rebase`: 把本地未push的分叉提交历史整理成直线,然后用`git log`查看
 
-## 2.6 标签管理
+## 2.7 标签管理
 
-- `git tag v1.0`:给当前分支打上标签v1.0
-- `git tag v0.9 f52c643`: 指定给某一个历史提交打上标签。标签总是和某个commit挂钩，若该commit出现在不同的2个分支上，这2个分支上都可以看到标签。
+- 应用场景：
+
+  分支很容易被人为移动，并且当有新的提交时，它也会移动。分支很容易被改变，大部分分支还只是临时的，并且还一直在变。有没有什么可以*永远*指向某个提交记录的标识呢，比如软件发布新的大版本，或者是修正一些重要的 Bug 或是增加了某些新特性，有没有比分支更好的可以永远指向这些提交的方法呢？
+
+- `git tag v1.0`:给当前分支(HEAD)打上标签v1.0
+- `git tag v0.9 f52c643`: 指定给某一个提交记录打上标签。标签总是和某个commit挂钩，若该commit出现在不同的2个分支上，这2个分支上都可以看到标签。
 - `git tag`:查看标签
 - `git tag -a <tagname> -m "blablabla..."`可以指定标签信息；
    - -a: 标签名字
@@ -151,8 +411,14 @@ $ git rebase upstream/main
 - `git push origin :refs/tags/<tagname>`可以删除一个远程标签
 - `git push origin <tagname>`可以推送一个本地标签；
 - `git push origin --tags`可以推送全部未推送过的本地标签；
+- 描述标签`git describe ref`
+   - Git Describe 能帮你在提交历史中移动了多次以后找到方向；当你用 `git bisect`（一个查找产生 Bug 的提交记录的指令）找到某个提交记录时，或者是当你坐在你那刚刚度假回来的同事的电脑前时， 可能会用到这个命令。
+   - 输出结果是：`<tag>_<numCommits>_g<hash>`
+     - `tag` 表示的是离 `ref` 最近的标签， 
+     - `numCommits` 是表示这个 `ref` 与 `tag` 相差有多少个提交记录，
+     - `hash` 表示的是你所给定的 `ref` 所表示的提交记录哈希值的前几位。
 
-## 2.7、子模块
+## 2.8 子模块
 
 - 帮助文档:`git help submodule`
 
