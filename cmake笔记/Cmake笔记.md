@@ -359,12 +359,13 @@ make
 
 
 # 2. CMake学习笔记
+## 2.0 学习资源汇总
 
-官方教程：https://cmake.org/cmake/help/latest/guide/tutorial/index.html
+[官方教程](https://cmake.org/cmake/help/latest/guide/tutorial/index.html)
 
-笔记所学习的教程：https://cliutils.gitlab.io/modern-cmake/chapters/basics.html
+[笔记所学习的教程](https://cliutils.gitlab.io/modern-cmake/chapters/basics.html)
 
-所有指令都可以在文档查询：https://cmake.org/cmake/help/latest/index.html#
+[所有指令都可以在文档查询](https://cmake.org/cmake/help/latest/index.html#)
 
 ## 2.1 介绍
 
@@ -491,7 +492,7 @@ target_link_libraries(another PUBLIC one)
 
 See [cmake-variables](https://cmake.org/cmake/help/latest/manual/cmake-variables.7.html) for a listing of known variables in CMake.
 
-#### **local variable局部变量**
+#### local variable局部变量
 
 在同一个CMake工程中使用，会有作用域限制或区分
 
@@ -506,7 +507,7 @@ set(MY_LIST "one;two")
 xxx("${}")
 ```
 
-#### **Cache Variables缓存变量**
+#### Cache Variables缓存变量
 
 在同一个CMake工程中任何地方都可以使用。
 
@@ -529,7 +530,7 @@ option(MY_OPTION "This is settable from the command line" OFF)
   - 它会在我们`cmake ..`时和makefile一起出现在 build directory里。
   - 这个文件然那个CMake知道了我们所有的选项，如此之后build前就不需要再`CMake`来创建新的makefile
 
-#### **Properties特征**
+#### Properties特征
 
 特征类似于变量，但它同时还作用于directory或者target，可以用于导入外部库并设置外部库的路径
 
@@ -554,7 +555,8 @@ get_property(ResultVariable TARGET myTargetName PROPERTY CXX_STANDARD)
 
 ### 2.2.3 Cmake中的编程
 
-#### [if](https://cmake.org/cmake/help/latest/command/if.html)语句
+#### if语句
+[if文档](https://cmake.org/cmake/help/latest/command/if.html)
 
 ```cmake
 # 1.用bool值
@@ -573,8 +575,9 @@ else()
 endif()
 ```
 
-#### [generator-expressions](https://cmake.org/cmake/help/latest/manual/cmake-generator-expressions.7.html)生成器表达式
+#### generator-expressions生成器表达式
 
+[generator-expressions文档](https://cmake.org/cmake/help/latest/manual/cmake-generator-expressions.7.html)
 [一个blog参考](https://hongjh.blog.csdn.net/article/details/126453308?spm=1001.2101.3001.6661.1&utm_medium=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7EYuanLiJiHua%7EPosition-1-126453308-blog-119993262.pc_relevant_layerdownloadsortv1&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7EYuanLiJiHua%7EPosition-1-126453308-blog-119993262.pc_relevant_layerdownloadsortv1&utm_relevant_index=1)
 
 - 正常命令都是在configure time生成Makefile时执行的，但generator expressions是在build/install time时执行的
@@ -607,8 +610,8 @@ endif()
 
   3. 更多用途见上诉网站
 
-#### 宏[Macros](https://cmake.org/cmake/help/latest/command/macro.html)和函数[Functions](https://cmake.org/cmake/help/latest/command/function.html)
-
+#### 宏Macros和函数Functions
+宏[Macros](https://cmake.org/cmake/help/latest/command/macro.html)和函数[Functions](https://cmake.org/cmake/help/latest/command/function.html)
 他们唯一的区别是：宏没有作用域全局可见，函数有作用域
 
 - 使用
@@ -747,7 +750,9 @@ project(My LANGUAGES CXX VERSION ${VERSION_STRING})
 
 
 
-### 2.2.5 Structure构造我们的项目
+### 2.2.5 Structure架构我们的项目
+
+[参照的例子](https://gitlab.com/CLIUtils/modern-cmake/tree/master/examples/extended-project)
 
 - 一个好的结构可以：
   - Easily read other projects following the same patterns,
@@ -785,6 +790,31 @@ project(My LANGUAGES CXX VERSION ${VERSION_STRING})
       - helper.py
   ```
 
+  - **CMakeLists.txt**：要单独放出来，可以使用`add_subdirectory`来添加任意包含CMakeLists.txt的子文件夹。
+  
+  - **.gitignore**:应该要包含`/build*`，编译同样要放在 build文件中
+  
+    为了避免编译在一个错误的文件夹，可以将下列代码加入到CMakeLists.txt:
+  
+    ```cmake
+    ### Require out-of-source builds
+    file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
+    if(EXISTS "${LOC_PATH}")
+        message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
+    endif()
+    ```
+  
+    
+  
   - **extern folder**:用到的git submodules，方便我们管理依赖版本
+  
   - **cmake folder**: 所有.cmake文件在的地方，.cmake文件加载后可以在CMakeList.txt中使用.cmake的一些函数和定义
+  
+    将这个folder加入到CMake路径
+  
+    ```cmake
+    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+    ```
+  
+    
 
