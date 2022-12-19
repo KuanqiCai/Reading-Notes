@@ -11,9 +11,56 @@
             "id": "6e72d4eaaf872678",
             "type": "leaf",
             "state": {
+              "type": "graph",
+              "state": {}
+            }
+          },
+          {
+            "id": "ccc426c31a47325b",
+            "type": "leaf",
+            "state": {
               "type": "markdown",
               "state": {
-                "file": "git小记.md",
+                "file": "Web相关/README.md",
+                "mode": "source",
+                "backlinks": true,
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "2abee4959f802bf1",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Web相关/HTML.md",
+                "mode": "source",
+                "backlinks": true,
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "8bb6321c1e359b62",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Web相关/CSS.md",
+                "mode": "source",
+                "backlinks": true,
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "bf3deb539dfc40bb",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Web相关/README.md",
                 "mode": "source",
                 "backlinks": true,
                 "source": false
@@ -86,7 +133,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "git小记.md",
                 "collapseAll": true,
                 "extraContext": true,
                 "sortOrder": "alphabetical",
@@ -103,7 +149,6 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "git小记.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -125,9 +170,7 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {
-                "file": "git小记.md"
-              }
+              "state": {}
             }
           }
         ],
@@ -135,19 +178,19 @@
       }
     ],
     "direction": "horizontal",
-    "width": 298.5
+    "width": 438.5
   },
   "active": "6e72d4eaaf872678",
   "lastOpenFiles": [
-    "DL_RL_CV/Reinforcement Learning/RL_Course_Notes.md",
+    "Web相关/README.md",
     "DL_RL_CV/Reinforcement Learning/Gym.md",
-    "虚拟环境/venv虚拟环境.md",
-    "编程语言相关/python小记.md",
-    "README.md",
-    "DL_RL_CV/RL_Course_Notes.md",
-    "笔记软件/Obsidian.md",
-    "笔记配套图片/Algorithm/链表总结.png",
-    "数学笔记/线性代数.md",
-    "公式.md"
+    "Web相关/CSS.md",
+    "Web相关/HTML.md",
+    "Web相关/JavaScript.md",
+    "cmake笔记/Cmake笔记.md",
+    "cmake笔记/CMake Practice.pdf",
+    "git小记.md",
+    "DL_RL_CV/Reinforcement Learning/RL_Course_Notes.md",
+    "虚拟环境/venv虚拟环境.md"
   ]
 }
