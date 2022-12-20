@@ -2,7 +2,7 @@
 
 # 零、学习资源整理
 
-1. [OpenAI Spinning Up](https://spinningup.openai.com/en/latest/index.html)
+1. [OpenAI Spinning Up](https://spinningup.openai.com/en/latest/index.html)：本笔记主要参考资料
 2. [本笔记所学习的课](https://github.com/huggingface/deep-rl-class)
 3. [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/RLbook2020.pdf)(已保存在onedrive)
 4. 李宏毅深度强化学习：
@@ -207,13 +207,13 @@
     Stochastic\ Policy:\pi(a|s)=P[A_t=a|S_t=s]
     $$
 
-    - S: State
-    - A: Action
+	- S: State
+	- A: Action
 
 
 - 所以基于策略的方法
-  - Train directly the policy
-  - The policy is a Neural Network.
+	- Train directly the policy
+	- The policy is a Neural Network.
 
 #### 1.7.3 基于模型(model-based)
 
@@ -225,8 +225,129 @@
 
 - Consequently, whatever method you use to solve your problem, **you will have a policy**, but in the case of value-based methods you don't train it, your policy **is just a simple function that you specify** (for instance greedy policy) and this policy **uses the values given by the value-function to select its actions.**
 - So the difference is:
-  - In policy-based, **the optimal policy is found by training the policy directly.**
-  - In value-based, **finding an optimal value function leads to having an optimal policy.**
+	- In policy-based, **the optimal policy is found by training the policy directly.**
+	- In value-based, **finding an optimal value function leads to having an optimal policy.**
+
+### 1.8 基本概念汇总
+
+#### 1.8.1 agent，environment 和 reward
+最重要的三个概念
+- **Environment**: the world that the agent lives in and interacts with.
+- **Reward**: a number that tells agent how good or bad the current world state is.
+- **Agent**: Robot, aims to maximize its cumulative reward, called **return**. Reinforcement learning methods are ways that the agent can learn behaviors to achieve its goal.
+
+#### 1.8.2 states and observations
+- **state** `s` is a complete description of the state of the world. There is no information about the world which is hidden from the state.
+	-  the state of a robot might be represented by its joint angles and velocities.
+- An **observation** `o` is a partial description of a state, which may omit information.
+	- When the agent is able to observe the complete state of the environment, we say that the environment is **fully observed**. 
+	- When the agent can only see a partial observation, we say that the environment is **partially observed**.
+
+#### 1.8.3 action space
+- **action space**: The set of all valid actions in a given environment
+	- Some environments, like Atari and Go, have **discrete action spaces**, where only a finite number of moves are available to the agent.
+	- Other environments, like where the agent controls a robot in a physical world, have **continuous action spaces**. In continuous spaces, actions are real-valued vectors.
+
+#### 1.8.4 policies
+- **policy**: a rule used by an agent to decide what actions to take. The policy is trying to maximize reward.
+	- It can be deterministic, in which case it is usually denoted by$\mu$
+		$$
+		a_t=\mu(s_t)
+		$$
+	- it may be stochastic, in which case it is usually denoted by$\pi$
+		$$
+		a_t\sim\pi(\cdot | s_t)
+		$$
+- In deep RL, we deal with **parameterized policies**: policies whose outputs are computable functions that depend on a set of parameters (eg the weights and biases of a neural network) which we can adjust to change the behavior via some optimization algorithm.	
+	- 参数化的策略表达：
+	$$
+	\begin{align}
+	a_t=\mu_\theta(s_t) \\
+	a_t\sim\pi_\theta(\cdot | s_t)
+	\end{align}
+	$$
+##### Deterministic Policies
+某一个状态s的策略应当是固定的，其概率始终为1，不会发生改变。即在某一个状态s，它始终执行某一个运动不会改变，除非改变策略。
+一个例子：
+使用`torch.nn`来构建一个简单的固定策略
+
+```python
+pi_net = nn.Sequential(
+              nn.Linear(obs_dim, 64),
+              nn.Tanh(),
+              nn.Linear(64, 64),
+              nn.Tanh(),
+              nn.Linear(64, act_dim)
+            )
+obs_tensor = torch.as_tensor(obs, dtype=torch.float32)
+actions = pi_net(obs_tensor)
+```
+
+##### Stochastic Policies
+随机策略是一个从状态集S到动作集A的条件概率分布，在这个状态上所有的动作都存在一个被选到的概率。动作是根据策略得出的分布中sample出来的。
+在Deep RL中，主要有2种随机策略：
+1. **Categorical Policy分类策略**:用于discrete action space
+	如名字所诉，分散策略就像是对于离散动作的分类器classifier。当我们构建神经网络时就像是在构建一个classifier,其中输入是observation，中间是神经网络，然后得到一个全连接层给予每一个动作的logits,最后使用softmax将logits转换成动作的概率。
+	- Sampling动作采样：给予每个动作概率，参见pytorch内置方法： [Categorical distributions in PyTorch](https://pytorch.org/docs/stable/distributions.html#categorical)和 [torch.multinomial](https://pytorch.org/docs/stable/torch.html#torch.multinomial)
+	- Log-Likelihood对数似然估计：用一个向量$P_\theta(s)$来表示概率分布:
+	  $$
+	  log\pi_\theta(a|s)= log[P_\theta(s)]_a
+	  $$
+1. **Diagonal Gaussian Policy对角高斯策略**:用于continuous action space
+	- **Multivariate Gaussian distribution**多变量高斯分布由一个mean vector $\mu$ 和一个covariance matrix $\sum$ 来表示。
+	- **Diagonal Gaussian distribution**是一个特殊的空间，它的covariance matrix只有对角线上有数值。因此我们可以将这个空间表述成一个向量。
+	- **Diagonal Gaussian Policy**会用一个神经网络将观测空间map到mean action $\mu_\theta(s)$. 它针对动作空间是连续的(比如油门大小，方向盘角度等)。可见动作和动作之间也是不相干的。它表示了一个联合概率分布来表示所有的动作。
+	- 这里有2种方法来表示convariance matrix.
+		1. 使用log standard deviation对数标准偏差 $log \sigma$ 。
+			- 它不是function of state与环境的状态无关, 而是一个独立的参数。
+			- 是目前的主流。VPG，TRPO和PPO都使用它
+		2. 使用一个神经网路来将states映射到对数标准偏差$log\sigma_\theta(s)$
+			- 它与环境状态有关
+		- 之所以两种方法都输出一个对数标准方差，而不使用标准方差standard deviations。是因为使用对数标准方差，我们可以取任意值，而标准方差要保证是正数。显然在训练神经网络时，对输入不加以限制会方便的多。
+	- Sampling动作采样:一个动作采样可以由下计算
+	  $$
+	  a=\mu_\theta(s)+\sigma_\theta(s)\odot z
+	  $$
+	  - $\mu_\theta(s)$：mean action
+	  - $\sigma_\theta(s)$：standatd deviation
+	  - $z\sim N(0,I)$：noise vector from a spherical Gaussian
+	    可以使用[torch.normal](https://pytorch.org/docs/stable/torch.html#torch.normal) or [tf.random_normal](https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/random/normal)来生成noise vector
+	    也可以用[torch.distributions.Normal](https://pytorch.org/docs/stable/distributions.html#normal) or [tf.distributions.Normal](https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/distributions/Normal),来生成distribution objects,这些objects还可以帮忙计算log-likelihoods
+	  - $\odot$：elementwise product of two vectors
+	- Log-Likelihood对数似然估计：
+	  $$
+	  log\pi_\theta(a|s)=-\frac{1}{2}\big(\sum_{i=1}^k(\frac{(a_i-\mu_i)^2}{\sigma_i^2}+2log\sigma_i)+klog2\pi\big)
+	  $$
+	  - a: k维运动空间
+	  - $\mu=\mu_\theta(s)$: diagonal Gaussian with mean
+	  - $\sigma=\sigma_\theta(s)$: standard devidation
+#### 1.8.5 trajectories
+Trajectories $\tau$ ,也被称为episodes或者rollouts。是一系列世界中的states和actions:
+$$\tau=(s_0,a_0,s_1,a_1)$$
+- 最开始的状态 $s_0$ 从**start-state distribution** $\rho_0$ 随机取样得到。
+- 之后的状态则根据环境的自然规律得到。
+#### 1.8.6 different formulations of return
+- Rewards:$r_t=R(s_t,a_t)$ 取决于当前的state-action pair
+- Agent的目标时最大化一个trajectory/episode的reward和。我们帮这个和称为return $R(\tau)$，有2种:
+	- **Finite-horizon undiscounted return**: $R(\tau)=\sum_{t=0}^Tr_t$
+	  就是一个trajectory所有的reward之和
+	- **Infinite-horizon discounted return**: $R(\tau)=\sum_{t=0}^\infty \gamma^t r_t$ 
+	  相比于上面多了一个discount factor $\gamma$ 。
+#### 1.8.7 RL optimization problem
+RL要解决的问题时最大化return。
+- 期望的return可以表示为：
+  $$J(\pi)=\displaystyle \int_\tau P(\tau|\pi)R(\tau)=E_{\tau\sim\pi}[R(\tau)]$$
+  - $P(\tau|\pi)$：是第T步trajectory/episodic的概率
+    $$P(\tau|\pi)=\rho_0(s_0)\prod_{t=0}^{T-1}P(s_{t+1}|s_t,a_t)\pi(a_t|s_t)$$
+- 所以RL的核心问题: **就是去找optimal policy $\pi^{*}$可以使得return最大化**
+  $$\pi^{*}=arg\mathop{max}\limits_{\pi}J(\pi)$$
+#### 1.8.8 Value function
+**Value**: 指的是从某state-action pair开始，然后永远执行某一policy行事的预期回报。
+这里有四种主要Value Function:
+1. 
+#### 1.8.9 Optimal Q-Function and Optimal Action
+#### 1.8.10 Bellman Equations
+#### 1.8.11 Advantage Functions
 
 ## 2. Q-Learning
 
@@ -302,9 +423,9 @@ Temporal difference, on the other hand, waits for only one interaction (one step
 
      
 
-### 2.3 [Q-Learning](https://huggingface.co/blog/deep-rl-q-part2#what-is-q-learning)是什么
+### 2.3 Q-Learning是什么
 
-- Q-Learning is **the algorithm we use to train our Q-Function**, an action-value function that determines the value of being at a particular state and taking a specific action at that state.
+- [Q-Learning](https://huggingface.co/blog/deep-rl-q-part2#what-is-q-learning) is **the algorithm we use to train our Q-Function**, an action-value function that determines the value of being at a particular state and taking a specific action at that state.
 
 - Q-Learning是一个off-policy, value-based函数并使用Temporal Difference方法来训练它的action-value function.
 
@@ -318,8 +439,8 @@ Temporal difference, on the other hand, waits for only one interaction (one step
     - 在给予了一个action和state后Q-function会搜索这个Q-table并输出一个值。
     - 一开始Q-table通常会全都初始为0，在explore环境时更新Q-table
 
-### 2.4 [Q-Learning算法](https://huggingface.co/blog/deep-rl-q-part2#the-q-learning-algorithm)
-
+### 2.4 Q-Learning算法
+[Q-Learning算法](https://huggingface.co/blog/deep-rl-q-part2#the-q-learning-algorithm)
 ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Reinforcement%20Learning/Q-learning-Algorithm.jpg?raw=true)
 
 1. 第一步：初始化Q-Table的每一个state-action pair为0
@@ -934,9 +1055,9 @@ Deep Reinforcement Learning agents **learn with batches of experience.** The que
 
     - [解决方案](https://www.youtube.com/watch?v=k08N5a0gG0A)
 
-### 8.2 [Decision Transformer](https://arxiv.org/abs/2106.01345)
+### 8.2 Decision Transformer
 
- Decision Transformer Model abstracts Reinforcement Learning as a **conditional-sequence条件序列 modeling problem**.
+ [Decision Transformer](https://arxiv.org/abs/2106.01345) Model abstracts Reinforcement Learning as a **conditional-sequence条件序列 modeling problem**.
 
 - Main Idea:
 
@@ -1097,8 +1218,8 @@ env = make_vec_env('LunarLander-v2', n_envs=16)
 
 - 使用 [Stable Baselines3 (SB3)](https://stable-baselines3.readthedocs.io/en/master/)，SB3 is a set of **reliable implementations of reinforcement learning algorithms in PyTorch**.
 
-##### 1.[PPO算法](https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#example%5D)
-
+##### 1.PPO算法
+[PPO算法](https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#example%5D)
 ```python
 # We use MultiLayerPerceptron (MLPPolicy) because the input is a vector,
 # if we had frames as input we would use CnnPolicy
@@ -1958,9 +2079,9 @@ virtual_display.start()
 
 
 
-#### 3.1.2 下载[RL-Baseline3 Zoo](https://github.com/DLR-RM/rl-baselines3-zoo)
+#### 3.1.2 下载RL-Baseline3 Zoo
 
-RL Baselines3 Zoo: A Training Framework for Stable Baselines3 Reinforcement Learning Agents
+RL [RL-Baseline3 Zoo](https://github.com/DLR-RM/rl-baselines3-zoo): A Training Framework for Stable Baselines3 Reinforcement Learning Agents
 
 ```python
 !git clone https://github.com/DLR-RM/rl-baselines3-zoo
@@ -3030,8 +3151,8 @@ from stable_baselines3.common.evaluation import evaluate_policy
 
     可见效果好了很多
 
-### 3.2 [A2C](https://stable-baselines3.readthedocs.io/en/master/modules/a2c.html)
-
+### 3.2 A2C
+[A2C](https://stable-baselines3.readthedocs.io/en/master/modules/a2c.html)
 ```python
 a2c_model = A2C("MlpPolicy",env_id,verbose=1)
 mean_reward, std_reward = evaluate_policy(a2c_model, eval_envs, n_eval_episodes=100, deterministic=True)
@@ -3387,9 +3508,8 @@ Best trial:
 
 ## 1. Two Major Problems in Modern RL
 
-### 1.1 [sparse rewards](https://zhuanlan.zhihu.com/p/558034131)稀疏奖励  problem
-
-对应于dense rewards稠密奖励
+### 1.1 sparse rewards稀疏奖励  problem
+[sparse rewards](https://zhuanlan.zhihu.com/p/558034131)对应于dense rewards稠密奖励
 
 - most rewards do not contain information, and hence are set to zero.完成目标事件的次数太少或者完成目标的步数太长，导致奖励空间中的负奖励样本远远多于正奖励样本数。
 
