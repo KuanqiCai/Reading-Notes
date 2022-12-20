@@ -140,7 +140,7 @@ $ git rebase upstream/main
 - `git branch dev`：创建一个叫dev的新分支
 - `git checkout dev`
 
-### 2.4.2 switch切换分支
+### 2.4.2 switch切换分支（推荐）
 
 参见：https://git-scm.com/docs/git-switch
 
@@ -188,13 +188,27 @@ git switch main
 git rebase dev		# 由于dev继承自main，所以 Git 只是简单的把 main 分支的引用向前移动了一下而已。
 ```
 
-### 2.4.3 branch分支操作：
+### 2.4.5 branch分支操作：
 
 - `git branch`:查看当前分支
 - `git branch -d dev` : 删除当前分支
 - `git branch -f main HEAD~3`:强行将main分支指向HEAD的第三级父提交
 
-### 2.4.6其他相关命令
+### 2.4.6 上传分支
+
+```shell
+git switch dev	# 切换到要上传的分支处
+git add .
+git commit -m "xxxxx"
+
+# push有2个选择
+git push --set-upstream origin dev	# 第一次关联远程分支，以后可以直接push
+got push origin dev					# 不想关联远程分支的话，就每次都要同时输入origin和dev
+```
+
+
+
+### 2.4.7其他相关命令
 
 2. `git stash`: 将当前工作现场储存起来，等以后恢复现场继续工作
    1. `git stash list` 查看储存起来的工作现场

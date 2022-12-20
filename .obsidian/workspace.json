@@ -11,8 +11,13 @@
             "id": "6e72d4eaaf872678",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {}
+              "type": "markdown",
+              "state": {
+                "file": "git小记.md",
+                "mode": "source",
+                "backlinks": true,
+                "source": false
+              }
             }
           },
           {
@@ -133,6 +138,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "git小记.md",
                 "collapseAll": true,
                 "extraContext": true,
                 "sortOrder": "alphabetical",
@@ -149,6 +155,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "git小记.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -170,7 +177,9 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {}
+              "state": {
+                "file": "git小记.md"
+              }
             }
           }
         ],
@@ -178,12 +187,12 @@
       }
     ],
     "direction": "horizontal",
-    "width": 438.5
+    "width": 262.5
   },
   "active": "6e72d4eaaf872678",
   "lastOpenFiles": [
-    "Web相关/README.md",
     "DL_RL_CV/Reinforcement Learning/Gym.md",
+    "Web相关/README.md",
     "Web相关/CSS.md",
     "Web相关/HTML.md",
     "Web相关/JavaScript.md",
