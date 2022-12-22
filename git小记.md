@@ -465,3 +465,29 @@ got push origin dev					# 不想关联远程分支的话，就每次都要同时
   - 更新项目内子模块到最新版本：`git submodule update`
   - 更新子模块为远程项目的最新版本：`git submodule update --remote`
 
+## 2.9 添加.gitignore
+1. 在.git所在的文件夹下创建.gitignore,并添加不需要的目录或文件：
+
+  比如一个目录：
+
+  ```
+  - repository
+  	- .git
+  	- .gitignore
+  	- .vscode
+  	- build/xxx
+  	- source/xxx
+  	- test/xxx
+  ```
+
+  .gitignore中取出build和.vscode
+
+  ```
+  /build
+  /.vscode
+  ```
+
+2. 如果添加.gitignore前，已经上传了很多不需要的文件，用以下命令去除他们：
+
+  - 文件夹：`git rm -r --cached 文件夹名`
+  - 文件: `git rm --cached 文件名`
