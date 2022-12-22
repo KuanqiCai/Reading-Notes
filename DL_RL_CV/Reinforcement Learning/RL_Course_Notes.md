@@ -394,7 +394,6 @@ $$a^*(s)=arg\mathop{max}_aQ^*(s,a)$$
   \end{align}
   $$
 
-- 
 #### 1.8.11 Advantage Functions
 
 有时候我们不需要描述一个动作具体(in absolute sense)有多好，只需要描述它相比平均水平有多好。
@@ -406,6 +405,15 @@ $$
 
 - $Q(s,a)$: Q value for action $a$ in state $s$
   - $V(s)$: Average value of that state
+
+#### 1.8.12 Markov Decision Process
+Markov Decision Process(MDPs) is a 5-tuple$(S,A,R,P,\rho_0)$
+- S: the set of all valid states
+- A: the set of all valid actions
+- R: S x A x S ->R : the reward function
+- P: S x A ->P(S) : the transition probability function.
+- $\rho_0$: starting state distribution
+[Markov property](https://en.wikipedia.org/wiki/Markov_property): transitions only depend on the most recent state and action, and no prior history.
 
 ## 2. Q-Learning
 
