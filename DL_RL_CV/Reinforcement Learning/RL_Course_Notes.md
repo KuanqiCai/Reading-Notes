@@ -266,7 +266,7 @@
 	a_t\sim\pi_\theta(\cdot | s_t)
 	\end{align}
 	$$
-##### Deterministic Policies
+##### 1.8.4.1 Deterministic Policies
 某一个状态s的策略应当是固定的，其概率始终为1，不会发生改变。即在某一个状态s，它始终执行某一个运动不会改变，除非改变策略。
 一个例子：
 使用`torch.nn`来构建一个简单的固定策略
@@ -283,7 +283,7 @@ obs_tensor = torch.as_tensor(obs, dtype=torch.float32)
 actions = pi_net(obs_tensor)
 ```
 
-##### Stochastic Policies
+##### 1.8.4.2 Stochastic Policies
 随机策略是一个从状态集S到动作集A的条件概率分布，在这个状态上所有的动作都存在一个被选到的概率。动作是根据策略得出的分布中sample出来的。
 在Deep RL中，主要有2种随机策略：
 1. **Categorical Policy分类策略**:用于discrete action space
@@ -342,12 +342,70 @@ RL要解决的问题时最大化return。
 - 所以RL的核心问题: **就是去找optimal policy $\pi^{*}$可以使得return最大化**
   $$\pi^{*}=arg\mathop{max}\limits_{\pi}J(\pi)$$
 #### 1.8.8 Value function
-**Value**: 指的是从某state-action pair开始，然后永远执行某一policy行事的预期回报。
-这里有四种主要Value Function:
-1. 
+- **Value**: 指的是从某state-action pair开始，然后永远执行某一policy行事的预期回报。
+- 当我们讨论价值函数，如果不提及time-dependence，那么就意味着[[RL_Course_Notes#1.8.6 different formulations of return|Infinite-horizon discounted return]]。对于finite-horizon undiscounted return，通常需要给予一个时间作为参数
+##### 1.8.8.1 四种Value Function:
+其中1和3也称为状态价值函数state value function。
+其中2和4也称为状态动作价值函数state-action value function
+1. **On-Policy Value Function**：
+在状态s开始，之后一直根据策略 $\pi$ 来执行动作，所得到的期望的return
+$$V^\pi(s)=\mathop{E}_{\tau \sim \pi}[R(\tau)|s_0=s]$$
+2. **On-Policy Action-Value Function**
+在状态s开始，并随机执行一动作a(未必根据policy)，之后一直根据策略 $\pi$ 来行动，所得到的期望的return
+$$Q^{\pi}(s,a)=\mathop{E}_{\tau \sim \pi}[R(\tau)|s_0=s,a_0=a]$$
+3. **Optimal Value Function**
+在状态s开始，然后一直选择最优的策略来执行动作，所得到的期望的return
+$$V^*(s)=\mathop{max}_\pi\mathop{E}_{\tau \sim \pi}[R(\tau)|s_0=s]$$
+4. **Optimal Action-Value Function**
+在状态s开始，并随机执行一动作a(未必根据policy)，然后一直选择最优的策略来执行动作，所得到的return:
+$$Q^{*}(s,a)=\mathop{max}_\pi\mathop{E}_{\tau \sim \pi}[R(\tau)|s_0=s,a_0=a]$$
+##### 1.8.8.2 Value和 Action-Value Function的关系
+- 对于1.8.8.1中的1和2：$V^\pi(s)=\mathop{E}\limits_{a\sim\pi}[Q^\pi(s,a)]$
+- 对于1.8.8.2中的3和4：$V^*(s)=\mathop{max}\limits_a[Q^*(s,a)]$
+
 #### 1.8.9 Optimal Q-Function and Optimal Action
+这里的Optimal Q-Function指的是1.8.8.1中4.Optimal Action-Value Function。
+因为它本身一直选择最优的策略，即执行可以让return最大化的动作：Optimal Action
+$$a^*(s)=arg\mathop{max}_aQ^*(s,a)$$
 #### 1.8.10 Bellman Equations
+- 贝尔曼方程将1.8..8.1的4种价值函数decompose分解成了两个部分：
+	- immediate reward
+	- discounted future values
+	
+- 贝尔曼方程简化了价值函数的计算，可以将最优解问题转化成简单的**recursive subproblem递归子问题**
+
+- 对于1.8.8.1中的1和2 on-policy value function, 对应的贝尔曼方程为:
+  $$
+  \begin{align}
+  V^\pi(s)=\mathop{E}_{\mathop{a\sim\pi}\limits_{s'\sim P}}[r(s,a)+\gamma V^\pi(s')]\\
+  Q^\pi(s,a)=\mathop{E}_{s'\sim P}\left[r(s,a)+\gamma \mathop{E}_{a'\sim \pi}[Q^\pi(s',a')]\right]
+  	\end{align}
+  $$
+
+  - $s'\sim P$ 是$s'\sim P(\cdot|s,a)$的缩写：表示下一个状态$s'$取样自environment's transition环境变化规则。
+  - $a \sim \pi$是$a \sim \pi(.|s)$的缩写：表示a由策略根据当前状态给出。
+  - $a' \sim \pi$是$a’ \sim \pi(.|s’)$的缩写：表示$a'$由策略根据下一个状态给出
+  - 上撇 $'$ 表示下一个状态/动作
+- 对于1.8.8.1中3和4 optimal value function
+  $$
+  \begin{align}
+  V^*(s)=\mathop{max}_a\mathop{E}_{s'\sim P}[r(s,a)+\gamma V^*(s')]\\
+  Q^*(s,a)=\mathop{E}_{s'\sim P}\left[r(s,a)+\gamma \mathop{max}_{a'}Q^*(s',a')\right]
+  \end{align}
+  $$
+
+- 
 #### 1.8.11 Advantage Functions
+
+有时候我们不需要描述一个动作具体(in absolute sense)有多好，只需要描述它相比平均水平有多好。
+
+所以我们用advantage function$A^\pi(s,a)$来表示一个动作的relative advantage。
+$$
+A^\pi(s,a)=Q^\pi(s,a)-V^\pi(s)
+$$
+
+- $Q(s,a)$: Q value for action $a$ in state $s$
+  - $V(s)$: Average value of that state
 
 ## 2. Q-Learning
 
@@ -361,7 +419,6 @@ Bellman Equation: simplify our value estimation
 $$
 V_\pi(s)=E_\pi [R_{t+1}+\gamma V_\pi(S_{t+1})|S_t=s]
 $$
-
 - $R_{t+1}$: immediate reward
 - $\gamma V_\pi(S_{t+1})$:  discounted value of the next state
 -  the idea of the Bellman equation is that instead of calculating each value as the sum of the expected return, **which is a long process**
@@ -379,10 +436,9 @@ Monte Carlo waits until the end of the episode, calculates $G_t$(expected return
 在玩完一局后才总结学习。
 
 - 公式：
-  $$
+$$
   V(S_t)\leftarrow V(S_t)+\alpha[G_t-V(S_t)]
-  $$
-
+$$
   - $V(S_t)$: value of state t
 
     - 左侧的那个是：新的状态价值
@@ -404,10 +460,9 @@ Temporal difference, on the other hand, waits for only one interaction (one step
 每走一步学习一次。
 
 - 公式：
-  $$
+$$
   V(S_t) \leftarrow V(S_t) + \alpha[\underbrace{\underbrace{R_{t+1}+\gamma V(S_{t+1})}_{TD\ Target}-V(S_t)}_{TD\ Error}]
-  $$
-
+$$
   - $V(S_t)$: value of state 
     - 左侧的那个是：新的状态价值
     - 右侧的2个是：之前估计的estimate的状态价值
@@ -457,9 +512,9 @@ Temporal difference, on the other hand, waits for only one interaction (one step
 4. 第四步：更新state-action pair $Q(S_t,A_t)$
 
    - 因为Q-Learning是时间差分算法TD，所以根据2.2.2,用如下公式更新
-     $$
+$$
      Q(S_t,A_t) \leftarrow Q(S_t,A_t) + \alpha[\underbrace{\underbrace{R_{t+1}+\gamma\ \underset{a}{max} Q(S_{t+1},a)}_{TD\ Target}-Q(S_t,A_t)}_{TD\ Error}]\\
-     $$
+$$
 
    - $\underset{a}{max} Q(S_{t+1},a)$: 这里更新算法时，我们总是选择带来highest state-action value的动作, 所以用到的是**greedy policy**而不是第二步中用到的 epsilon greedy policy。因为epsilon greeedy policy只有在一个随机数大于$\epsilon$时才原则最大值。
 
