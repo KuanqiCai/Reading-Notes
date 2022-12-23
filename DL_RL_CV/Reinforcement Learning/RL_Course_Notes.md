@@ -322,8 +322,8 @@ actions = pi_net(obs_tensor)
 	  - $\mu=\mu_\theta(s)$: diagonal Gaussian with mean
 	  - $\sigma=\sigma_\theta(s)$: standard devidation
 #### 1.8.5 trajectories
-Trajectories $\tau$ ,也被称为episodes或者rollouts。是一系列世界中的states和actions:
-$$\tau=(s_0,a_0,s_1,a_1)$$
+Trajectories $\tau$ ,也被称为episodes或者rollouts。它描述了从initial state到terminal state过程中所经历的所有state以及agent做出的action:
+$$\tau=(s_0,a_0,\cdots,s_T,a_T)$$
 - 最开始的状态 $s_0$ 从**start-state distribution** $\rho_0$ 随机取样得到。
 - 之后的状态则根据环境的自然规律得到。
 #### 1.8.6 different formulations of return
@@ -623,7 +623,7 @@ experience replay:初始化第一行，sampling的最后1行 和 training的第�
 
 #### 3.3.2 Fixed Q-Target
 
-- 当我们计算TD Error(Q-loss)时,我们计算**TD target (Q-Target)和current Q-value (estimation of Q)**的区别。
+- 当我们计算TD Error(Q-loss)时,我们计算**TD target (Q-Target)和current Q-value (estimation of Q)的区别。
 
   但我们不知道真正的TD Target是什么，所以我们也需要用如下公式更新TD Target：
   $$
