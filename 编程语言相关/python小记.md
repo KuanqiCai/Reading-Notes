@@ -253,3 +253,24 @@ pip uninstall example-pkg-yang-test	# 1.2.1中定义的包名
    ```
 
    
+
+
+
+# 2. 数据操作
+
+## 2.1 判断数据类型
+
+使用`if not isinstance`来判断：
+
+```python
+# 判断是否是浮点型
+a=2
+if not isinstance(a,float):
+	raise TypeError("wrong")
+    
+# 判断是否是tuple
+b=[1,2,3]
+if not isinstance(b,tuple):
+    raise TypeError("not tuple")
+```
+
