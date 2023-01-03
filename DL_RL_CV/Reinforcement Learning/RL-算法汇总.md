@@ -1,4 +1,4 @@
-内容基本来自[OpenAI](https://spinningup.openai.com/en/latest/index.html)
+内容基本来自[OpenAI](https://spinningup.openai.com/en/latest/index.html)，中文版[OpenAI](https://spinningup.readthedocs.io/zh_CN/latest/)
 
 # Kinds of RL Algorithms
 
@@ -16,6 +16,10 @@
   - 通常很难得到**a ground-truth model of the environment**
   - 此外，The bias in the model can be exploited by the agent, resulting in an agent which performs well with respect to the learned model, but behaves sub-optimally (or super terribly) in the real environment.
   - 基于模型的学习fundamentally本质上是很难的，即使付出了大量努力，可能还是没有回报。
+- Model Based方法还有：
+  - 价值迭代value iteration: [参考](https://zhuanlan.zhihu.com/p/33229439)
+  - 策略迭代policy iteration:[参考](https://zhuanlan.zhihu.com/p/34006925)
+
 
 ## 2. Policy Optimization vs Q-Learning
 
@@ -172,8 +176,8 @@ Policy Optimization和Q -Learning并不是不相容的，因此有些方法兼�
   $$
 
   - 动作j在[logit](https://zhuanlan.zhihu.com/p/27188729) $x_j$下的概率，$x_j=logit(j)=log(\frac{j}{1-j})$
-    - odds: $\frac{j}{1-j}$范围是$[0,\infin]$
-    - logit: $log(\frac{j}{1-j})$范围是$[-\infin,\infin]$
+    - odds: $\frac{j}{1-j}$范围是$[0,\infty]$
+    - logit: $log(\frac{j}{1-j})$范围是$[-\infty,\infty]$
 
 ```python
 import torch
@@ -597,15 +601,88 @@ $$
 
 ## 1. 资料汇总
 
-^a84aac
-
 - [OpenAI Spinning Guide for DDPG](https://spinningup.openai.com/en/latest/algorithms/ddpg.html)
 - [DDPG Paper](https://arxiv.org/abs/1509.02971)
+- [知乎](https://zhuanlan.zhihu.com/p/75551912)
 
 ## 2. 基本概念
 
-- Deep Deterministic Policy Gradient (DDPG) is an algorithm which concurrently同时的 learns a Q-function and a policy.
+- 深度确定性策略梯度Deep Deterministic Policy Gradient (DDPG) is an algorithm which concurrently同时的 learns a Q-function and a policy.
 - It uses off-policy data and the Bellman equation to learn the Q-function, and uses the Q-function to learn the policy.
+- 一些基本认知：
+  - DDPG是off-policy 算法
+  - DDPG只能用于连续运动空间continuous action space的环境
+  - DDPG可以被看作是专门用于连续运动空间的Deep Q-Learning
+  - 注意：OpenAI提供的[DDPG实现](https://spinningup.openai.com/en/latest/algorithms/ddpg.html#quick-facts)不能并行化
+
+
+## 3. 公式
+
+### 3.1 Q-Learning Side of DDPG
+
+1. 我们目的是最大化回报，即使价值函数最优，而Optimal action-value function的贝尔曼方程是：
+   $$
+   Q^*(s,a)=\mathop{E}_{s'\sim P}\big[ r(s,a)+\gamma \mathop{max}_{a'}Q^*(s',a') \big] \tag{1}
+   $$
+
+     - $s'\sim P$: 下一个状态$s'$是从一个分布为$P(\cdot|s,a)$的环境中取样得到的。
+
+2. 参见Deep Q-Learning这个价值函数/Q函数 是由一个神经网络$Q_\phi (s,a)$近似得到的。
+
+3. 使用**mean-squared Bellman error (MSBE)** function来评估参数为$\phi$神经网络$Q_\phi (s,a)$是否满足贝尔曼方程(1)
+   $$
+   L(\phi,D)=\mathop{E}_{(s,a,r,s',d)\sim D}\Bigg[\bigg( \underbrace{Q_\phi(s,a)}_{神经网络所求}-\Big(\underbrace{r+\gamma(1-d)\mathop{max}_{a'}Q_\phi(s',a') }_{target} \Big) \bigg)^2\Bigg] \tag{2}
+   $$
+
+   - d: 一个Bool值，用来判断下一个状态$s'$是否是terminal最终状态。
+   - 1-d: 当d为true时，其为0。表明智能体在当前状态后不会再有另外的回报。
+   - D是transitions$(s,a,r,s',d)$的集合
+
+4. Q，Deep-Q, 和DDPG 算法 都主要基于让MSBE(2)最小化
+
+   对在于这三者有2个实现技巧：
+
+   1. [[RL_Course_Notes#3.3.1 Experience Replay]]
+   2. [[RL_Course_Notes#3.3.2 Fixed Q-Target]]
+      - target指的是2式中的$r+\gamma(1-d)\mathop{max}_{a'}Q_\phi(s',a')$，因为我们就是想让Q-Function接近它。
+      - 但可以看到2式中target的$Q_\phi$和神经网络中的$Q_\phi$，是基于同样的参数，这样显然让MSBE最小化的过程不稳定
+      - 为此额外用一个目标神经网络Target network来计算target, 这个网络的参数为$\phi_{targ}$
+
+   对于第2点，DDPG有额外的细节
+
+   - DQN中，目标神经网络Target network的参数是从主神经网络每几步直接复制而来
+
+   - DDPG则使用polyak averaging每一步更新一次：
+     $$
+     \phi_{targ}\leftarrow\rho\phi_{targ}+(1-\rho)\phi
+     $$
+
+     - $\rho$: 称之为polyak,是一个0～1的超参。
+
+5. 将4点中的技巧结合进(2)式，则得到最终DDPG要最小化的MSBE Loss：
+   $$
+   L(\phi,D)=\mathop{E}_{(s,a,r,s',d)\sim D}\Bigg[\bigg( \underbrace{Q_\phi(s,a)}_{神经网络所求}-\Big(\underbrace{r+\gamma(1-d)Q_{\phi_{targ}}Q_\phi(s',\mu\theta_{targ}(s')) }_{target} \Big) \bigg)^2\Bigg] \tag{3}
+   $$
+
+   - $\mu\theta_{targ}$: target policy
+### 3.2 Policy Learning Side of DDPG 
+
+$$
+\mathop{max}_{\theta}\mathop{E}_{s\sim D}\bigg[Q_\phi\Big(s,\mu_\theta(s) \Big) \bigg] \tag{4}
+$$
+
+- 这部分训练一个deterministic policy $\mu_\theta(s)$，来最大化价值函数$Q_\phi(s,a)$
+- 这时候的$Q_\phi(s,a)$的参数$\phi$是确定的，由3.1的3式而来，改变的只有策略参数$\theta$
+
+
+
+## 4. 伪代码Pseudocode
+
+![](https://spinningup.openai.com/en/latest/_images/math/5811066e89799e65be299ec407846103fcf1f746.svg)
+
+- 12,13行是在计算3.1的（3）式。
+- 14行 是在计算3.2的（4）式。
+- 15行则是3.1 第4点的技巧，为了让收敛更稳定。
 
 # TD3
 
@@ -614,5 +691,70 @@ $$
 - [OpenAI Spinning guide on TD3](https://spinningup.openai.com/en/latest/algorithms/td3.html)
 - [Original paper](https://arxiv.org/pdf/1802.09477.pdf)
 - [Original Implementation](https://github.com/sfujim/TD3)
+- [知乎](https://zhuanlan.zhihu.com/p/111334500)
 
-## 2.  
+## 2.  基本概念
+
+- Twin Delayed Deep Deterministic policy gradient algorithm双延迟深度确定性策略梯度， 是DDPG的优化版本。
+- DDPG有时候会高估Q-Values，从而使得策略失效，因为它利用了Q函数中的错误。为此，TD3通过**3个技巧**解决了这个问题：
+  1. **Clipped Double-Q Learning.** TD3 learns *two* Q-functions instead of one (hence “twin”), and uses the smaller of the two Q-values to form the targets in the Bellman error loss functions.
+  2. **“Delayed” Policy Updates.** TD3 updates the policy (and target networks) less frequently than the Q-function. The paper recommends one policy update for every two Q-function updates.
+  3. **Target Policy Smoothing.** TD3 adds noise to the target action, to make it harder for the policy to exploit Q-function errors by smoothing out Q along changes in action.
+- 一些基本认知：
+  - TD3和DDPG一样是off-policy算法
+  - TD3和DDPG一样只能用于连续动作空间的环境
+  - 注意：OpenAI提供的[TD3实现](https://spinningup.openai.com/en/latest/algorithms/td3.html#quick-facts)不能并行化
+
+## 3.公式
+
+记得结合DDPG公式来看
+
+### 第一步：Target Policy Smoothing
+
+Target action为：
+$$
+a'(s')=clip\Big(\mu\theta_{targ}(s')+clip(\epsilon,-c,c),a_{low},a_{high}\Big),\ \ \epsilon\in N(0,\sigma) \tag{1}
+$$
+
+- $clip(\epsilon,-c,c)$: 是第三个技巧中所说的噪声
+- $\mu\theta_{targ}(s')$: 这里的动作是用于Q-learning target的动作，所以使用target policy
+
+Target policy smoothing解决了DDPG中的特有错误：本来如果Q-Function的近似由于某一动作产生了不正确的急剧变化，目标策略会快速开发这个急剧变化得来的峰值，从而产生不好的行为。但这里由于我们这里的clip后，这些急剧的变化产生的峰值会被快速的smooth掉。
+
+### 第二步：Clipped double Q-learning
+
+1. 选择2个神经网络训练而来的参数$\phi_1,\phi_2$，得到的Q-Value中较小的那一个来计算target value
+   $$
+   y(r,s',d)=r+\gamma(1-d)\mathop{min}_{i=1,2}Q_{{\phi}_{i,targ}}(s',a'(s')) \tag{2}
+   $$
+
+   - 这里的动作来自上面的（1）式
+
+2. 接着计算2个参数的MSBE Loss:
+   $$
+   \begin{align}
+   L(\phi_1,D)=\mathop{E}_{(s,a,r,s',d)\sim D}\Bigg[\bigg( \underbrace{Q_{\phi_1}(s,a)}_{神经网络1所求}-\underbrace{y(r,s',d)}_{target} \bigg)^2\Bigg] \tag{3}\\
+   
+   L(\phi_2,D)=\mathop{E}_{(s,a,r,s',d)\sim D}\Bigg[\bigg( \underbrace{Q_{\phi_2}(s,a)}_{神经网络2所求}-\underbrace{y(r,s',d)}_{target} \bigg)^2\Bigg] \tag{4}
+   \end{align}
+   $$
+   
+
+使用得到较小Q-Value的那一个参数来更新网络，可以帮助fend避免overestimation Q-Value
+
+### 第三步：Delayed Policy update
+
+$$
+\mathop{max}_{\theta}\mathop{E}_{s\sim D}\bigg[Q_{\phi_1}\Big(s,\mu_\theta(s) \Big) \bigg] \tag{5}
+$$
+
+- 注意这里只最大化$Q_{\phi_1}$
+- 和DDPG基本一致，但更新的频率更小，这可以帮助减少ddpg中发散的现象。
+
+
+
+
+
+## 4. 伪代码Pseudocode
+
+![](https://spinningup.openai.com/en/latest/_images/math/b7dfe8fa3a703b9657dcecb624c4457926e0ce8a.svg)

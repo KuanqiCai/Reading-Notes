@@ -293,6 +293,7 @@ actions = pi_net(obs_tensor)
 	  $$
 	  log\pi_\theta(a|s)= log[P_\theta(s)]_a
 	  $$
+	  简单的代码实现见[[RL-算法汇总#3.2 代码实现3.1的7式]]
 1. **Diagonal Gaussian Policy对角高斯策略**:用于continuous action space
 	- **Multivariate Gaussian distribution**多变量高斯分布由一个mean vector $\mu$ 和一个covariance matrix $\sum$ 来表示。
 	- **Diagonal Gaussian distribution**是一个特殊的空间，它的covariance matrix只有对角线上有数值。因此我们可以将这个空间表述成一个向量。
@@ -344,6 +345,7 @@ RL要解决的问题时最大化return。
 #### 1.8.8 Value function
 - **Value**: 指的是从某state-action pair开始，然后永远执行某一policy行事的预期回报。
 - 当我们讨论价值函数，如果不提及time-dependence，那么就意味着[[RL_Course_Notes#1.8.6 different formulations of return|Infinite-horizon discounted return]]。对于finite-horizon undiscounted return，通常需要给予一个时间作为参数
+- 马尔科夫奖励过程的某一状态S的价值函数V(S)是从这个状态开始的未来期望累积汇报
 ##### 1.8.8.1 四种Value Function:
 其中1和3也称为状态价值函数state value function。
 其中2和4也称为状态动作价值函数state-action value function
@@ -407,29 +409,55 @@ $$
   - $V(s)$: Average value of that state
 
 #### 1.8.12 Markov Decision Process
-Markov Decision Process(MDPs) is a 5-tuple$(S,A,R,P,\rho_0)$
-- S: the set of all valid states
-- A: the set of all valid actions
-- R: S x A x S ->R : the reward function
-- P: S x A ->P(S) : the transition probability function.
-- $\rho_0$: starting state distribution
-[Markov property](https://en.wikipedia.org/wiki/Markov_property): transitions only depend on the most recent state and action, and no prior history.
+- Markov Decision Process(MDPs) is a 5-tuple$(S,A,R,P,\rho_0)$：Action的选取只依赖用户当前的状态，与之前的历史行为都没有关系，我们把这个决策过程称为马尔科夫决策过程(MDP)
+
+  - S: the set of all valid states
+
+  - A: the set of all valid actions
+
+  - R: S x A x S ->R : the reward function，行动后带来的回报
+
+  - P: S x A ->P(S) : the transition probability function，行动后对state的影响
+
+  - $\rho_0$: starting state distribution，初始状态
+  
+  [Markov property](https://en.wikipedia.org/wiki/Markov_property): transitions only depend on the most recent state and action, and no prior history.马尔可夫性其实是一种假设，“未来的一切仅与现在有关，独立于过去的状态”。
+  
+- 求解MDP的方法有
+
+  - 价值迭代Value Iteration
+
+
 
 ## 2. Q-Learning
 
 Q-learning是一种基于价值的算法。The **Q comes from "the Quality" of that action at that state.**
-
 ### 2.1 贝尔曼方程
 
-Bellman Equation: simplify our value estimation
+#### 2.1.1 简介：
 
-1.7.1中提到的2种基于价值的函数(state-value or action-value function)，都需要sum all the rewards an agent can get if it starts at that state.这就非常的tedious冗长的。因此用贝尔曼方程来简化价值函数的计算。
+Bellman Equation又称为动态规划方程（Dynamic Programming Equation），表示动态规划问题中相邻状态关系的方程，可以用迭代的方式将优化问题化成子问题，从而simplify our value estimation。
+
+正如1.8.8所说，`马尔科夫奖励过程的某一状态S的价值函数V(S)是从这个状态开始的未来期望累积汇报`，那未来那么多不确定如何计算这个价值函数呢？就需要用到我们的贝尔曼方程。
+
+#### 2.1.2 公式：
+
 $$
 V_\pi(s)=E_\pi [R_{t+1}+\gamma V_\pi(S_{t+1})|S_t=s]
 $$
-- $R_{t+1}$: immediate reward
-- $\gamma V_\pi(S_{t+1})$:  discounted value of the next state
--  the idea of the Bellman equation is that instead of calculating each value as the sum of the expected return, **which is a long process**
+由贝尔曼方程简化后的价值函数 是一个递推公式，可以分成两个部分
+
+- $R_{t+1}$: immediate reward，即时奖励(一般是已知的)
+- $\gamma V_\pi(S_{t+1})$:  discounted value of the next state，加了权重$\gamma$的后续状态的价值函数(未来后续回报的期望和)
+
+#### 2.1.3 求解贝尔曼最优方程
+
+尔曼最优方程是非线性的，通常而言没有固定的解法，有很多著名的迭代解法：
+
+- Value Iteration 价值迭代
+- Policy Iteration 策略迭代
+- Q-learning
+- Sarsa
 
 ### 2.2 两种训练价值函数的策略strategies
 
