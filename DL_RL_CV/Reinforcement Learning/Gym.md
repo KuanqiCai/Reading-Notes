@@ -3,9 +3,10 @@
 - [Documentation](https://www.gymlibrary.dev/)
 - [知乎](https://zhuanlan.zhihu.com/p/33553076?utm_id=0)
 
-# 1、Basic Usage
+# 1. Basic Usage
 
-## 1.1 [Core](https://www.gymlibrary.dev/api/core/)
+## 1.1 Core
+ [Core](https://www.gymlibrary.dev/api/core/)
 
 ![](https://www.gymlibrary.dev/_images/AE_loop.png)
 
@@ -26,7 +27,8 @@ check_env(env,skip_render_check=False,warn=False) # 4.检查环境是否conform 
 env.close()							# 5.关闭环境
 ```
 
-## 1.2 [Space](https://www.gymlibrary.dev/api/spaces/)
+## 1.2 Space
+[Space](https://www.gymlibrary.dev/api/spaces/)
 
 用于定义 action 和 observation space，他们都要inherit from Space类。
 
@@ -120,7 +122,8 @@ array([-0.30874878, -0.44607827,  1.8394998 ], dtype=float32)
 
   
 
-## 1.3 [Wrappers](https://www.gymlibrary.dev/api/wrappers/)
+## 1.3 Wrappers
+[Wrappers](https://www.gymlibrary.dev/api/wrappers/)
 
 可以不用改变源代码，就让我们包装现有环境，把各种新功能包装进现有环境
 
@@ -251,7 +254,7 @@ play(gym.make('Pong-v0'))
 
 
 
-# 2、 Custom environment
+# 2. Custom environment
 
 [源代码](https://github.com/Farama-Foundation/gym-examples/blob/main/gym_examples/envs/grid_world.py)
 
@@ -296,10 +299,16 @@ The environment consists of a 2-dimensional square grid of fixed size (specified
 ## 2.2 Declaration and Initialization
 
 ```python
+# gym 版本v21：
 import gym
 from gym import spaces
+# gym 版本v26:
+import gymnasium as gym
+from gymnasium import spaces
+
 import pygame
 import numpy as np
+
 
 # declaration of GridWorldEnv
 class GridWorldEnv(gym.Env):
@@ -619,4 +628,23 @@ Wrapper可以直接改变环境，比如下面用FlattenObservation()，可以�
 >>> print(wrapped_env.reset())
 (array([1, 4, 3, 2]), {'distance': 4.0})
 ```
+
+# 3. Gym各函数使用
+## 3.1  gym.make()
+- 用法
+
+  ```python
+  envs = gym.vector.make("CartPole-v1", num_envs=3)
+  ```
+
+- 原理
+
+  1. 在gym注册过的环境中找到`CartPole-v1`. [源代码参见](https://github.com/openai/gym/blob/e689f93a425d97489e590bba0a7d4518de0dcc03/gym/envs/__init__.py#L53-L58)
+  2. 在注册的环境集合中找到并得到相应的`entry_point`后，就会调用对应的环境类。源代码参见https://github.com/openai/gym/blob/e689f93a425d97489e590bba0a7d4518de0dcc03/gym/envs/registration.py#L85-L86
+
+- 对于自己写的环境：
+
+  - 可以如2.8那样将我们的环境类加入到gym注册表中去，然后使用make()来调用。
+  - 也可以直接impor进来，然后调用类。
+
 
