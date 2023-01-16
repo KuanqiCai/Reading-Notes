@@ -260,6 +260,47 @@ play(gym.make('Pong-v0'))
 
 [教程](https://www.gymlibrary.dev/content/environment_creation/)
 
+## 2.0 环境所需内容
+
+一般包括：
+
+```python
+class Car2DEnv(gym.Env):
+    metadata = {
+        'render.modes': ['human', 'rgb_array'],
+        'video.frames_per_second': 2
+    }
+     
+    def __init__(self):
+        self.action_space = None
+        self.observation_space = None
+        pass
+    
+    def step(self, action):
+        return self.state, reward, done, {}
+    
+    def reset(self):
+        return self.state
+        
+    def render(self, mode='human'):
+        return None
+        
+    def close(self):
+        return None
+```
+
+### 2.0.1 必须要实现的：
+
+- \__init__()：将会初始化动作空间与状态空间，便于强化学习算法在给定的状态空间中搜索合适的动作。gym提供了spaces方法，详细内容可以help查看。；
+
+- step()：用于编写智能体与环境交互的逻辑，它接受action的输入，给出下一时刻的状态、当前动作的回报、是否结束当前episode及调试信息。输入action由\__init__()函数中的动作空间给定。我们规定当action为0表示小车不动，当action为1，2，3，4时分别是向上、下、左、右各移动一个单位。据此可以写出小车坐标的更新逻辑；
+
+- reset()：用于在每轮开始之前重置智能体的状态。
+
+### 2.0.2 非必须
+
+metadata、render()、close()是与图像显示有关的，
+
 ## 2.1 环境信息
 
 The environment consists of a 2-dimensional square grid of fixed size (specified via the `size` parameter during construction). The agent can move vertically or horizontally between grid cells in each timestep. The goal of the agent is to navigate to a target on the grid that has been placed randomly at the beginning of the episode.
@@ -646,5 +687,4 @@ Wrapper可以直接改变环境，比如下面用FlattenObservation()，可以�
 
   - 可以如2.8那样将我们的环境类加入到gym注册表中去，然后使用make()来调用。
   - 也可以直接impor进来，然后调用类。
-
 
