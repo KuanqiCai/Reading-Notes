@@ -223,6 +223,9 @@
 
 #### 1.7.4 总结对比
 
+- Value vs Policy based:
+	- Value based: $V=E(R)\rightarrow \pi=argmax(v)$ 找最优的价值函数，让这最优的价值函数达到最大值即最终的策略。
+	- Policy based : $\pi=P(a|s)$ 找最优的动作概率分布
 - Consequently, whatever method you use to solve your problem, **you will have a policy**, but in the case of value-based methods you don't train it, your policy **is just a simple function that you specify** (for instance greedy policy) and this policy **uses the values given by the value-function to select its actions.**
 - So the difference is:
 	- In policy-based, **the optimal policy is found by training the policy directly.**
