@@ -216,6 +216,19 @@ got push origin dev					# 不想关联远程分支的话，就每次都要同时
    3. `git stash apply`: 恢复工作现场，不删除stash内容，得输入`git stash drop`来删除。
 3. `git cherry-pick <commit id>`: 在master分支上修复了bug，而dev其他工作开发了一半，显然不可能从master重新分出来，在dev上再修复bug很麻烦。该命令可以把修复bug的那一次修改复制到dev分支来。
 
+### 2.4.8删除分支
+
+- 本地删除:`git branch -d  local_branch_name`
+- 远程删除:`git push remote_name -d remote_branch_name`
+  - remote_name: 远程名称，通常都是Origin
+  - -d: --delete的别名
+  - remote_branch_name: 要删除的远程分支名
+
+### 2.4.9查看分支
+- 查看本地分支:`git branch`
+- 查看所有分支：`git branch -a`
+
+
 ## 2.5 撤销变更
 
 ### 2.5.1 reset 本地撤销
