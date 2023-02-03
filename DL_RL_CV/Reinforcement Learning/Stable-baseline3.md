@@ -1,31 +1,91 @@
 # 一、基本使用
 
-使用A2C训练一个CartPole环境:
+[参考](https://zhuanlan.zhihu.com/p/406517851)
 
-```python
-import gym
+## 1.1 gym环境使用
 
-from stable_baselines3 import A2C
+- 下载环境
 
-# **** Create Environment ****
-env = gym.make("CartPole-v1")2
+  ```shell
+  pip install gym
+  pip install Box2D
+  pip install pyglet==1.5.27 # 如果python版本是3.8以上就可以下最新版
+  ```
 
-# **** Instantiate the agent ****
-model = A2C("MlpPolicy", env, verbose=1)
+- 使用环境自带的随机采样
 
-# **** Train the agent ****
-model.learn(total_timesteps=10_000)
+  ```python
+  import gym
+  
+  env_name = "LunarLander-v2"
+  env = gym.make(env_name)          # 导入注册器中的环境
+  
+  episodes = 10
+  for episode in range(1, episodes + 1):
+      state = env.reset()           # gym风格的env开头都需要reset一下以获取起点的状态
+      done = False
+      score = 0
+  
+      while not done:
+          env.render()              # 将当前的状态化成一个frame，再将该frame渲染到小窗口上
+          action = env.action_space.sample()     # 通过随机采样获取一个随即动作
+          n_state, reward, done, info = env.step(action)    # 将动作扔进环境中，从而实现和模拟器的交互
+          score += reward
+      print("Episode : {}, Score : {}".format(episode, score))
+  
+  env.close() 
+  ```
 
-vec_env = model.get_env()
-obs = vec_env.reset()
-for i in range(1000):
-    action, _state = model.predict(obs, deterministic=True)
-    obs, reward, done, info = vec_env.step(action)
-    vec_env.render()
-    # VecEnv resets automatically
-    # if done:
-    #   obs = vec_env.reset()
-```
+## 1.2 sb3 使用
+
+- 训练模型
+
+  ```python
+  import gym
+  from stable_baselines3 import DQN
+  from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
+  from stable_baselines3.common.evaluation import evaluate_policy
+  
+  env_name = "LunarLander-v2"
+  env = gym.make(env_name)
+  
+  """
+  DummyVecEnv, 该类可以对env进行包装, 从而完成环境的向量化
+  向量化的好处:
+  如果你有多个env需要使用,那么直接将它们按照上述的格式(无输入到环境类的映射)写成一个列表传入DummyVecEnv中,
+  那么在后续训练时，向量化的多个环境便会在同一个线程或者进程中被使用，从而提高采样和训练的效率。
+  """ 
+  env = DummyVecEnv([lambda : env])
+  
+  
+  """
+  "MlpPolicy"定义了DQN的策略网络是一个MLP网络, 也可以填CnnPolicy来定义策略网络为CNN.
+  不过此处的输入就是一个8维向量, 没必要做local connection, 所以还是选择MLP就好
+  """
+  model = DQN(
+      "MlpPolicy", 
+      env=env,
+      verbose=1
+  )
+  
+  model.learn(total_timesteps=1e5)
+  ```
+
+- 评估模型
+
+  ```python
+  # n_eval_episodes代表评估的次数，该值建议为10-30，越高评估结果越可靠。
+  mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
+  env.close()
+  mean_reward, std_reward
+  
+  # evaluate_policy返回这若干次测试后模型的得分的均值和方差
+  #(-166.24617834256043, 50.530194648006685)
+  ```
+
+  
+
+
 
 # 二、Tensorboard
 
