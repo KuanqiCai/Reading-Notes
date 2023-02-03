@@ -42,8 +42,7 @@ Tutorial:https://docs.opencv.org/4.6.0/d6/d00/tutorial_py_root.html
 #### 1.1.2 C++ Implementation
 
 - code: 
-
-    ```C++
+```C++
     #include <opencv2/core.hpp>			//opencv库的基本模块
     #include <opencv2/imgcodecs.hpp>	//opencv库提供reading and writing功能的模块
     #include <opencv2/highgui.hpp>		//opencv库提供在一个窗口中显示一个图片的功能
@@ -70,7 +69,7 @@ Tutorial:https://docs.opencv.org/4.6.0/d6/d00/tutorial_py_root.html
         }
         return 0;
     }
-    ```
+```
 
 - compile:
 
@@ -112,6 +111,15 @@ k = cv.waitKey(0)
 if k == ord("s"):
     # 3.
     cv.imwrite("starry_night.png", img)
+```
+
+1.`waitKey(0)` will display the window infinitely until any keypress (it is suitable for image display).显示静止图像
+
+2.`waitKey(1)` will display a frame for `1` ms, after which display will be automatically closed. Since the OS has a minimum time between switching threads, the function will not wait exactly `1` ms, it will wait at least `1` ms, depending on what else is running on your computer at that time.显示连续的运动图像
+- 通常用法是：
+```python
+if cv.waitKey(1) == ord('q'):
+	break
 ```
 
 ### 1.2 Video read and save
@@ -553,11 +561,14 @@ print( t )
   - Scipy Lecture Notes - [Advanced Numpy](https://scipy-lectures.github.io/advanced/advanced_numpy/index.html#advanced-numpy)
   - [Timing and Profiling in IPython](http://pynash.org/2013/03/06/timing-and-profiling/)
 
-## 3. [Image Processing in OpenCV](https://docs.opencv.org/4.6.0/d2/d96/tutorial_py_table_of_contents_imgproc.html)
+## 3. Image Processing in OpenCV
+[Image Processing in OpenCV](https://docs.opencv.org/4.6.0/d2/d96/tutorial_py_table_of_contents_imgproc.html)
 
-## 4. [Feature Detection and Description](https://docs.opencv.org/4.6.0/db/d27/tutorial_py_table_of_contents_feature2d.html)
+## 4. Feature Detection and Description
+[Feature Detection and Description](https://docs.opencv.org/4.6.0/db/d27/tutorial_py_table_of_contents_feature2d.html)
 
-### 4.1 [Harris Corner Detection](https://docs.opencv.org/4.6.0/dc/d0d/tutorial_py_features_harris.html)
+### 4.1 Harris Corner Detection
+[Harris Corner Detection](https://docs.opencv.org/4.6.0/dc/d0d/tutorial_py_features_harris.html)
 
 #### 4.1.1 Functions to learn
 
@@ -668,7 +679,8 @@ img[res[:,3],res[:,2]] = [0,255,0]
 cv.imwrite('subpixel5.png',img)
 ```
 
-### 4.2 [Shi-Tomasi Corner Detector ](https://docs.opencv.org/4.6.0/d4/d8c/tutorial_py_shi_tomasi.html)
+### 4.2 Shi-Tomasi Corner Detector 
+[Shi-Tomasi Corner Detector ](https://docs.opencv.org/4.6.0/d4/d8c/tutorial_py_shi_tomasi.html)
 
 #### 4.2.1 Functions to learn
 
@@ -705,7 +717,8 @@ for i in corners:
 plt.imshow(img),plt.show()
 ```
 
-### 4.3 [SIFT (Scale-Invariant Feature Transform)](https://docs.opencv.org/4.6.0/da/df5/tutorial_py_sift_intro.html)
+### 4.3 SIFT (Scale-Invariant Feature Transform)
+[SIFT (Scale-Invariant Feature Transform)](https://docs.opencv.org/4.6.0/da/df5/tutorial_py_sift_intro.html)
 
 #### 4.3.1 Functions to learn
 
@@ -783,7 +796,8 @@ cv.imwrite('sift_keypoints.jpg',img)
 - **kp**: a list of keypoints
 - **des**: descriptor, a numpy array of shape (Number of Keypoints)×128.
 
-### 4.4 [SURF (Speeded-Up Robust Features)](https://docs.opencv.org/4.6.0/df/dd2/tutorial_py_surf_intro.html)
+### 4.4 SURF (Speeded-Up Robust Features)
+[SURF (Speeded-Up Robust Features)](https://docs.opencv.org/4.6.0/df/dd2/tutorial_py_surf_intro.html)
 
 #### 4.4.1 Theory
 
@@ -945,28 +959,195 @@ False
 
 
 
-### 4.5 [FAST (Features from Accelerated Segment Test)](https://docs.opencv.org/4.6.0/df/d0c/tutorial_py_fast.html)
-
+### 4.5 FAST (Features from Accelerated Segment Test)
+[FAST (Features from Accelerated Segment Test)](https://docs.opencv.org/4.6.0/df/d0c/tutorial_py_fast.html)
 #### 4.5.1 Theory
 
 
 
-### 4.6 [BRIEF (Binary Robust Independent Elementary Features)](https://docs.opencv.org/4.6.0/dc/d7d/tutorial_py_brief.html)
+### 4.6 BRIEF (Binary Robust Independent Elementary Features)
+[BRIEF (Binary Robust Independent Elementary Features)](https://docs.opencv.org/4.6.0/dc/d7d/tutorial_py_brief.html)
 
-### 4.7 [ORB (Oriented FAST and Rotated BRIEF)](https://docs.opencv.org/4.6.0/d1/d89/tutorial_py_orb.html)
+### 4.7 ORB (Oriented FAST and Rotated BRIEF)
+[ORB (Oriented FAST and Rotated BRIEF)](https://docs.opencv.org/4.6.0/d1/d89/tutorial_py_orb.html)
 
-### 4.8 [Feature Matching](https://docs.opencv.org/4.6.0/dc/dc3/tutorial_py_matcher.html)
+### 4.8 Feature Matching]
+[Feature Matching](https://docs.opencv.org/4.6.0/dc/dc3/tutorial_py_matcher.html)
 
-### 4.9 [Feature Matching + Homography to find Objects](https://docs.opencv.org/4.6.0/d1/de0/tutorial_py_feature_homography.html)
+### 4.9 Feature Matching + Homography to find Objects
+[Feature Matching + Homography to find Objects](https://docs.opencv.org/4.6.0/d1/de0/tutorial_py_feature_homography.html)
 
-## 5. [Video analysis (video module)](https://docs.opencv.org/4.6.0/da/dd0/tutorial_table_of_content_video.html)
+## 5. Video analysis (video module)
+[Video analysis (video module)](https://docs.opencv.org/4.6.0/da/dd0/tutorial_table_of_content_video.html)
 
-## 6. [Camera Calibration and 3D Reconstruction](https://docs.opencv.org/4.6.0/d9/db7/tutorial_py_table_of_contents_calib3d.html)
+## 6. Camera Calibration and 3D Reconstruction
+[Camera Calibration and 3D Reconstruction](https://docs.opencv.org/4.6.0/d9/db7/tutorial_py_table_of_contents_calib3d.html)
 
-## 7. [Machine Learning](https://docs.opencv.org/4.6.0/d6/de2/tutorial_py_table_of_contents_ml.html)
+### 6.1 Calibration
 
-## 8. [Computational Photography](https://docs.opencv.org/4.6.0/d0/d07/tutorial_py_table_of_contents_photo.html)
+#### 6.1.1 Basic ideas
 
-## 9. [Object Detection (objdetect module)](https://docs.opencv.org/4.6.0/d2/d64/tutorial_table_of_content_objdetect.html)
+- 为什么要标定
 
-## 10. [OpenCV-Python Bindings](https://docs.opencv.org/4.6.0/df/da2/tutorial_py_table_of_contents_bindings.html)
+  - 进行摄像机标定的目的：求出相机的内、外参数，以及畸变参数。
+  - 标定相机后通常是想做两件事：
+    - 一个是由于每个镜头的畸变程度各不相同，通过相机标定可以校正这种镜头畸变矫正畸变，生成矫正后的图像；
+    - 另一个是根据获得的图像重构三维场景。
+
+- 两种主要的失真：
+
+  1. Radial distortion径向畸变
+
+     - 径向畸变使竖直线发生弯曲，离中心点离得越远畸变的越严重。
+
+     - 用数学来表达径向畸变: 
+       $$
+       x_{distorted} = x(1+k_1r^2+k_2r^4+k_3r^6) \\
+       y_{distorted} = y(1+k_1r^2+k_2r^4+k_3r^6)
+       $$
+       
+
+  2. Tangential distorition切向畸变
+
+     - 切向畸变使横直线发生弯曲
+
+     - 用数学来表达横向畸变:
+       $$
+       x_{distorted}=x+[2p_1xy+p_2(r^2+2x^2)]\\
+       y_{distorted}=y+[p_1(r^2+2y^2)+2p_2xy]
+       $$
+
+- 标定要确定的参数：
+
+  1. 上面两个失真方程中的系数:$k_1,k_2,k_3,p_1,p_2$
+
+  2. 每个相机独一无二的intrinsic parameters，有focal length焦距$(f_x,f_y)$和optical centers$(c_x,c_y)$
+
+     这些参数用于计算camera matrix:
+     $$
+     camera\ matrix= \left[
+      \begin{matrix}
+        f_x & 0 & c_x \\
+        0 & f_y & c_y \\
+        0 & 0 & 1
+       \end{matrix}
+       \right]
+     $$
+     相机矩阵同样是每个相机唯一的，只需要计算一次
+
+  3. extrinsic parameters: 用于将3D点的坐标和相机坐标系对应起来
+
+#### 6.1.2 Code
+
+需要一张棋盘，我们知道棋盘上点在现实世界中的坐标，也知道了图像中的坐标，由此可求是失真系数。至少要拍10张图片。
+
+3D points are called **object points** and 2D image points are called **image points.**
+
+- Setup
+
+  1. 使用**[cv.findChessboardCorners()](https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga93efa9b0aa890de240ca32b11253dd4a)**找棋盘上的图案pattern
+  2. 使用 **[cv.cornerSubPix()](https://docs.opencv.org/4.x/dd/d1a/group__imgproc__feature.html#ga354e0d7c86d0d9da75de9b9701a9a87e)**增加准确性
+  3. 可以用 **[cv.drawChessboardCorners()](https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga6a10b0bb120c4907e5eabbcd22319022)**画图案
+
+  ```python
+  import numpy as np
+  import cv2 as cv
+  import glob
+  # termination criteria
+  criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+  # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
+  # 这里画的7x6的格子，3表示x,y,z，一般认为棋盘在xy平面上，所以z=0
+  objp = np.zeros((6*7,3), np.float32)
+  # np.mgrid[0:7 0:6]返回一个dense multi-dimensional 矩阵
+  objp[:,:2] = np.mgrid[0:7,0:6].T.reshape(-1,2)
+  # Arrays to store object points and image points from all the images.
+  objpoints = [] # 3d point in real world space
+  imgpoints = [] # 2d points in image plane.
+  
+  # glob是python自己带的一个文件操作相关模块，用它可以查找符合自己目的的文件
+  # glob.glob(r’c:*.txt’)       获得C盘下的所有txt文件的名字
+  # glob.glob(r’E:\pic**.jpg’)  获得指定目录下的所有jpg文件的名字
+  # glob.iglob(r'../*.py')      获得父目录中所有的.py文件的名字
+  images = glob.glob('*.jpg')
+  
+  for fname in images:
+      img = cv.imread(fname)
+      gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+      # Find the chess board corners
+      ret, corners = cv.findChessboardCorners(gray, (7,6), None)
+      # If found, add object points, image points (after refining them)
+      if ret == True:
+          objpoints.append(objp)
+          corners2 = cv.cornerSubPix(gray,corners, (11,11), (-1,-1), criteria)
+          imgpoints.append(corners2)
+          # Draw and display the corners
+          cv.drawChessboardCorners(img, (7,6), corners2, ret)
+          cv.imshow('img', img)
+          cv.waitKey(500)
+  cv.destroyAllWindows()
+  ```
+
+- Calibration
+
+  使用 **[cv.calibrateCamera()](https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga3207604e4b1a1758aa66acb6ed5aa65d)** 来标定
+
+  ```python
+  ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+  ```
+
+- Undistortion
+
+  标定好后就可以对图像进行去畸变了。
+
+  1. 使用**[cv.getOptimalNewCameraMatrix()](https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga7a6c4e032c97f03ba747966e6ad862b1)**来精细化相机矩阵：
+
+     - If the scaling parameter alpha=0, it returns undistorted image with minimum unwanted pixels. So it may even remove some pixels at image corners.
+
+     -  If alpha=1, all pixels are retained with some extra black images. This function also returns an image ROI which can be used to crop the result
+
+     ```python
+     img = cv.imread('left12.jpg')
+     h,  w = img.shape[:2]
+     newcameramtx, roi = cv.getOptimalNewCameraMatrix(mtx, dist, (w,h), 1, (w,h))
+     ```
+  
+  2. 使用**[cv.undistort()](https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga69f2545a8b62a6b0fc2ee060dc30559d)**去畸变
+  
+     ```python
+     # undistort
+     dst = cv.undistort(img, mtx, dist, None, newcameramtx)
+     
+     # crop the image
+     x, y, w, h = roi	# roi: region of interest
+     dst = dst[y:y+h, x:x+w]
+     cv.imwrite('calibresult.png', dst)
+     ```
+  
+  3. 也可以使用 [**cv.remap()**](https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html#gab75ef31ce5cdfb5c44b6da5f3b908ea4)去畸变
+  
+     ```python
+     # undistort
+     # 1.先找一个畸变图像到非畸变图像的映射
+     mapx, mapy = cv.initUndistortRectifyMap(mtx, dist, None, newcameramtx, (w,h), 5)
+     # 2.再重映射
+     dst = cv.remap(img, mapx, mapy, cv.INTER_LINEAR)
+     
+     # crop the image
+     x, y, w, h = roi
+     dst = dst[y:y+h, x:x+w]
+     cv.imwrite('calibresult.png', dst)
+     ```
+  
+- 至此可以保存相机矩阵的畸变系数了，可以使用 (np.savez, np.savetxt etc) 
+
+## 7. Machine Learning
+[Machine Learning](https://docs.opencv.org/4.6.0/d6/de2/tutorial_py_table_of_contents_ml.html)
+
+## 8. Computational Photography
+[Computational Photography](https://docs.opencv.org/4.6.0/d0/d07/tutorial_py_table_of_contents_photo.html)
+
+## 9. Object Detection (objdetect module)
+[Object Detection (objdetect module)](https://docs.opencv.org/4.6.0/d2/d64/tutorial_table_of_content_objdetect.html)
+
+## 10. OpenCV-Python Bindings
+[OpenCV-Python Bindings](https://docs.opencv.org/4.6.0/df/da2/tutorial_py_table_of_contents_bindings.html)
