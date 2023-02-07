@@ -278,7 +278,7 @@ if not isinstance(b,tuple):
 ## 3.1 修饰符：classmethod
 classmethod 修饰符对应的函数不需要实例化，不需要 self 参数，但第一个参数需要是表示自身类的 cls 参数，可以来调用类的属性，类的方法，实例化对象等.  
 例子：
-```
+```python
 class A(object):
 
     # 属性默认为类属性（可以给直接被类本身调用）
@@ -305,5 +305,72 @@ class A(object):
 # A.func1() 这样调用是会报错：因为func1()调用时需要默认传递实例化类后的地址id参数，如果不实例化类是无法调用的
 A.func2()
 A.func3()
+
+# A.func2()输出是：
+# func2
+# <class '__main__.A'>
+# 类属性
+# func1
+# <__main__.A object at 0x7fdc6d3f8c50>
 ```
 
+## 3.2 修饰符:abstractmethod  
+- python没有抽象类，而是通过继承abc类来表示是抽象类
+  - 但并不会像C++中定义了抽象类就有抽象类的性质了：只有重写了才能实例
+- 并用 `@abstractmethod修饰符` 来表示抽象方法
+  - 如果子类没有重写@abstractmethod修饰的方法，会报TypeError异常
+例子：
+```python
+from abc import ABC,abstractmethod
+class A(ABC):
+    @abstractmethod
+    def needrewrite(self):
+        pass
+
+class B(A):
+    def needrewrite(self):
+        print("rewrite")
+
+# 只有B继承了A，并重写了@abstractmethod修饰的方法，才能实例化
+c=B()
+c.needrewrite()
+
+# 因为有@abstractmethod修饰的方法，所以不能实例化。但如果去掉修饰符就能实例化了。
+d=A()
+d.needrewrite()
+	
+```
+
+## 3.3 修饰符:property
+- @property修饰符会创建只读属性，@property修饰符会将方法转换为相同名称的只读属性,可以与所定义的属性配合使用，这样可以防止属性被修改。  
+用法1：将方法变成像属性一样来访问
+```python
+class DataSet(object):
+  @property
+  def method_with_property(self): ##含有@property
+      return 15
+  def method_without_property(self): ##不含@property
+      return 15
+
+l = DataSet()
+print(l.method_with_property) # 加了@property后，可以用调用属性的形式来调用方法,后面不需要加（）。
+print(l.method_with_property())   # 加了@property后,加()会把错：TypeError: 'int' object is not callable
+print(l.method_without_property())  #没有加@property , 必须使用正常的调用方法的形式，即在后面加()
+```
+- 由于python进行属性的定义时，没办法设置私有属性，因此要通过@property的方法来进行设置。这样可以隐藏属性名，让用户进行使用的时候无法随意修改  
+方法2：与所定义的属性配合使用，这样可以防止属性被修改。
+```python
+class DataSet(object):
+    def __init__(self):
+        self._images = 1
+        self._labels = 2 #定义属性的名称
+    @property
+    def images(self): #方法加入@property后，这个方法相当于一个属性，这个属性可以让用户进行使用，而且用户有没办法随意修改。
+        return self._images 
+    @property
+    def labels(self):
+        return self._labels
+l = DataSet()
+#用户进行属性调用的时候，直接调用images即可，而不用知道属性名_images，因此用户无法更改属性，从而保护了类的属性。
+print(l.images) # 加了@property后，可以用调用属性的形式来调用方法,后面不需要加（）。
+```
