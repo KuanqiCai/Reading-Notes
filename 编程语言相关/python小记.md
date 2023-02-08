@@ -274,6 +274,30 @@ if not isinstance(b,tuple):
     raise TypeError("not tuple")
 ```
 
+## 2.2 保存数据到csv
+```python
+import csv
+
+savepath = "test.csv"
+# 在最开始创建csv文件，并写入列名。相当于做一些准备工作
+with open(savepath, 'w') as csvfile:         #以写入模式打开csv文件，如果没有csv文件会自动创建。
+    writer = csv.writer(csvfile)
+    # writer.writerow(["index","a_name","b_name"])  # 写入列名，如果没有列名可以不执行这一行
+    # writer.writerows([[0, 1, 3], [1, 2, 3], [2, 3, 4]]) # 写入多行用writerows
+  
+ #如果你的数据量很大，需要在循环中逐行写入数据
+for i in range(100000):
+	 with open(savepath, 'a+', newline='') as csvfile:      # a+表示以追加模式写入，如果用w会覆盖掉原来的数据。如果没有newline=''，则逐行写入的数据相邻行之间会出现一行空白。读者可以自己试一试。
+	 csv_write = csv.writer(csvfile)
+	 csv_write.writerow(row_data)    # 写入1行用writerow; row_data是你要写入的数据，最好是list类型。
+ 
+ 
+f = open(savepath)
+csv_read = csv.reader(f)
+for line in csv_read:                # csv.reader(f)返回一个迭代器。迭代器的好处就是可以不用一次性将大量的数据都读进来，而是如果你需要一条，就给迭代器一个命令让它输出一条。关于迭代器的优点读者可以另行学习。
+	print line
+```
+
 # 3. 类相关
 ## 3.1 修饰符：classmethod
 classmethod 修饰符对应的函数不需要实例化，不需要 self 参数，但第一个参数需要是表示自身类的 cls 参数，可以来调用类的属性，类的方法，实例化对象等.  
