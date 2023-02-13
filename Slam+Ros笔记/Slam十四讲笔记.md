@@ -115,14 +115,77 @@
 
 - 观测：
 
-  可由如下观测方程表示：$z_{k,j}=h(y_j,x_k,v_{k,j})$
+  可由如下观测方程表示：$z_{k,j}=h(y_j,x_k,v_{k,j})\ ,\ (k,j)\in O$
 
   - $y_j$:路标点
   - $z_{k,j}$:机器人在$x_k$上看到路标点$y_j$时，产生的观测数据
   - $v_{k,j}$：此时的噪声
   - $h$:观测方程
+  - $O:$记录哪个时刻观察到什么路标
 
-# *. Eigen
+### 3.1 例子：
+
+描述一个小车在平面中运动
+
+- 运动方程：
+
+  - 小车位姿可由两个轴上的坐标和转角表示：$\mathbf{x}_k=[x_1,x_2,\theta]_k^T$
+
+  - 输入的指令是两个时间间隔之间的 位置和转角变化量：$\mathbf{u}_k=[\Delta x_1,\Delta x_2,\Delta \theta]_k^T$
+
+  - 最终运动方程为：
+    $$
+    \begin{bmatrix}
+       x_1 \\
+       x_2 \\
+       \theta 
+      \end{bmatrix}_k=\begin{bmatrix}
+       x_1 \\
+       x_2 \\
+       \theta 
+      \end{bmatrix}_{k-1}+\begin{bmatrix}
+       \Delta x_1 \\
+       \Delta x_2 \\
+       \Delta \theta 
+      \end{bmatrix}_k+w_k
+    $$
+
+- 观察方程：
+
+  - 通过激光雷达可以观测到2个数据：路标点与小车的 距离$r$和夹角$\phi$
+
+  - 最终观察方程为：
+    $$
+    \begin{bmatrix}
+       r_{k,j} \\
+       \phi_{k,j} 
+      \end{bmatrix}=\begin{bmatrix}
+       \sqrt{(y_{1,j}-x_{1,k})^2+(y_{2,j}-x_{2,k})^2} \\
+       arctan\big(\frac{y_{2,j}-x_{2,k}}{y_{1,j}-x_{1,k}}\big) 
+      \end{bmatrix}+v
+    $$
+
+### 3.2 求解方法：
+
+- 上面这两个方程将SLAM方程变成了一个**状态估计问题**： 如何通过带有噪声的测量数据u，估计内部隐藏着的状态变量x
+
+- 状态估计问题可分为：
+
+  - 线性/非线性系统
+  - 高斯/非高斯系统
+
+- 对于简单的线性高斯问题（Linear Gaussian,LG系统）：
+
+  它的无偏最优估计可以由卡尔曼滤波器(Kalman Filter)给出
+
+- 对于复杂的非线性非高斯系统(Non-Linear Non-Gaussian，NLNG系统)：
+
+  有两种方法：
+
+  1. 扩展卡尔曼滤波(Extended Kalman Filter,EKF)
+     - 21世纪早期使用的多
+  2. 非线性优化
+     - 现在主流SLAM算法使用图优化(Graph Optimization)为主。*. Eigen
 
 [官方教程](https://eigen.tuxfamily.org/dox/GettingStarted.html)
 
