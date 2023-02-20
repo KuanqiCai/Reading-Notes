@@ -297,9 +297,17 @@ csv_read = csv.reader(f)
 for line in csv_read:                # csv.reader(f)返回一个迭代器。迭代器的好处就是可以不用一次性将大量的数据都读进来，而是如果你需要一条，就给迭代器一个命令让它输出一条。关于迭代器的优点读者可以另行学习。
 	print line
 ```
+## 2.3 获得代码运行时长:
+```python
+T_current = time.perf_counter()
+dt = T_current-T_last
+print(dt)           
+T_last = T_current
+```
+
 
 # 3. 类相关
-## 3.1 修饰符：classmethod
+## 3.1 修饰符:classmethod
 classmethod 修饰符对应的函数不需要实例化，不需要 self 参数，但第一个参数需要是表示自身类的 cls 参数，可以来调用类的属性，类的方法，实例化对象等.  
 例子：
 ```python
