@@ -184,8 +184,74 @@
 
   1. 扩展卡尔曼滤波(Extended Kalman Filter,EKF)
      - 21世纪早期使用的多
+     
   2. 非线性优化
-     - 现在主流SLAM算法使用图优化(Graph Optimization)为主。*. Eigen
+     - 现在主流SLAM算法使用图优化(Graph Optimization)为主。
+     
+# 三、三维空间刚体运动
+
+一个坐标系到另一个坐标系的转换，相差一个欧氏变换（Euclidean Transform）,而欧氏变换又由旋转和平移组成
+
+## 1. 旋转矩阵
+
+Rotation Matrix
+
+- 旋转矩阵属于$SO(n)$特殊正交群(Special Orthogonal Group)
+  $$
+  SO(n)=\{ R\in\mathbb{R}^{n\times n}|RR^T=I,det(R)=1 \}
+  $$
+
+- 某向量$a$在两坐标系下的坐标分别为$a_1,a_2$,他们之间的关系是：
+  $$
+  a_1=R_{12}a_2+t_{12}
+  $$
+
+  - $R_{12}$:坐标系2到坐标系1的旋转。由于向量写在矩阵右侧，所以是从右往左读。
+  - $t_{12}$:坐标系1下 坐标系1的原点到坐标系2的原点的向量。
+
+- 由于旋转矩阵是正交矩阵，所以他的逆也是转置描述了一个相反的旋转
+  $$
+  a=Ra' \\
+  a'=R^{-1}a=R^{T}a
+  $$
+  
+
+## 2. 变换矩阵
+
+Transform Matrix
+
+- 变换矩阵属于$SE(3)$特殊欧氏群(Special Euclidean Group)
+  $$
+  SE(3)=\{T\in\mathbb{R}^{4\times 4} | R\in SO(3),t\in \mathbb{R}^3 \}
+  $$
+
+- 将旋转和平移写入一个矩阵就是变换矩阵
+  $$
+  \left [\begin{array}{cccc}
+  a'\\
+  1 \\
+  \end{array}\right] = \left [\begin{array}{cccc}
+  R & t\\
+  0^T & 1 \\
+  \end{array}\right]\left [\begin{array}{cccc}
+  a \\
+  1 \\
+  \end{array}\right]=T\left [\begin{array}{cccc}
+  a \\
+  1 \\
+  \end{array}\right]
+  $$
+
+- T的逆同样表示一个相反的变换：
+  $$
+  T^{-1}=\left [\begin{array}{cccc}
+  R^T & -R^Tt \\
+  0^T & 1 \\
+  \end{array}\right]
+  $$
+  
+
+# Eigen库
 
 [官方教程](https://eigen.tuxfamily.org/dox/GettingStarted.html)
 
@@ -484,7 +550,7 @@ int main(int argc, char** argv){
 
 
 
-# *. Sophus库
+# Sophus库
 
 ## 1.安装
 
@@ -728,7 +794,7 @@ target_link_libraries(trajectoryError Sophus::Sophus)
 
 
 
-# *. Pangolin库
+#  Pangolin库
 
 ## 1. 安装库
 
