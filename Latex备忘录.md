@@ -29,11 +29,37 @@ $$
 | ------------------ | -------------------- | ------ | -------- |
 | \displaystyle \int | $\displaystyle \int$ | \prod  | $\prod$  |
 | \Delta             | $\Delta$             | \nabla | $\nabla$ |
+| \wedge             | $\wedge$             |        |          |
 |                    |                      |        |          |
 |                    |                      |        |          |
 |                    |                      |        |          |
 |                    |                      |        |          |
 |                    |                      |        |          |
 |                    |                      |        |          |
-|                    |                      |        |          |
+
+# 矩阵行列式：
+
+$\left |\begin{array}{cccc}
+e_1 & e_2 & e_3 \\
+a_1 & a_2 & a_3  \\
+b_1 & b_2 & b_3 \\
+\end{array}\right|$
+
+```
+\left |\begin{array}{cccc}
+e_1 & e_2 & e_3 \\
+a_1 & a_2 & a_3  \\
+b_1 & b_2 & b_3 \\
+\end{array}\right|
+```
+
+将上面的|改成 [],()就可以变成矩阵矩阵。
+
+比如：
+
+$\left [\begin{array}{cccc}
+e_1 & e_2 & e_3 \\
+a_1 & a_2 & a_3  \\
+b_1 & b_2 & b_3 \\
+\end{array}\right]$
 
