@@ -193,6 +193,7 @@
 #### 1.7.2 基于策略 (policy-based)
 
 - The Policy π **is the brain of our Agent**, it’s the function that tell us what action to take given the state we are. So it defines the agent’s behavior at a given time.
+
 - This policy function will **map from each state to the best corresponding action at that state**. Or a **probability distribution over the set of possible actions at that state**.
 
 - 目标是 **优化策略函数$\pi(s)$** , 策略就是评判智能体在特定时间点的表现。把每一个状态和它所对应的最佳行动建立联系。
@@ -200,15 +201,17 @@
   策略分为两种
 
   - **确定性**策略：某一个特定状态下的策略，永远都会给出同样的行动。
-
-
-  - **随机性**策略：策略给出的是多种行动的可能性分布。
     $$
-    Stochastic\ Policy:\pi(a|s)=P[A_t=a|S_t=s]
+    Deterministic\ Policy:\pi =A|S
     $$
-
-	- S: State
-	- A: Action
+	- **随机性**策略：策略给出的是多种行动的可能性分布。
+      $$
+      Stochastic\ Policy:\pi(a|s)=P[A_t=a|S_t=s]
+      $$
+  
+  	- S: State
+  	- A: Action
+  
 
 
 - 所以基于策略的方法
