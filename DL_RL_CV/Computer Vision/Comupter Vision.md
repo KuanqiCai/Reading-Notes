@@ -137,15 +137,20 @@ image gradient 是一个用于determine确定local intensity changes的重要工
 
     Sobel Filter是integer整数approximations of the double gradient.
 
-    -  该算子由2个3X3矩阵g[x],g[y]组成，分别代表横向和纵向。比如：
+    - 该算子由2个3X3矩阵g[x],g[y]组成。
 
+      -  g[x]用于检测图像中垂直方向的边缘
+    
+      -  g[y]用于检测图像中水平方向的边缘
+    
+    
       | g[x] |      |      |      | g[y] |      |      |      |
       | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
       |      | -1   | 0    | 1    |      | 1    | 2    | 1    |
       |      | -2   | 0    | 2    |      | 0    | 0    | 0    |
       |      | -1   | 0    | 1    |      | -1   | -2   | -1   |
     
-      如果I代表原始图像，那么Gx,Gy就分别代表经横向及纵向边缘检测的图像灰度值
+      如果I代表原始图像，那么Gx,Gy就分别代表经纵向，横向边缘检测的图像灰度值
     
       $G_x=g[x]*I$; $G_y=g[y]*I$      这里*是卷积的意思
     
@@ -291,7 +296,7 @@ image gradient 是一个用于determine确定local intensity changes的重要工
 
     - Weights $w(\tilde{x})>0$ emphasize the influence of the central pixel
 
-  - A simple criterium标准 for corners and edges
+  - A simple criterion标准 for corners and edges
 
     - Analyze the quantity$H:=det(G)-k(tr(G))^2$
 
@@ -347,9 +352,9 @@ Correspondence Estimation of Feature Points特征点的对应估计
   
         $\beta$：Shift 移动 of the intensity (Bias)。
   
-        Gain Model: $W\approx\alpha V$
+        Gain Model: $W\approx\alpha V$ 用于控制对比度contrast
   
-        Bias Model: $W\approx V+\beta 1 1^T$
+        Bias Model: $W\approx V+\beta 1 1^T$ 用于控制亮度brightness
   
         - 这里$1=(1,...,1)^T$
   
@@ -395,14 +400,17 @@ Correspondence Estimation of Feature Points特征点的对应估计
          &=:V_n
          \end{aligned}
          $$
-  
+      
+         - 在标准化后的图片片段里，强度值Intensitätswerte的标准差为1
+         - 且强度值为实数reell
+    
     **方法2、Normalized Cross Correlation(NCC)**归一化互相关
-  
+    
     Derivation起源于SSD，同样需要进行上面那4步窗口正则化**参考作业2.1**
   
     - SSD方法：SSD of two normalized image sections:$d(V,W)=||V_N-W_N||^2_F=2(N-1)-2tr(W_n^TV_n)$
       - 这里的**N**是窗口内所有的像素个数：即`window_length*window_length`
-  
+    
     - NCC方法：The Normalized Cross Correlation of th two image sections is defined as $NCC=\frac{1}{N-1}tr(W_n^TV_n)$
       - 注意这里和上面公式中$W_n和V_n$的顺序，
     - $-1\leq NCC\leq1$，相关度超出阈值的部分要舍弃(=0)
@@ -459,13 +467,17 @@ Image Formation成像
       成像平面focal plane中，以成像平面的中心O'为原点和坐标轴x',y'组成了图像坐标系
   
       - 注意不是像平面，虽然实际中光线经过透镜后并不会完美的都交于焦点，而会形成弥散圆。
-      - [相机成像究竟是成在像平面还是成在焦平面？底片相当于像平面还是焦平面？](https://www.zhihu.com/question/33793912/answer/57646234)
+      - [相机成像究竟是成在像平面还是成在焦平面？是什么是像平面 和 焦平面？](https://www.zhihu.com/question/33793912/answer/57646234)
       
     - 针孔相机Lochkamera的焦平面和像平面为什么zusammenfallen同时发生？
   
-      Auf Grund kleinen Öffnung der Kamera kann angenommen werden, dass die Strahlen, die in die Kamera einfallen, annähernd parallel sind. Somit entspricht die Brennebene der Bildebene.
+      Auf Grund kleinen Öffnung der Kamera kann angenommen werden, dass die Strahlen, die in die Kamera einfallen, annähernd parallel sind. Somit entspricht die Brennebene der Bildebene.这两点是理想中小孔相机才能达到的
   
+      
+      
       Alle Strahlen, die vor der Linse parallel verlaufen treffen sich hinter der Linse in der Brennebene.
+      
+      Alle Strahlen, die von einem Punkt vor der Linse ausgehen, treffen sich hinter der Linse in der Bildebene
   
   - 如果空间点P在相机坐标系中的坐标是$P_c=[X,Y,Z]^T$ ，其像点在图像坐标系中的坐标是$p=[x,y]^T$,因为光轴和成像平面垂直，所以像点p在相机坐标系中的坐标是$p=[x,y,z]^T$，z=f(相机焦距)
   
@@ -482,6 +494,8 @@ Image Formation成像
 ## 2.Homogene Koordinaten
 
 Homogeneous Coordinates齐次坐标
+
+下面用齐次坐标来表述1中Bildebene.
 
 上面的1式描述了3D空间到2D平面的映射，但该映射对于坐标Z来说是非线性的(因为Z是分母！=0)。所以为了方便的同意处理X,Y,Z三个坐标轴的数据，就需要引入新的坐标（扩展坐标的维度）将Z线性化：
 $$
@@ -521,11 +535,13 @@ $$
 
 通常选择$\hat{z}=1$
 
+Die homogenen Bildkoordinaten liegen in derselben Äquivalenzklasse wie der zugehörige Raumpunkt。齐次图像坐标与空间中的关联点属于同一等价类
+
 ## 3.Perspektivische Projektion mit kalibrierter Kamera
 
 Perspective Projection透视投影 with a Calibrated标定的 Camera
 
-### 3.1内参数
+### 3.1 内参数
 
 - 相机的内参数由2部分组成：
 
@@ -541,9 +557,9 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
 
   - Umrechnug von Bildkoordinaten $x$ in Pixelkoordinaten $x'$:$x'=Kx$
 
-    为了能反过来求$x=K^{-1}x^，$ 就需要K ist invertierbar -> K的 Eigenwerte$\lambda_i\neq0$
+    为了能反过来求$x=K^{-1}x'$ 就需要K ist invertierbar -> K的 Eigenwerte$\lambda_i\neq0$
 
-- 若像素坐标系的水平轴为u，竖轴为v；原点平移了$(c_x,c_y)$，那么成像平面点(x,y)在像素坐标系下的坐标为：
+- 若像素坐标系的水平轴为u，竖轴为v；图像传感器距离光轴平移了$(c_x,c_y)$，那么成像平面点(x,y)在像素坐标系下的坐标为：
   $$
   u=\alpha\cdot x+c_x\\
   v=\beta\cdot y+c_y\tag{2}
@@ -551,7 +567,7 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
   - 公式含义：
     - $\alpha$:Pixelbreite
     - $\beta$:Pixelhöhe
-    - $\theta$:Scherung剪切
+    - $\theta$:Scherung剪切：描述了pixel的形状
     - $c_x$:X-Offset
     - $c_y$:Y-Offset
     - $f$:Brennweite焦距
@@ -652,7 +668,7 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
   
   
 
-### 3.2外参数
+### 3.2 外参数
 
 - 由3.1的4式可得：$p=KP$
 
@@ -667,8 +683,11 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
 - 相机坐标系$P_c$转为世界坐标系$P_w$ :$P_c=RP_w+t$
 
   - R：是旋转矩阵
+    - 它是正交矩阵，行列式为1，每个列向量都是单位向量且相互正交orthogonal。
+    - 它的逆等于它的转置
+  
   - t：是平移矩阵
-
+  
   $$
   P_c=
   \begin{bmatrix}
@@ -676,7 +695,7 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
   0^T &1
   \end{bmatrix}P_w
   $$
-
+  
   由此可得**外参数(Camera Extrinsics)T **:
   $$
   T=\begin{bmatrix}
@@ -734,14 +753,19 @@ $$
 
   - The Preimage of a point P is all the points in space which project onto a single image point in the image plane
     - 所以点的原相是经过原点的一条直线
+    
   - The Preimage of a line L is all the points which project onto a single line in the image plane
     - 所以线的原相是经过原点的一个平面
+    
+  - 零空间：指像为0的原像空间：{x|Ax=0}
+
+    这里的解x，也称为矩阵A的核
 
 - Coimage余相：
 
   - The Coimage of points or lines is the orthogonal complement正交补 of the preimage.
     - 点的余相是一个平面上所有的向量，这个平面与点的原相（直线）垂直。
-    - 线的余相是一个向量，与线的原相（平面）垂直
+    - 线的余相是一个向量，与线的原相（平面）垂直。维度为1。
   
 
 ### 4.3 一些有用的性质
@@ -892,12 +916,27 @@ $$
     $\sigma$不能等于0；P,Q必须是Rotationsmatrizen旋转矩阵。
     
     所以本质矩阵的秩为2.
+    
+  - 一个使用svd求解问题的例子：
+  
+    - 问：
+  
+      矩阵A的列是几个点的齐次坐标，用什么方法可以直到这些点是否在同一条直线上？
+  
+    - 答：
+  
+      1. 求解**SVD(A)**也即求解$AA^T$的特征值分解
+      2. 为保证$\sigma$!=0,需要求解：
+         - rank(A)=min(m,n)
+         - $det(A)$!=0
 
 ## 2.Epipole und Epipolarlinien
 
 - Epipole对极点和本质矩阵的关系：
 
-  $Ee_1=0；E^Te_2=0$
+  $e_1$liegt im Kern von $E$: $Ee_1=0$,也可写作$e_1 \sim R^TT$
+
+  $e_2$liegt im Kern von $E^T$: $E^Te_2=0$,也可写作$e_2^TE=0$
 
   因为：
 
@@ -1032,6 +1071,7 @@ $$
           \end{matrix}
           \right]V_G^T$
         - 实际中$\sigma$取1
+        - 所以八点算法一共用到2次SVD
 
 ## 4.3D Rekonstruktion
 
@@ -1071,7 +1111,7 @@ $$
 
     $\lambda_2 x_2=\lambda_1Rx_1+\gamma T$
 
-    - $\lambda_1,\lambda_2$分别是2个图像上各自特征点对应的深度
+    - $\lambda_1,\lambda_2$分别是2个图像上各自特征点对应的深度, 都要＞0
     - 3个特征点组成的线性方程组，就可以求得上面这3个系数
 
 ## 5.Die Fundamentalmatrix
@@ -1129,12 +1169,14 @@ $$
     \right]
   $$
   
-
+  - 相比于本质矩阵E的SVD分解，这里奇异值$\sigma$就不需要一定是相同的了，可以是不同的
+  
 - 基本矩阵的性质：
 
   - 未标定相机：Epipolargleichung：$x_2^{'T}Fx_1^{’}=0$
   - 基本矩阵：$F=K^{-T}\hat{T}RK^{-1}$
   - 对于极点：$Fe_1^{'}=0,F^Te_2^{'}=0$
+    - 所以$KR^TT$ liegt im Kern von F,也等价于$e_1^{'}$
   - 对于极线：$l_2^{'}等价于Fx_1^{'},l_1^{'}等价于Fx_2^{'}$
   - 不能依靠F来三维重建
 
@@ -1182,7 +1224,9 @@ Planar Epipolar Equation平面对极方程
   
   - 由此我们得到**Planar epipolar equation**平面对极方程：
   
-    $x_2=Hx_1$
+    $x_2\sim Hx_1$,这里就不能写等于了
+    
+    相对的$P_2=HP_1, P_2\sim HP_1$都对
     
     - $x_2\ orthogonal\ to\ 垂直于\ u\times Hx_1\ for\ all\ u \in R^3$
   
@@ -1196,6 +1240,11 @@ Planar Epipolar Equation平面对极方程
   $$
 
   - 其中特征值$\sigma_1$和$\sigma_3$都不能等于0
+  - 所以相比于本质矩阵E和基本矩阵F,H是满秩为3的
+  - 和本质矩阵有如下关系：
+    - $E=\hat{T}R$
+    - $E=\hat{T}H$
+    - $H^TE+E^TH=0$
 
 ## 2.Vier-Punkt-Algorithmus
 
@@ -1414,7 +1463,7 @@ Camera Calibration相机标定
   
     - 对于n个views of the chessboard有等式：$Vb=0,V\in\mathbb{R}^{2n\times6}$
   
-    - 因此需要3张图来确定b
+    - 因此需要3张图来确定b，得到6个等式对应6个未知量
   
   - 求解$Vb=0$的步骤
   
@@ -1436,7 +1485,11 @@ Camera Calibration相机标定
     - 可得：$K=\hat{K}^{-1}$
   
 
+- 为什么标定时世界坐标系需要让棋盘位于原点，并且让Z轴垂直棋盘？
 
+  因为这样所有点的Z轴都可以为0
+
+  
 
 # *、 TUM CV课作业代码
 

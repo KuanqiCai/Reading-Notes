@@ -29,7 +29,7 @@ $$
 | ------------------ | -------------------- | ------ | -------- |
 | \displaystyle \int | $\displaystyle \int$ | \prod  | $\prod$  |
 | \Delta             | $\Delta$             | \nabla | $\nabla$ |
-| \wedge             | $\wedge$             |        |          |
+| wedge             | $\wedge$             |   Lambda     |    $\Lambda$      |
 |                    |                      |        |          |
 |                    |                      |        |          |
 |                    |                      |        |          |
