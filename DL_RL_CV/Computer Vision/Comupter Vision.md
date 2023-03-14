@@ -69,6 +69,7 @@ image gradient 是一个用于determine确定local intensity changes的重要工
       - $\frac{d}{dy}I(x,y)\approx I(x,y+1)-I(x,y)$
 
 - Interpolation内插法
+22ws考试考了这些公式
 
   从discrete signal $f[x]=S\{f(x)\}$到 continuous signal $f(x)$
 
@@ -111,8 +112,9 @@ image gradient 是一个用于determine确定local intensity changes的重要工
     - 在实际中会用一数n来代替无穷的求和。
 
     - 高斯过滤器的C 的选择：
+      为什么要这么选择C？
 
-      Normalization(Normierung)正则化C，使得所有的gewichte权重相加趋向1
+      因为Normalization(Normierung)正则化C，使得所有的gewichte权重相加趋向1
       $$
       C=\frac{1}{\sum_{k=-n}^ne^{\frac{-k^2}{2\sigma^2}}}
       $$
