@@ -685,7 +685,12 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
   - R：是旋转矩阵
     - 它是正交矩阵，行列式为1，每个列向量都是单位向量且相互正交orthogonal。
     - 它的逆等于它的转置
-  
+    - 旋转矩阵不适合用于描述三维空间的场景，因为：
+      - Die Essential Matrix hat den Rang 0
+      - Es existiert keine Epipolarlinie
+      - Es existiert keine Epipolargleichung
+      - Es können keine Tiefeninformation berechnet werden
+    
   - t：是平移矩阵
   
   $$
@@ -1421,7 +1426,7 @@ Camera Calibration相机标定
 
     - 对于一个点$P= \left[\begin{matrix}X  \\Y  \\0  \\1 \end{matrix} \right]$，那么：
       $$
-      x'=K\Pi_0\begin{bmatrix}
+      x'\sim K\Pi_0\begin{bmatrix}
       R & T\\
       0^T &1
       \end{bmatrix}
@@ -1484,7 +1489,6 @@ Camera Calibration相机标定
   
     - 可得：$K=\hat{K}^{-1}$
   
-
 - 为什么标定时世界坐标系需要让棋盘位于原点，并且让Z轴垂直棋盘？
 
   因为这样所有点的Z轴都可以为0
