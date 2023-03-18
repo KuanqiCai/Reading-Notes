@@ -1,4 +1,9 @@
+# 字体相关
+
+- 加粗：
+
 # 上下标置于正上/下方
+
 - 使用`\limits`：
 命令格式：`expr1\limits_{expr2}^{expr3}`
 举例：$\sum\limits_{i=0}^n {x_i}$
@@ -29,8 +34,8 @@ $$
 | ------------------ | -------------------- | ------ | -------- |
 | \displaystyle \int | $\displaystyle \int$ | \prod  | $\prod$  |
 | \Delta             | $\Delta$             | \nabla | $\nabla$ |
-| wedge             | $\wedge$             |   Lambda     |    $\Lambda$      |
-|                    |                      |        |          |
+| \wedge            | $\wedge$             |   \Lambda    |    $\Lambda$      |
+|                    |                      | \mathbb{R} | $\mathbb{R}$ |
 |                    |                      |        |          |
 |                    |                      |        |          |
 |                    |                      |        |          |
@@ -62,4 +67,22 @@ e_1 & e_2 & e_3 \\
 a_1 & a_2 & a_3  \\
 b_1 & b_2 & b_3 \\
 \end{array}\right]$
+
+# 方程组
+
+$$
+\begin{cases}
+3x + 5y +  z \\
+7x - 2y + 4z \\
+-6x + 3y + 2z
+\end{cases}
+$$
+
+```
+\begin{cases}
+3x + 5y +  z \\
+7x - 2y + 4z \\
+-6x + 3y + 2z
+\end{cases}
+```
 
