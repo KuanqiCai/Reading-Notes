@@ -35,9 +35,9 @@ $$
 | \displaystyle \int | $\displaystyle \int$ | \prod  | $\prod$  |
 | \Delta             | $\Delta$             | \nabla | $\nabla$ |
 | \wedge            | $\wedge$             |   \Lambda    |    $\Lambda$      |
-|                    |                      | \mathbb{R} | $\mathbb{R}$ |
-|                    |                      |        |          |
-|                    |                      |        |          |
+| \mathfrak{se}(3) | $\mathfrak{se}(3)$ | \mathbb{R} | $\mathbb{R}$ |
+| \mathcal{D} | $\mathcal{D}$ | \forall | $\forall$ |
+| \exists | $\exists$ |  |          |
 |                    |                      |        |          |
 |                    |                      |        |          |
 |                    |                      |        |          |
