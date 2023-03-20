@@ -430,7 +430,53 @@ $$
 
   
 
+# 四、李群与李代数
 
+## 0. 为什么需要李群-李代数转换
+
+- 旋转矩阵、旋转向量、欧拉角、四元数都是描述三维世界中刚体运动的方式。
+- SLAM问题中由于位姿是位置的，就需要解决“**什么样的相机位姿最符合当前观测的数据**”，也就是我们需要估计R，t来描述相机运动。然后转为**优化问题**，求解最优的R和t使得误差最小。
+- 但是旋转矩阵R自带约束(正交且行列式为1)，这样他们作为优化变量时，就会引入额外的约束，使优化变得更困难。
+- 为了解决这个问题，就用到李群（正交且行列式为1）-》李代数的转换，将位姿估计变成无约束的优化问题。
+
+
+
+## 1. 李群
+
+- 特殊正交群SO(3)
+  $$
+  SO(3)=\{R\in \mathbb{R}^{3\times 3} |RR^T=I,det(R)=1\}
+  $$
+
+- 特殊欧氏群SE(3)
+  $$
+  SE(3)=\big\{ T=\left [\begin{array}{cccc}
+  R & t \\
+  0^T & 1  \\
+  
+  \end{array}\right]\in\mathbb{R}^{4\times4}|R\in SO(3),t\in\mathbb{R}^3 \big\}
+  $$
+
+- 群：只有一个运算规则的集合
+
+  - 李群对加法不封闭：$R_1+R_2\notin SO(3),\ T_1+T_2\notin SE(3)$
+  - 李群对乘法封闭：$R_1R_2\in SO(3),\ T_1T_2\in SE(3)$
+    - 这是有物理意义的，矩阵的乘法意味着做了2次旋转，加法就变成了1次新的旋转的了
+
+## 2. 李代数
+
+- 每个李群都有与之对应的李代数，李代数描述了李群的局部性质（单位元附近的正切空间Tangent Space）
+  - 李代数由一个集合$\mathbb{V}$、一个数域$\mathbb{F}$和一个二元运算[,]组成。二元运算又称为**李括号**。
+  - 如果集合、数域和二元运算满足以下条件，则乘之为一个李代数$\mathfrak{g}=(\mathbb{V},\mathbb{F},[,])$
+    - 封闭性：$\forall \mathbf{X,Y}\in\mathbb{V},[\mathbf{X,Y}]\in\mathbb{V}$
+    - 双线性:$\forall \mathbf{X,Y,Z}\in\mathbb{V},a,b\in\mathbb{F},有$：
+      - $[a\mathbf{X}+b\mathbf{Y},\mathbf{Z}]=a[\mathbf{X,Z}]+b[\mathbf{Y,Z}]$
+      - $[\mathbf{Z},a\mathbf{X}+b\mathbf{Y}]=a[\mathbf{Z,X}]+b[\mathbf{Z,Y}]$
+    - 自反性:$\forall \mathbf{X}\in\mathbb{V},[\mathbf{X,X}]=0$
+    - 雅可比等价:$\forall \mathbf{X,Y,Z}\in\mathbb{V},[\mathbf{[X,[Y,Z]]}+\mathbf{[Z,[X,Y]]}+\mathbf{[Y,[Z,X]]}=0]$
+  - 例子：三维向量的叉积 X, 就是一种李代数，可以写作：$\mathfrak{g}=(\mathbb{R}^3,\mathbb{R},\times)$
+- 李代数$\mathfrak{so}(3)$
+- 李代数$\mathfrak{se}(3)$
 
 # Eigen库
 
