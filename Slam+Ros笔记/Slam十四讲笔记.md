@@ -475,8 +475,85 @@ $$
     - 自反性:$\forall \mathbf{X}\in\mathbb{V},[\mathbf{X,X}]=0$
     - 雅可比等价:$\forall \mathbf{X,Y,Z}\in\mathbb{V},[\mathbf{[X,[Y,Z]]}+\mathbf{[Z,[X,Y]]}+\mathbf{[Y,[Z,X]]}=0]$
   - 例子：三维向量的叉积 X, 就是一种李代数，可以写作：$\mathfrak{g}=(\mathbb{R}^3,\mathbb{R},\times)$
+  
 - 李代数$\mathfrak{so}(3)$
+
+  - 李群$SO(3)$对应的李代数$\phi$是定义在$\mathbb{R}^3$的向量
+    $$
+    \mathfrak{so}(3)=\{\phi\in \mathbb{R}^3,\mathbf{\phi}=\phi^{\wedge}\in\mathbb{R}^{3\times3} \}
+    $$
+  
+    - $\phi^{\wedge}$:是将向量变成反对称矩阵的意思
+  
+  ​	
+  
+  - 		与李群的关系由指数映射给定：
+    $$
+    \mathbf{R}=exp(\phi^\wedge)
+    $$
+  
+  - 		指数映射的计算：
+    $$
+    exp(\phi^{\wedge})=exp(\theta\mathbf{a}^{\wedge})=cos\theta\mathbf{I}+(1-cos\theta)\mathbf{aa}^T+sin\theta\mathbf{a}^{\wedge}
+    $$
+  
+    - $\phi=\theta\mathbf{a}$:因为$\phi$是三维向量，所以可以分解为一个模长$||a||$和方向$\theta$
+    - $\theta=arccos\frac{tr(\mathbf{R}-1)}{2}$
+  
 - 李代数$\mathfrak{se}(3)$
+
+  - 李群$SE(3)$对应的李代数$\xi$位于$\mathbb{R}^6$空间
+    $$
+    \mathfrak{se}(3)=\big\{ \xi=\left [\begin{array}{cccc}
+    \rho \\
+    \phi  \\
+    
+    \end{array}\right]\in\mathbb{R}^{6},\rho\in\mathbb{R}^3,\phi\in\mathfrak{so}(3),\xi^{\wedge}=\left [\begin{array}{cccc}
+    \phi^{\wedge}& \rho \\
+    o^T& 0  \\
+    
+    \end{array}\right]\in \mathbb{R}^{4\times4} \big\}
+    $$
+
+    - $\xi^{\wedge}$:不是反对称矩阵的意思，但也是向量转矩阵，这里是六维向量转4x4矩阵
+
+  - 指数映射的计算：
+    $$
+    exp(\xi^{\wedge})=\left [\begin{array}{cccc}
+    exp(\phi^{\wedge})& \mathbf{J}\rho \\
+    o^T& 1  \\
+    
+    \end{array}\right]\\
+    \mathbf{J}=\frac{sin\theta}{\theta}\mathbf{I}+(1-\frac{sin\theta}{\theta})\mathbf{aa}^T+\frac{1-cos\theta}{\theta}\mathbf{a}^{\wedge}
+    $$
+    
+
+## 3. 李代数求导与扰动模型
+
+### 3.1 BCH公式
+
+- BCH公式给出了两个李代数指数映射乘积的完整形式，其近似表达式为：
+  $$
+  ln(exp(\phi_1^{\wedge})exp(\phi_2^{\wedge}))^{\vee}\approx\begin{cases}
+  \mathbf{J_l}(\phi_2)^{-1}\phi_1+\phi_2 \ \ ，当\phi_1为小量 \\
+  \mathbf{J_r}(\phi_1)^{-1}\phi_2+\phi_1 \ \ ，当\phi_2为小量 \\
+  \end{cases}
+  $$
+
+  - 当对一个旋转矩阵$\mathbf{R}_2$(李代数为$\phi_2$)左乘一个微小旋转矩阵$\mathbf{R}_1$(李代数为$\phi_1$)时，可以近似的看作，在原有的李代数$\phi_2$上加上了一项$\mathbf{J_l}(\phi_2)^{-1}\phi_1$
+  - 第二个近似描述了右乘一个微小位移的情况。
+
+- 由上可总结出：
+
+  - 对某个旋转$R$(李代数为$\phi$)，给它左乘一个微小的旋转$\Delta\mathbf{R}$(李代数为$\Delta\phi$),那么在李群上结果为$\Delta \mathbf{R}\cdot \mathbf{R}$，在李代数上结果为$\mathbf{J}_l^{-1}(\phi)\Delta\phi+\phi$
+
+    即：$exp(\Delta\phi^{\wedge})exp(\phi^{\wedge})=exp((\phi+J_l^{-1}(\phi)\Delta\phi)^{\wedge})$
+
+  - 反之，如果在李代数上进行加法，让一个$\phi$加上$\Delta \phi$,可近似为利群上带右雅可比的乘法
+
+    即：$exp((\phi+\Delta \phi)^{\wedge})=exp((\mathbf{J}_l\Delta\phi)^{\wedge})exp(\phi^{\wedge})$=$exp(\phi^{\wedge})exp((\mathbf{J}_r\Delta\phi)^{\wedge})$
+
+- 上面2式为李代数上做微积分提供了理论基础
 
 # Eigen库
 
