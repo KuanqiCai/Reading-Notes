@@ -37,7 +37,7 @@ $$
 | \wedge            | $\wedge$             |   \Lambda    |    $\Lambda$      |
 | \mathfrak{se}(3) | $\mathfrak{se}(3)$ | \mathbb{R} | $\mathbb{R}$ |
 | \mathcal{D} | $\mathcal{D}$ | \forall | $\forall$ |
-| \exists | $\exists$ |  |          |
+| \exists | $\exists$ | \vee | $\vee$ |
 |                    |                      |        |          |
 |                    |                      |        |          |
 |                    |                      |        |          |
