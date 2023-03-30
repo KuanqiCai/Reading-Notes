@@ -655,7 +655,7 @@ Perspective Projection透视投影 with a Calibrated标定的 Camera
   - $K_f$：Focal Length Matrix。世界坐标系->成像平面坐标系
   - $\Pi_0$：Generic Projection Matrix。将齐次转换为非齐次矩阵
   - $K_s$：Pixel Matrix。成像平面坐标系->像素平面坐标系
-  - 上面4式除了Z，即进行了归一化处理，所以点的深度信息在投影过程中被丢失掉了，这也是为什么单目相机无法得到像素点的深度值
+  - 上面4式除了Z，即进行了归一化处理，所以点的深度信息在投影过程中被丢失掉了，这也是为什么单目相机无法得到像素点的深度值。
   
 - 由5式可知K由4个相机构造相关的参数有关
 
