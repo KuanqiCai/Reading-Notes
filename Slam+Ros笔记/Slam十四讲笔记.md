@@ -532,6 +532,8 @@ $$
 
 ### 3.1 BCH公式
 
+Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基础
+
 - BCH公式给出了两个李代数指数映射乘积的完整形式，其近似表达式为：
   $$
   ln(exp(\phi_1^{\wedge})exp(\phi_2^{\wedge}))^{\vee}\approx\begin{cases}
@@ -543,6 +545,9 @@ $$
   - 当对一个旋转矩阵$\mathbf{R}_2$(李代数为$\phi_2$)左乘一个微小旋转矩阵$\mathbf{R}_1$(李代数为$\phi_1$)时，可以近似的看作，在原有的李代数$\phi_2$上加上了一项$\mathbf{J_l}(\phi_2)^{-1}\phi_1$
   - 第二个近似描述了右乘一个微小位移的情况。
 
+  - $\bf{J}_l$为左乘BCH近似雅可比式：$\bf{J}_l=\frac{sin\theta}{\theta}\bf{I}+(1-\frac{sin\theta}{\theta})\bf{aa}^T+\frac{1-cos{\theta}}{\theta}\bf{a}^{\wedge}$
+  - $\bf{J}_r$为右乘BCH近似雅可比式：$\bf{J}_r(\phi)=\bf{J}_l(-\phi)$
+  
 - 由上可总结出：
 
   - 对某个旋转$R$(李代数为$\phi$)，给它左乘一个微小的旋转$\Delta\mathbf{R}$(李代数为$\Delta\phi$),那么在李群上结果为$\Delta \mathbf{R}\cdot \mathbf{R}$，在李代数上结果为$\mathbf{J}_l^{-1}(\phi)\Delta\phi+\phi$
@@ -553,11 +558,99 @@ $$
 
     即：$exp((\phi+\Delta \phi)^{\wedge})=exp((\mathbf{J}_l\Delta\phi)^{\wedge})exp(\phi^{\wedge})$=$exp(\phi^{\wedge})exp((\mathbf{J}_r\Delta\phi)^{\wedge})$
 
-- 上面2式为李代数上做微积分提供了理论基础
+  
+
+### 3.2 SO(3)上李代数求导
+
+#### 3.2.1 问题描述
+
+- 已知一个世界坐标位于**p**的点，机器人对其产生的观测数据为**z**，机器人到该点的坐标转换为**T**,误差为**w**:$z=Tp+w$
+
+- 因为有误差**w**存在,观测数据**z**不可能精准的等于Tp，从而产生误差$E=Z-Tp$。
+
+  所以对机器人的**位姿估计**也就变成了在得到**N**个观测数据后寻求一个**最优的T**来让整体误差最小化：
+  $$
+  \mathop{min}_T\ J(\bf{T})=\sum_{i=1}^{N}||z_i-\bf{T}{p}_i||_2^2
+  $$
+
+- 求解上述问题显然需要对姿态T求导，但T是李群没有定义的加法。因此要转为李代数求导。
+
+  李代数求导又有2条思路：
+
+  1. 用李代数表示姿态，然后根据李代数加法对**李代数求导**
+  2. 对利群左乘或右乘微小扰动(BCH公式)，然后对这个**扰动求导**
+
+#### 3.2.2 李代数求导
+
+一个空间点p经过旋转R后得到$Rp$,求导最后得到：$\frac{\partial\bf{Rp}}{\partial\bf{\phi}}=(-\bf{Rp}^{\wedge}\bf{J}_l)$
+
+- 其中的左乘雅可比式$\bf{J}_l$很复杂，所以使用扰动模型即BCH来计算导数
+
+#### 3.2.3 扰动求导（左乘）
+
+- 这种方式是对$\bf{R}$进行一次扰动$\Delta \bf{R}$,然后看结果相对于扰动的变化率。
+
+  设$\Delta \bf{R}$对应的李代数为$\varphi$,然后对$\varphi$求导:
+  $$
+  \begin{align*}
+  \frac{\partial(\bf{Rp})}{\partial\bf{\varphi}} &=\mathop{lim}_{\varphi \rightarrow 0}\frac{exp(\varphi^{\wedge})exp(\phi^{\wedge})\mathbf{p} -exp(\phi^{\wedge})\mathbf{p} }{\varphi}\\
+  &= \mathop{lim}_{\varphi \rightarrow 0}\frac{(I+\varphi^{\wedge})exp(\phi^{\wedge})\mathbf{p} -exp(\phi^{\wedge})\mathbf{p} }{\varphi}\\
+  &= \mathop{lim}_{\varphi \rightarrow 0}\frac{\varphi^{\wedge}\bf{Rp}}{\varphi} \\
+  &= \mathop{lim}_{\varphi \rightarrow 0}\frac{-(\bf{Rp})^{\wedge}\ \varphi}{\varphi} \\
+  &= -(\mathbf{Rp})^{\wedge}
+  \end{align*}
+  $$
+
+- 可见相比3.2.2，使用扰动来计算导数就不用去求解雅可比J了。
+
+### 3.3 SE(3)上李代数求导
+
+一空间点$p$经过变换$T$(李代数为$\xi$)后得到$Tp$,p此时为齐次坐标,给T左乘一个扰动$\Delta\mathbf{T}= exp(\delta \mathbf{\xi}^{\wedge})$(李代数为$\delta\xi=[\delta\rho,\delta\phi]^T$)
+
+- 对扰动的李代数$\delta\xi$求导得:
+  $$
+  \begin{align*}
+    \frac{\partial(\mathbf{Tp})}{\partial\delta\xi} &= \mathop{lim}_{\delta\xi \rightarrow 0}\frac{exp(\delta\xi^{\wedge})exp(\xi^{\wedge})\mathbf{p} -exp(\xi^{\wedge})\mathbf{p} }{\delta\xi} \\
+      &= \mathop{lim}_{\delta\xi \rightarrow 0}\frac{(\mathbf{I}+\delta\xi^{\wedge})exp(\xi^{\wedge})\mathbf{p} -exp(\xi^{\wedge})\mathbf{p} }{\delta\xi} \\
+      &= \mathop{lim}_{\delta\xi \rightarrow 0}\frac{\delta\xi^{\wedge}exp(\xi^{\wedge})\mathbf{p} }{\delta\xi} \\
+      &= \mathop{lim}_{\delta\xi \rightarrow 0}\frac{\left [\begin{array}{cccc}
+  \delta\phi^{\wedge} & \delta\rho  \\
+  \mathbf{0}^T & 0   \\
+  \end{array}\right]\left [\begin{array}{cccc}
+  \mathbf{Rp}+t  \\
+  1 \\
+  \end{array}\right]}{\left [\begin{array}{cccc}
+  \delta\rho,\delta\phi  \\
+  \end{array}\right]^T}\\
+  &=\left [\begin{array}{cccc}
+  \mathbf{I} & -(\mathbf{Rp+t})^{\wedge}  \\
+  \mathbf{0}^T & \mathbf{0}^T \\
+  \end{array}\right]
+  \end{align*}
+  $$
+  
+
+
+
+
+
+# 五、相机与图像
+
+## 1. 相机模型
+
+### 1.1 针孔相机
+
+这部分内容见笔记：[[Comupter Vision#3.Perspektivische Projektion mit kalibrierter Kamera]]
 
 # Eigen库
 
 [官方教程](https://eigen.tuxfamily.org/dox/GettingStarted.html)
+
+Eigen是**可以用来进行线性代数、矩阵、向量操作等运算的C++库**
+
+
+
+
 
 ## 1.基本使用
 
@@ -856,6 +949,10 @@ int main(int argc, char** argv){
 
 # Sophus库
 
+[Github](https://github.com/strasdat/Sophus)
+
+用于计算李代数
+
 ## 1.安装
 
 1. 安装依赖库fmt
@@ -1099,6 +1196,8 @@ target_link_libraries(trajectoryError Sophus::Sophus)
 
 
 #  Pangolin库
+
+用于3D绘图
 
 ## 1. 安装库
 
