@@ -1,6 +1,7 @@
 # 字体相关
 
-- 加粗：
+- 加粗：`\mathbf{}`
+- 斜体:`\it{}`
 
 # 上下标置于正上/下方
 
@@ -38,8 +39,8 @@ $$
 | \mathfrak{se}(3) | $\mathfrak{se}(3)$ | \mathbb{R} | $\mathbb{R}$ |
 | \mathcal{D} | $\mathcal{D}$ | \forall | $\forall$ |
 | \exists | $\exists$ | \vee | $\vee$ |
-|                    |                      |        |          |
-|                    |                      |        |          |
+| \partial | $\partial$ | \varphi | $\varphi$ |
+| \xi | $\xi$ |        |          |
 |                    |                      |        |          |
 
 # 矩阵行列式：
