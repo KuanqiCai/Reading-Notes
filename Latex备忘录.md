@@ -10,6 +10,8 @@
 举例：$\sum\limits_{i=0}^n {x_i}$
 - 如果expr1不是数学符号，则用`\mathop{}`将其转成数学符号
 举例：$\mathop{max}\limits_{\pi}^{\theta}$
+- 在字符上加波浪号`\widetilde{P}`
+$\widetilde{P}$
 
 # 括号相关
 
