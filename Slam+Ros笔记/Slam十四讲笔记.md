@@ -638,9 +638,58 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
 
 ## 1. 相机模型
 
-### 1.1 针孔相机
+### 1.1 针孔相机模型
 
-这部分内容见笔记：[[Comupter Vision#3.Perspektivische Projektion mit kalibrierter Kamera]]
+这部分内容具体见笔记：[[Comupter Vision#3.Perspektivische Projektion mit kalibrierter Kamera]]
+
+### 1.2 畸变模型
+
+为了获得好的成像效果，相机前方会放个透镜，但1.透镜形状会改变光线传播，2.是机械装配上透镜不能和成像平面完全平行，这就使得光线穿过透镜投影到成像面时的位置发生变化。
+
+- **径向畸变**Radial distortion：由透镜形状引起
+
+  透镜使得直线在成像中变成了曲线，越靠近图像边缘越明显。由于透镜加工是中心对称的，这使得不规则的畸变径向对称。有2大类：
+
+  - 桶形畸变Barrel Distortion
+
+    畸变图像放大率随着与光轴之间的距离增加而减小。
+
+  - 枕形畸变Pincushion Distortion
+
+    畸变图像放大率随着与光轴之间的距离增加而增加。
+
+- **切向畸变**Tangential distortion：由透镜和成像面无法严格平行引起
+
+- **矫正畸变**：通过5个畸变系数找到相机坐标系中点p在像素平面上的正确位置：
+
+  1. 将三维空间点投影到归一化图像平面，归一化坐标为$[x,y]^T$
+
+  2. 对归一化平面上的点计算径向畸变和切向畸变：
+     $$
+     \begin{cases}
+     x_{distorted}=x(1+k_1r^2+k_2r^4+k_3r^6)+2p_1xy+p_2(r^2+2x^2) \\
+     y_{distorted}=y(1+k_1r^2+k_2r^4+k_3r^6)+p_1(r^2+2y^2)+2p_2xy \\
+     
+     \end{cases}\tag{1}
+     $$
+
+     - 这里使用$k_1,k_2,k_3$来纠正径向畸变,$p_1,p_2$纠正切向畸变
+     - 实际中可以灵活选择，比如只选$k_1,p_1,p_2$
+
+  3. 将畸变后的点通过内参数矩阵投影到像素平面，得到改点的准确位置
+     $$
+     \begin{cases}
+     u=f_xx_{distorted}+c_x \\
+     v=f_yy_{distorted}+c_y \\
+     \end{cases}
+     $$
+
+- 单目相机的成像过程：
+
+  1. 某点的世界坐标为$\mathbf{P}_w$
+  1. 相机的运动由$\mathbf{R,t}$描述。由此得到该点在相机坐标系下为$\mathbf{\widetilde{P}}_c=\mathbf{RP_w+t}$,坐标为$[X,Y,Z]$
+  1. 归一化点的坐标：$\mathbf{P}_c=[\frac{X}{Z},\frac{Y}{Z},1]$
+  1. 根据畸变公式，即上面的(1)式，计算点$\mathbf{P}_c$，发生畸变后的坐标
 
 # Eigen库
 
