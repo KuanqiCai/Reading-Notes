@@ -689,7 +689,54 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
   1. 某点的世界坐标为$\mathbf{P}_w$
   1. 相机的运动由$\mathbf{R,t}$描述。由此得到该点在相机坐标系下为$\mathbf{\widetilde{P}}_c=\mathbf{RP_w+t}$,坐标为$[X,Y,Z]$
   1. 归一化点的坐标：$\mathbf{P}_c=[\frac{X}{Z},\frac{Y}{Z},1]$
-  1. 根据畸变公式，即上面的(1)式，计算点$\mathbf{P}_c$，发生畸变后的坐标
+  1. 根据畸变公式，即上面的(1)式，计算点$\mathbf{P}_c$，发生畸变后的坐标。
+  1. 由内参矩阵，得到它的像素坐标$\mathbf{P}_{uv}=\mathbf{KP}_c$
+  
+### 1.3 双目相机模型
+
+通过视差计算深度
+
+- 双目相机成像模型（对极几何）见[[Comupter Vision#三、Epipolargeometrie]]
+
+  ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/slam/%E5%8F%8C%E7%9B%AE%E7%9B%B8%E6%9C%BA%E6%88%90%E5%83%8F%E6%A8%A1%E5%9E%8B.png?raw=true)
+
+  - $O_L,O_R$为左右光圈中心
+  - 方框为成像平面
+  - f为焦距
+  - $u_L,-u_R$为成像平面的坐标
+
+- 根据上面$\Delta PP_LP_R$和$\Delta PO_LO_R$的相似关系有：
+  $$
+  \begin{align*}
+  &\frac{z-f}{z}=\frac{b-u_L+u_R}{b}\\
+  整理&后得：\\
+  &z=\frac{fb}{d},
+  \end{align*}
+  $$
+
+  - 其中$d=u_L-u_R$是**视差**，为左右图的横坐标之差。
+
+    可知，视察越大，距离越近。
+
+    但视差的计算是很困难的，需要使用gpu或fpga来实时计算。
+
+  - 由于视差最小为一个像素，所以双目测量深度理论最大值由$fb$决定
+
+    可知，基线越长，能测到的最大距离就越远。
+
+
+
+### 1.4 RGB-D相机模型
+
+- 能够主动测量每个像素的深度，有两大类：
+  - 通过红外结构光(Structured Light)原理测量像素距离。比如Kinect1代，Intel RealSense。
+    - 根据返回的结构光图案，计算物体与自身之间的距离。
+  - 通过飞行时间(Time-of-Flight,ToF)原理测量像素距离，比如Kinect2代。
+    - 和激光传感器类似，根据发送到返回之间的光束飞行时间来计算。
+    - 但激光是通过逐点扫描获取距离，ToF相机则可以获得整个图像的每个像素点的深度。
+- 由于使用发送-接收的测量方式，RGB-D相机容易受到日光或其他RGB-D发送的红外光干扰。
+
+
 
 # Eigen库
 
