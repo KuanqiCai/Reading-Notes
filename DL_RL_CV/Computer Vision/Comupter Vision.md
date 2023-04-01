@@ -11,8 +11,12 @@
      I:R^2\supset\Omega\rightarrow R,\ (x,y)\rightarrow I(x,y)
      $$
 
-     - $I$ is differentiable(differenzierbar)
+     - $I$ is differentiable(differenzierbar)灰度值
+       - 灰度图：用八位整数记录，即0-255
+       - 深度图：用16位整数记录，即0-65535
+       - 彩色图：多通道,如rgb等
      - $\Omega$ is simply connected and bounded
+     - 这里x轴向右，y轴向下，所以计算机中读取某一点的像素应该是：$image[y][x]$
 
   2. **Discrete Representation**(Diskrete Darstellung)
 
@@ -813,7 +817,7 @@ $$
 
   ![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/Computer%20Vision/%E5%AF%B9%E6%9E%81%E5%87%A0%E4%BD%95.jpg?raw=true)
 
-  - $O,O'$是两个相机的中心
+  - $O,O'$是两个相机(光圈)的中心
   - P点是物体所在
     - 如果我们只看左边图像$\pi$上的点p，我们不能知道物体到底是在哪，点P1、P2或其他地方，可有了右边图像$\pi'$上的$p'$我们就能得到物体点P
   - 基线：连线$OO'$
@@ -2304,3 +2308,4 @@ end
 
   
 
+​	
