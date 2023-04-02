@@ -2,30 +2,145 @@ Tutorial:https://docs.opencv.org/4.6.0/d6/d00/tutorial_py_root.html
 
 # Installtion
 
+## 1. 安装
+
 - Install for c++: https://docs.opencv.org/4.1.2/d7/d9f/tutorial_linux_install.html
 
   reference: https://www.ncnynl.com/archives/201912/3566.html
 
-  - check if succeed:
+  reference: https://immortalqx.github.io/2021/07/06/opencv-notes-0/
 
-    in terminal:
+  1. 从https://opencv.org/releases/下载最新版本代码源文件
 
-    ```
-    opencv_version
-    ```
+     - 如果要使用一些前言的还不稳定的算法，需要下载opencv_contrib:
+
+       https://github.com/opencv/opencv_contrib/tags
+
+  2. 解压到我们希望安装的目录下
+
+     ```
+     # 比如NUC12电脑中放在/home/yang/opencv/中
+     mv ./opencv-4.7.0 /home/yang/opencv
+     mv ./opencv_contrib-4.7.0 /home/yang/opencv
+     ```
+
+  3. 安装依赖
+
+     ```
+     $ sudo apt-get install cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libdc1394-22-dev build-essential mlocate
+     $ sudo add-apt-repository "deb http://security.ubuntu.com/ubuntu xenial-security main"
+     $ sudo apt update
+     $ sudo apt install libjasper1 libjasper-dev
+     ```
+
+  4. 编译
+
+     ```
+     $ cd ~/opencv/opencv-4.7.0 && mkdir build && cd build
+     $ cmake -D CMAKE_BUILD_TYPE=Release -D OPENCV_GENERATE_PKGCONFIG=YES -D CMAKE_INSTALL_PREFIX=/usr/local/opencv4.7.0 ..
+     $ make -j6 #用6个线程去编译
+     $ sudo make install
+     ```
+
+     - 修改路径为/usr/local/opencv4.7.0
+
+       否则默认各部分分别安装在`/usr/local/`目录的`include`，`bin`，`lib`3个文件夹下。
+
+     - `-D OPENCV_GENERATE_PKGCONFIG=YES`开启支持使用`pkg-config`功能
+
+       - 就可以用`pkg-config --libs opencv4`来查看
+
+  5. 设置pkg-config
+
+     将/usr/local/opencv4.7.0/lib/pkgconfig/加到PKG_CONFIG_PATH中去
+
+     ```
+     sudo vim /etc/profile.d/pkgconfig.sh
+     ```
+
+     填入：`export PKG_CONFIG_PATH=/usr/local/opencv4.7.0/lib/pkgconfig:$PKG_CONFIG_PATH`
+
+     激活配置：
+
+     ```
+     source /etc/profile
+     ```
+
+  6. 动态库环境
+
+     创建一个动态库环境配置文件:opencv.conf
+
+     ```
+     sudo vim /etc/ld.so.conf.d/opencv.conf
+     ```
+
+     填入:`/usr/local/opencv4.7.0/lib`
+
+     生效配置：
+
+     ```
+     sudo ldconfig
+     ```
+
+  7. 修改bashrc
+
+     ```
+     gedit ~/.bashrc
+     # 填入下面2行：
+     	export PKG_CONFIG_PATH=/usr/local/opencv4.7.0/lib/pkgconfig
+     	export LD_LIBRARY_PATH=/usr/local/opencv4.7.0/lib
+     source ~/.bashrc
+     ```
 
 - Install for python: 
 
+  在conda某一环境下：
+  
   ```
   pip3 install opencv-python
   ```
 
-  - check if succeed:
 
-    ```
-    import cv2 as cv
-    print(cv.__version__)
-    ```
+## 2. 查看安装位置
+
+- `sudo find / -iname "*opencv*"`
+
+## 3. 检查版本
+
+- c++:
+
+  ````
+  opencv_version
+  ````
+
+- python:
+
+  ```
+  import cv2 as cv
+  print(cv.__version__)
+  ```
+
+  
+
+## 4. 切换OpenCV版本
+
+- 在.bashrc中修改
+
+  ```
+  #OpenCV_4.2.0
+  #export PKG_CONFIG_PATH=/usr/local/opencv_4.2.0/lib/pkgconfig
+  #export LD_LIBRARY_PATH=/usr/local/opencv_4.2.0/lib
+  
+  #OpenCV_3.4.6
+  #export PKG_CONFIG_PATH=/usr/local/opencv_3.4.6/lib/pkgconfig
+  #export LD_LIBRARY_PATH=/usr/local/opencv_3.4.6/lib
+  
+  #OpenCV_2.4.9
+  export PKG_CONFIG_PATH=/usr/local/opencv_2.4.9/lib/pkgconfig
+  export LD_LIBRARY_PATH=/usr/local/opencv_2.4.9/lib
+  ```
+
+- 注意安装cmake时放在不同目录下
 
 # Opencv-Python
 
