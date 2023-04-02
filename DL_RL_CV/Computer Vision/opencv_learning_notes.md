@@ -111,6 +111,7 @@ Tutorial:https://docs.opencv.org/4.6.0/d6/d00/tutorial_py_root.html
 
   ````
   opencv_version
+  pkg-config --modversion opencv //如果上面安装使用了pkg-config选项
   ````
 
 - python:
