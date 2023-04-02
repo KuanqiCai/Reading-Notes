@@ -1,3 +1,4 @@
+# C 杂记
 - 字符串
 
   C语言中，字符串实际上是使用 **null** 字符 **\0** 终止的一维字符数组。
@@ -160,7 +161,7 @@ fclose(fp);
 
    Wenn es vor der Laufzeit eines Programms nicht bekannt ist, wie viel Speicher für die Programmausführung notwendig ist. 
 
-3. **Welche Gefahren gehen von Pointern aus?**
+3. **Welche Gefahren危险 gehen von Pointern aus?**
 
    Pointer können auch noch existieren, wenn die referenzierte Variable gelöscht ist. Greift man dann auf den Pointer zu, dereferenziert man undefinierten Speicherbereich, was unweigerlich zu einem Fehler führt.
 
@@ -473,4 +474,85 @@ p40
    - Da die aufrufende Funktion warten muss, bis die aufgerufene Funktion das Ergebnis zurückliefert, wächst der call stack stetig an.
    - Erst wenn die aufgerufenen Funktionen ihren Wert zurückliefern, werden die Funktionen und ihre Daten vom Stack entfernt.
 
-   
+# C++杂记
+   ## 1. 指针和引用
+
+参见Tag1中的3，4
+
+- 区别：
+
+  - 引用必须在声明时被初始化，但是不分配存储空间。但指针不在声明时初始化，在初始化的时候需要分配存储空间。
+  - 引用初始化后不能被改变，即永远指向某个对象，但指针可以改变所指的对象。
+    - 因为指针是一个实体，而引用仅是个别名；
+    - 所以 “sizeof 引用”得到的是所指向的变量（对象）的大小，而“sizeof 指针”得到的是指针本身（所指向的变量或对象的**地址**）的大小；
+  - 不存在指向空值的引用，但是存在指向空值的指针。
+    - 因为引用必须指向一个变量，是这个变量的别名
+
+- 基本使用：
+
+  - 引用：
+
+    ```c++
+    int m；  
+    int &n = m；  
+    ```
+
+    - 引用(reference)n是被引用物(referent)m的别名
+    - 对n的任何操作就是对m的操作。
+    - **注意这里的&是写在引用n前面的**
+
+  - 指针：
+
+    ```c++
+    int  *ip;        // 指针变量的声明
+    ip = &var;       // 在指针变量中存储 var 的地址
+    ```
+
+    - **注意这里的&是和上面的引用符号不同，它是用来获得变量var的地址的**
+
+- 函数值传递：**值传递、指针传递和引用传递**
+
+  - 值传递：
+
+    ```c++
+    void Func1(int x)  
+    {  
+        x = x + 10;  
+    }  
+    int n = 0;  
+    Func1(n);  
+    cout << “n = ” << n << endl;// n = 0 
+    ```
+
+    - 改变x不会改变n，n仍然是0
+
+  - 指针传递：
+
+    ```c++
+    void Func2(int *x)  
+    {  
+        (* x) = (* x) + 10;  
+    }  
+    ⋯  
+    int n = 0;  
+    Func2(&n);  //将变量n的地址传给函数的指针变量x
+    cout << “n = ” << n << endl; // n = 10  
+    ```
+
+    - 由于Func2 函数体内的x 是指向外部变量n 的指针，改变该指针的内容将导致n 的值改变，所以n 的值成为10.
+
+  - 引用传递：
+
+    ```c++
+    void Func3(int &x)  
+    {  
+        x = x + 10;  
+    }  
+    //...  
+    int n = 0;  
+    Func3(n);  // x是n的别名，指向同一个东西
+    cout << “n = ” << n << endl; // n = 10  
+    ```
+
+    - 由于Func3 函数体内的x 是外部变量n 的引用，x和n 是同一个东西，改变x 等于改变n，所以n 的值成为10.
+    - 能用引用传递就不用指针传递
