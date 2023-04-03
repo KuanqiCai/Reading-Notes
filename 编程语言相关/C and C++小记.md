@@ -556,3 +556,18 @@ p40
 
     - 由于Func3 函数体内的x 是外部变量n 的引用，x和n 是同一个东西，改变x 等于改变n，所以n 的值成为10.
     - 能用引用传递就不用指针传递
+
+## 2. argc和argv
+
+```c++
+int main(void);
+int main(int argc,char *argv[])// 等于 int main(int argc,char **argv);
+```
+
+- **argc**：是argument count 的缩写，保存运行时传递给main函数的参数个数。
+
+- **argv**：是argument vector 的缩写，保存运行时传递main函数的参数，类型是一个字符指针数组，每个元素是一个字符指针，指向一个命令行参数。
+  - argv[0]指向程序运行时的全路径名；
+  - argv[1] 指向程序在命令行中执行程序名后的第一个字符串；
+  - argv[2] 指向程序在命令行中执行程序名后的第二个字符串；
+  - 以此类推直到argv[argc], argv[argc] 在C++中指向nullptr，在C语言中指向NULL。
