@@ -1,4 +1,8 @@
-Tutorial:https://docs.opencv.org/4.6.0/d6/d00/tutorial_py_root.html
+# 参考教程
+
+Python Tutorial:https://docs.opencv.org/4.6.0/d6/d00/tutorial_py_root.html
+
+C++ Tutorial:https://docs.opencv.org/4.7.0/d9/df8/tutorial_root.html
 
 # Installtion
 
@@ -1267,3 +1271,98 @@ False
 
 ## 10. OpenCV-Python Bindings
 [OpenCV-Python Bindings](https://docs.opencv.org/4.6.0/df/da2/tutorial_py_table_of_contents_bindings.html)
+
+
+
+# Opencv-C++
+
+## 1. 用CMake来编译
+
+- C++: test.cpp
+
+  ```c++
+  #include <stdio.h>
+  #include <opencv4/opencv2/opencv.hpp>
+  using namespace cv;
+  int main(int argc, char** argv )
+  {
+      if ( argc != 2 )
+      {
+          printf("usage: ./test <Image_Path>\n");
+          return -1;
+      }
+      Mat image;
+      image = imread( argv[1], 1 );
+      if ( !image.data )
+      {
+          printf("No image data \n");
+          return -1;
+      }
+      namedWindow("Display Image", WINDOW_AUTOSIZE );
+      imshow("Display Image", image);
+      waitKey(0);
+      return 0;
+  }
+  ```
+
+- CMakeLists.txt
+
+  ```cmake
+  cmake_minimum_required(VERSION 2.8)
+  project( test )
+  find_package( OpenCV REQUIRED )
+  include_directories( ${OpenCV_INCLUDE_DIRS} )
+  add_executable( test test.cpp )
+  target_link_libraries( test ${OpenCV_LIBS} )
+  ```
+
+- Run:
+
+  ```shell
+  ./test ../ubuntu.png 
+  ```
+
+
+## 2. 基本操作
+
+### 2.1 Mat - The Basic Image Container
+
+[Mat类](https://docs.opencv.org/4.7.0/d3/d63/classcv_1_1Mat.html#a55ced2c8d844d683ea9a725c60037ad0)提供了各种矩阵方法。
+
+- mat是opencv中用来存储图片的数据结构，由俩部分组成
+
+  - **matrix header** (containing information such as the size of the matrix, the method used for storing, at which address is the matrix stored, and so on) 
+  - **pointer to the matrix containing the pixel values** (taking any dimensionality depending on the method chosen for storing) 
+
+- 浅复制
+
+  ```c++
+  Mat A, C;                          // creates just the header parts
+  A = imread(argv[1], IMREAD_COLOR); // here we'll know the method used (allocate matrix)
+  Mat B(A);                                 // Use the copy constructor
+  C = A;                                    // Assignment operator
+  ```
+
+  - 他们指向的都是同一张照片，改变其中一个都会互相影响
+
+- 深复制
+
+  ```c++
+  Mat F = A.clone();
+  Mat G;
+  A.copyTo(G);
+  ```
+
+  -  使用[cv::Mat::clone()](https://docs.opencv.org/4.7.0/d3/d63/classcv_1_1Mat.html#a03d2a2570d06dcae378f788725789aa4) and [cv::Mat::copyTo()](https://docs.opencv.org/4.7.0/d3/d63/classcv_1_1Mat.html#a33fd5d125b4c302b0c9aa86980791a77)方法复制的，就是独立的个体
+
+- 划分ROI
+
+  创建一个新的header来划分图片中感兴趣的区域
+
+  ```c++
+  Mat D (A, Rect(10, 10, 100, 100) ); // using a rectangle
+  Mat E = A(Range::all(), Range(1,3)); // using row and column boundaries
+  ```
+
+  
+
