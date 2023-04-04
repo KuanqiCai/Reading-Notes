@@ -4,6 +4,8 @@ Python Tutorial:https://docs.opencv.org/4.6.0/d6/d00/tutorial_py_root.html
 
 C++ Tutorial:https://docs.opencv.org/4.7.0/d9/df8/tutorial_root.html
 
+- 配套的代码：https://github.com/opencv/opencv/tree/4.x/samples/cpp/tutorial_code
+
 # Installtion
 
 ## 1. 安装
@@ -1325,7 +1327,7 @@ False
 
 ## 2. 基本操作
 
-### 2.1 Mat - The Basic Image Container
+### 2.1 Mat图片保存格式
 
 [Mat类](https://docs.opencv.org/4.7.0/d3/d63/classcv_1_1Mat.html#a55ced2c8d844d683ea9a725c60037ad0)提供了各种矩阵方法。
 
@@ -1364,5 +1366,297 @@ False
   Mat E = A(Range::all(), Range(1,3)); // using row and column boundaries
   ```
 
+
+- 对于灰度图，矩阵如下：
+
+  ![](https://docs.opencv.org/4.7.0/tutorial_how_matrix_stored_1.png)
+
+- 对于彩色图，矩阵如下：
+
+  ![](https://docs.opencv.org/4.7.0/tutorial_how_matrix_stored_2.png)
+
+### 2.2  扫描图片，查询表和时间测量
+
+- 查询表LUT：
+
+  LUT(Look-Up Table)实际上就是一张像素灰度值的映射表，它将实际采样到的像素灰度值经过一定的变换如阈值、反转、二值化、对比度调整、线性变换等，变成了另外一个与之对应的灰度值，这样可以起到突出图像的有用信息，增强图像的光对比度的作用。
+
+- 映射图片的方法：
+
+  1. 扫描图片读取每个像素，然后对他们操作
+
+     有三种读取方法:
+
+     1. Mat& ScanImageAndReduceC(Mat& I, const uchar* table);
+
+        使用指针的方法。推荐，快
+
+     2. Mat& ScanImageAndReduceIterator(Mat& I, const uchar* table);
+
+        使用迭代器的方法。推荐，安全
+
+     3. Mat& ScanImageAndReduceRandomAccess(Mat& I, const uchar * table);
+
+        随机的方法。不推荐
+
+  2. 使用cv::lut()方法
+
+     opencv自带的方法，不用我们再去写扫描每个像素的代码，直接就可以映射了
+
+- opencv测量时间
+
+  使用如下两个方法：
+
+  - cv::getTickFrequency()计算机每秒钟的Tick数
+  - cv::getTickCount(),得到开机后到现在的tick数
+
+  两者得到值除一下，就是运行了多少秒了。
+
+- 代码：
+
+  ```c++
+  #include <opencv2/core.hpp>
+  #include <opencv2/core/utility.hpp>
+  #include "opencv2/imgcodecs.hpp"
+  #include <opencv2/highgui.hpp>
+  #include <iostream>
+  #include <sstream>
   
+  using namespace std;
+  using namespace cv;
+  
+  static void help()
+  {
+      cout
+          << "\n--------------------------------------------------------------------------" << endl
+          << "This program shows how to scan image objects in OpenCV (cv::Mat). As use case"
+          << " we take an input image and divide the native color palette (255) with the "  << endl
+          << "input. Shows C operator[] method, iterators and at function for on-the-fly item address calculation."<< endl
+          << "Usage:"                                                                       << endl
+          << "./how_to_scan_images <imageNameToUse> <divideWith> [G]"                       << endl
+          << "if you add a G parameter the image is processed in gray scale"                << endl
+          << "--------------------------------------------------------------------------"   << endl
+          << endl;
+  }
+  
+  Mat& ScanImageAndReduceC(Mat& I, const uchar* table);
+  Mat& ScanImageAndReduceIterator(Mat& I, const uchar* table);
+  Mat& ScanImageAndReduceRandomAccess(Mat& I, const uchar * table);
+  
+  int main( int argc, char* argv[])
+  {
+      help();
+      if (argc < 3)
+      {
+          cout << "Not enough parameters" << endl;
+          return -1;
+      }
+  
+      Mat I, J;
+      if( argc == 4 && !strcmp(argv[3],"G") )
+          I = imread(argv[1], IMREAD_GRAYSCALE);  //如果添加了参数G，就读取为灰度图
+      else
+          I = imread(argv[1], IMREAD_COLOR);      //否则，就正常的彩图。
+  
+      if (I.empty())
+      {
+          cout << "The image" << argv[1] << " could not be loaded." << endl;
+          return -1;
+      }
+  
+      //********************************** start:[dividewith] ********************************** 
+      int divideWith = 0; // convert our input string to number - C++ style
+      stringstream s;     // 使用c++的stringtream类，来将字符串转换为数字
+      s << argv[2];       // 将命令行中的第二个参数值传给s
+      s >> divideWith;    // 将string值传给int类型的变量，也就变成了int值。
+      if (!s || !divideWith)
+      {
+          cout << "Invalid number entered for dividing. " << endl;
+          return -1;
+      }
+  
+      uchar table[256];       //为什么要用char呢，因为这样所有的分数都会向下舍入。
+      for (int i = 0; i < 256; ++i)   // 下面这个公式，是将[0,255]的色域缩小一个比例，因为通常不需要那么多色域。
+         table[i] = (uchar)(divideWith * (i/divideWith));
+      //********************************** end:[dividewith] ********************************** 
+  
+      //********************************** start:[时间计算1：指针方法] ********************************** 
+      const int times = 100;
+      double t;
+  
+      t = (double)getTickCount(); //cv::getTickCount(),得到开机后到现在的tick数
+  
+      for (int i = 0; i < times; ++i)
+      {
+          cv::Mat clone_i = I.clone(); // 深复制，clone_i和I是两个独立的Mat对象了
+          J = ScanImageAndReduceC(clone_i, table);
+      }
+  
+      t = 1000*((double)getTickCount() - t)/getTickFrequency(); //cv::getTickFrequency()计算机每秒钟的Tick数
+      t /= times;
+  
+      cout << "Time of reducing with the C operator [] (averaged for "
+           << times << " runs): " << t << " milliseconds."<< endl;
+  
+      t = (double)getTickCount();
+      //********************************** end:[时间计算1：指针方法] **********************************
+      
+      //********************************** start:[时间计算2：迭代器方法] ********************************** 
+      for (int i = 0; i < times; ++i)
+      {
+          cv::Mat clone_i = I.clone();
+          J = ScanImageAndReduceIterator(clone_i, table);
+      }
+  
+      t = 1000*((double)getTickCount() - t)/getTickFrequency();
+      t /= times;
+  
+      cout << "Time of reducing with the iterator (averaged for "
+          << times << " runs): " << t << " milliseconds."<< endl;
+      //********************************** end:[时间计算2：迭代器方法] **********************************
+  
+      //********************************** start:[时间计算3：随即扫描] ********************************** 
+      t = (double)getTickCount();
+  
+      for (int i = 0; i < times; ++i)
+      {
+          cv::Mat clone_i = I.clone();
+          ScanImageAndReduceRandomAccess(clone_i, table);Mat& ScanImageAndReduceC(Mat& I, const uchar* table);
+  Mat& ScanImageAndReduceIterator(Mat& I, const uchar* table);
+  Mat& ScanImageAndReduceRandomAccess(Mat& I, const uchar * table);
+      }
+  
+      t = 1000*((double)getTickCount() - t)/getTickFrequency();
+      t /= times;
+  
+      cout << "Time of reducing with the on-the-fly address generation - at function (averaged for "
+          << times << " runs): " << t << " milliseconds."<< endl;
+      //********************************** end:[时间计算3：随机扫描] **********************************
+  
+      //********************************** start:使用CV::LUT()来修改图像值 ********************************** 
+      //! [table-init]
+      Mat lookUpTable(1, 256, CV_8U);
+      uchar* p = lookUpTable.ptr();
+      for( int i = 0; i < 256; ++i)
+          p[i] = table[i];
+      //! [table-init]
+  
+      t = (double)getTickCount();
+  
+      for (int i = 0; i < times; ++i)
+          //! [table-use]
+          LUT(I, lookUpTable, J);
+          //! [table-use]
+  
+      t = 1000*((double)getTickCount() - t)/getTickFrequency();
+      t /= times;
+  
+      cout << "Time of reducing with the LUT function (averaged for "
+          << times << " runs): " << t << " milliseconds."<< endl;
+      //********************************** end:使用CV::LUT()来修改图像值 ********************************** 
+      return 0;
+  }
+  
+  //! [scan-c]
+  Mat& ScanImageAndReduceC(Mat& I, const uchar* const table)
+  {
+      // accept only char type matrices
+      CV_Assert(I.depth() == CV_8U); // CV_Assert断言，如果为真，中断。 CV_8U定义为0。
+  
+      int channels = I.channels();  // 通道数
+  
+      int nRows = I.rows;
+      int nCols = I.cols * channels;  // 参见2.1中图片的矩阵格式，若为颜色图，则每一列有3个通道
+  
+      if (I.isContinuous())   // 检测矩阵读取的是否是连续的，如果是连续的，就可以把他们变成一行来处理
+      {
+          nCols *= nRows;
+          nRows = 1;
+      }
+  
+      int i,j;
+      uchar* p;
+      for( i = 0; i < nRows; ++i)
+      {
+          p = I.ptr<uchar>(i);    // 返回i行的指针
+          for ( j = 0; j < nCols; ++j)   // 遍历i行的每一列元素
+          {
+              p[j] = table[p[j]]; // 将[0,255]的p[j]放入table后降低色域分辨率。
+          }
+      }
+      return I;
+  }
+  //! [scan-c]
+  
+  //! [scan-iterator]
+  Mat& ScanImageAndReduceIterator(Mat& I, const uchar* const table)
+  {
+      // accept only char type matrices
+      CV_Assert(I.depth() == CV_8U);
+  
+      const int channels = I.channels();
+      switch(channels)
+      {
+      case 1: //灰度图
+          {
+              MatIterator_<uchar> it, end;
+              for( it = I.begin<uchar>(), end = I.end<uchar>(); it != end; ++it)
+                  *it = table[*it];
+              break;
+          }
+      case 3: //彩色图
+          {
+              MatIterator_<Vec3b> it, end;
+              for( it = I.begin<Vec3b>(), end = I.end<Vec3b>(); it != end; ++it)
+              {
+                  (*it)[0] = table[(*it)[0]];
+                  (*it)[1] = table[(*it)[1]];
+                  (*it)[2] = table[(*it)[2]];
+              }
+          }
+      }
+  
+      return I;
+  }
+  //! [scan-iterator]
+  
+  //! [scan-random]
+  Mat& ScanImageAndReduceRandomAccess(Mat& I, const uchar* const table)
+  {
+      // accept only char type matrices
+      CV_Assert(I.depth() == CV_8U);
+  
+      const int channels = I.channels();
+      switch(channels)
+      {
+      case 1:
+          {
+              for( int i = 0; i < I.rows; ++i)
+                  for( int j = 0; j < I.cols; ++j )
+                      I.at<uchar>(i,j) = table[I.at<uchar>(i,j)];
+              break;
+          }
+      case 3:
+          {
+           Mat_<Vec3b> _I = I;
+  
+           for( int i = 0; i < I.rows; ++i)
+              for( int j = 0; j < I.cols; ++j )
+                 {
+                     _I(i,j)[0] = table[_I(i,j)[0]];
+                     _I(i,j)[1] = table[_I(i,j)[1]];
+                     _I(i,j)[2] = table[_I(i,j)[2]];
+              }
+           I = _I;
+           break;
+          }
+      }
+  
+      return I;
+  }
+  //! [scan-random]
+  
+  ```
+
+
 
