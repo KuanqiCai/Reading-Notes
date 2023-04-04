@@ -744,9 +744,23 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
 
 Eigen是**可以用来进行线性代数、矩阵、向量操作等运算的C++库**
 
+## 0. 安装
 
+- 下载源码: `http://eigen.tuxfamily.org/index.php?title=Main_Page`
 
+- 安装
 
+  ```
+  cd ~/
+  mkdir 3rd_library
+  cd ~/Download
+  mv eigen-3.4.0 ../3rd_library/
+  cd ~/3rd_library/eigen-3.4.0
+  mkdir build
+  cd build
+  cmake..
+  sudo make install
+  ```
 
 ## 1.基本使用
 
@@ -1592,3 +1606,202 @@ add_executable( visualizeGeometry visualizeGeometry.cpp )
 target_link_libraries( visualizeGeometry ${Pangolin_LIBRARIES} )
 ```
 
+# OpenCV
+
+教程见笔记
+
+## 1. 去畸变
+
+- 代码
+
+  test.cpp
+
+  ```c++
+  #include <opencv2/opencv.hpp>
+  #include <string>
+  
+  using namespace std;
+  
+  string image_file = "./distorted.png";   // 请确保路径正确
+  
+  int main(int argc, char **argv) {
+  
+    // 本程序实现去畸变部分的代码。尽管我们可以调用OpenCV的去畸变，但自己实现一遍有助于理解。
+    // 畸变参数
+    double k1 = -0.28340811, k2 = 0.07395907, p1 = 0.00019359, p2 = 1.76187114e-05;
+    // 内参
+    double fx = 458.654, fy = 457.296, cx = 367.215, cy = 248.375;
+  
+    cv::Mat image = cv::imread(image_file, 0);   // 图像是灰度图，CV_8UC1
+    int rows = image.rows, cols = image.cols;
+    cv::Mat image_undistort = cv::Mat(rows, cols, CV_8UC1);   // 去畸变以后的图
+  
+    // 计算去畸变后图像的内容
+    for (int v = 0; v < rows; v++) {
+      for (int u = 0; u < cols; u++) {
+        // 按照公式，计算点(u,v)对应到畸变图像中的坐标(u_distorted, v_distorted)
+        double x = (u - cx) / fx, y = (v - cy) / fy;
+        double r = sqrt(x * x + y * y);
+        double x_distorted = x * (1 + k1 * r * r + k2 * r * r * r * r) + 2 * p1 * x * y + p2 * (r * r + 2 * x * x);
+        double y_distorted = y * (1 + k1 * r * r + k2 * r * r * r * r) + p1 * (r * r + 2 * y * y) + 2 * p2 * x * y;
+        double u_distorted = fx * x_distorted + cx;
+        double v_distorted = fy * y_distorted + cy;
+  
+        // 赋值 (最近邻插值)
+        if (u_distorted >= 0 && v_distorted >= 0 && u_distorted < cols && v_distorted < rows) {
+          image_undistort.at<uchar>(v, u) = image.at<uchar>((int) v_distorted, (int) u_distorted);
+        } else {
+          image_undistort.at<uchar>(v, u) = 0;
+        }
+      }
+    }
+  
+    // 画图去畸变后图像
+    cv::imshow("distorted", image);
+    cv::imshow("undistorted", image_undistort);
+    cv::waitKey();
+    return 0;
+  }
+  ```
+
+- 编译:
+
+  CMakeLists.txt
+
+  ```
+  cmake_minimum_required(VERSION 2.8)
+  project( test )
+  find_package( OpenCV REQUIRED )
+  include_directories( ${OpenCV_INCLUDE_DIRS} )
+  add_executable( test test.cpp )
+  target_link_libraries( test ${OpenCV_LIBS} )
+  ```
+
+## 2. 双目视觉
+
+实现视差图和点云图
+
+- 代码:
+
+  test.cpp
+
+  ```c++
+  #include <opencv2/opencv.hpp>
+  #include <vector>
+  #include <string>
+  #include <Eigen/Core>
+  #include <pangolin/pangolin.h>
+  #include <unistd.h>
+  
+  using namespace std;
+  using namespace Eigen;
+  
+  // 文件路径
+  string left_file = "./left.png";
+  string right_file = "./right.png";
+  
+  // 在pangolin中画图，已写好，无需调整
+  void showPointCloud(
+      const vector<Vector4d, Eigen::aligned_allocator<Vector4d>> &pointcloud);
+  
+  int main(int argc, char **argv) {
+  
+      // 内参
+      double fx = 718.856, fy = 718.856, cx = 607.1928, cy = 185.2157;
+      // 基线
+      double b = 0.573;
+  
+      // 读取图像
+      cv::Mat left = cv::imread(left_file, 0);
+      cv::Mat right = cv::imread(right_file, 0);
+      // 使用opencv自带的Semi-Global Batch Matching算法，计算左右图像的视察
+      cv::Ptr<cv::StereoSGBM> sgbm = cv::StereoSGBM::create(
+          0, 96, 9, 8 * 9 * 9, 32 * 9 * 9, 1, 63, 10, 100, 32);    // 神奇的参数
+      cv::Mat disparity_sgbm, disparity;
+      sgbm->compute(left, right, disparity_sgbm);
+      disparity_sgbm.convertTo(disparity, CV_32F, 1.0 / 16.0f);
+  
+      // 生成点云
+      vector<Vector4d, Eigen::aligned_allocator<Vector4d>> pointcloud;
+  
+      // 如果你的机器慢，请把后面的v++和u++改成v+=2, u+=2
+      for (int v = 0; v < left.rows; v++)
+          for (int u = 0; u < left.cols; u++) {
+              if (disparity.at<float>(v, u) <= 0.0 || disparity.at<float>(v, u) >= 96.0) continue;
+  
+              Vector4d point(0, 0, 0, left.at<uchar>(v, u) / 255.0); // 前三维为xyz,第四维为颜色
+  
+              // 根据双目模型计算 point 的位置
+              double x = (u - cx) / fx;
+              double y = (v - cy) / fy;
+              double depth = fx * b / (disparity.at<float>(v, u));
+              point[0] = x * depth;
+              point[1] = y * depth;
+              point[2] = depth;
+  
+              pointcloud.push_back(point);
+          }
+  
+      cv::imshow("disparity", disparity / 96.0);
+      cv::waitKey(0);
+      // 画出点云
+      showPointCloud(pointcloud);
+      return 0;
+  }
+  
+  void showPointCloud(const vector<Vector4d, Eigen::aligned_allocator<Vector4d>> &pointcloud) {
+  
+      if (pointcloud.empty()) {
+          cerr << "Point cloud is empty!" << endl;
+          return;
+      }
+  
+      pangolin::CreateWindowAndBind("Point Cloud Viewer", 1024, 768);
+      glEnable(GL_DEPTH_TEST);
+      glEnable(GL_BLEND);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  
+      pangolin::OpenGlRenderState s_cam(
+          pangolin::ProjectionMatrix(1024, 768, 500, 500, 512, 389, 0.1, 1000),
+          pangolin::ModelViewLookAt(0, -0.1, -1.8, 0, 0, 0, 0.0, -1.0, 0.0)
+      );
+  
+      pangolin::View &d_cam = pangolin::CreateDisplay()
+          .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f / 768.0f)
+          .SetHandler(new pangolin::Handler3D(s_cam));
+  
+      while (pangolin::ShouldQuit() == false) {
+          glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  
+          d_cam.Activate(s_cam);
+          glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+  
+          glPointSize(2);
+          glBegin(GL_POINTS);
+          for (auto &p: pointcloud) {
+              glColor3f(p[3], p[3], p[3]);
+              glVertex3d(p[0], p[1], p[2]);
+          }
+          glEnd();
+          pangolin::FinishFrame();
+          usleep(5000);   // sleep 5 ms
+      }
+      return;
+  }
+  ```
+
+- 编译:
+
+  CMakeList.txt:
+
+  ```cmake
+  cmake_minimum_required(VERSION 2.8)
+  project( test )
+  find_package( OpenCV REQUIRED )
+  find_package(Pangolin REQUIRED)
+  include_directories( ${OpenCV_INCLUDE_DIRS} )
+  add_executable( test test.cpp )
+  target_link_libraries( test ${OpenCV_LIBS} ${Pangolin_LIBRARIES})
+  ```
+
+  
