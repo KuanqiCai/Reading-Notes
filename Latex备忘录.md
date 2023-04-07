@@ -6,12 +6,22 @@
 # 上下标置于正上/下方
 
 - 使用`\limits`：
-命令格式：`expr1\limits_{expr2}^{expr3}`
-举例：$\sum\limits_{i=0}^n {x_i}$
+  命令格式：`expr1\limits_{expr2}^{expr3}`
+  举例：$\sum\limits_{i=0}^n {x_i}$
+
 - 如果expr1不是数学符号，则用`\mathop{}`将其转成数学符号
-举例：$\mathop{max}\limits_{\pi}^{\theta}$
+  举例：$\mathop{max}\limits_{\pi}^{\theta}$
+
 - 在字符上加波浪号`\widetilde{P}`
-$\widetilde{P}$
+  $\widetilde{P}$
+
+- 下括号`\underbrace{P(x,y)}_{先验}`
+
+  $\underbrace{P(x,y)}_{先验}$
+
+- 上括号`\overerbrace{P(x,y)}^{先验}`
+
+  $\overbrace{P(x,y)}^{先验}$
 
 # 括号相关
 
@@ -42,7 +52,7 @@ $$
 | \mathcal{D} | $\mathcal{D}$ | \forall | $\forall$ |
 | \exists | $\exists$ | \vee | $\vee$ |
 | \partial | $\partial$ | \varphi | $\varphi$ |
-| \xi | $\xi$ |        |          |
+| \xi | $\xi$ | \propto | $\propto$ |
 |                    |                      |        |          |
 
 # 矩阵行列式：
