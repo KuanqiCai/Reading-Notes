@@ -740,6 +740,158 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
 
 
 
+# 六、非线性优化
+
+## 0.为什么要优化
+
+由于噪音，再好的传感器也会带来误差，所以运动方程和观测方程的等式不可能精确成立。
+
+与其假设数据完全符合方程，不如研究如何从有噪声的数据中进行准确的状态估计。
+
+而解决状态估计就需要最优化的知识
+
+## 1.状态估计
+
+state estimation**根据可获取的量测数据估算动态系统内部状态的方法**
+
+### 1.1 批量状态估计与最大后验估计 
+
+最大后验估计：maximum a posteriori probability (MAP) estimate
+
+- 由二、3.中可知SLAM模型由一个运动方程和一个观测方程构成
+
+  - 运动方程表示：
+    $$
+    x_k=f(x_{k-1},u_k,w_k)\tag{1}
+    $$
+    由四、可知，$\mathbf{x}_k$是相机的位姿，用SE(3)来描述。
+
+  - 观测方程表示：
+    $$
+    z_{k,j}=h(y_j,x_k,v_{k,j})\ ,\ (k,j)\in O \tag{2}
+    $$
+    由五、可知，观测方程即针孔相机模型：
+
+    - 如假设相机在$\mathbf{x}_k$处对路标点$\mathbf{y}_j$进行了一次观测，路标点对应到图像上的像素坐标为$z_{k,j}$
+      $$
+      sz_{k,j}=\mathbf{K}(\mathbf{R}_k\mathbf{y}_j+\mathbf{t}_k)\tag{3}
+      $$
+
+      - $\mathbf{K}$:相机内参
+
+      - s:为像素坐标系(像素点)到相机坐标系(光圈)的距离
+
+        也是$\mathbf{R}_k\mathbf{y}_j+\mathbf{t}_k$的第三个分量
+
+  - 另外假设两个噪声，他们满足零均值的高斯分布:
+
+    $$
+    \mathcal{w}_k\sim\mathcal{N}(\mathbf{0},\mathbf{R}_k)\tag{4}\\	
+    \mathcal{v}_k\sim\mathcal{N}(\mathbf{0},\mathbf{Q}_{k,j}) 
+    $$
+
+    - $\mathcal{N}$:高斯分布
+    - $\mathbf{0}$:零均值
+    - $\mathbf{R}_k,\mathbf{Q}_{k,j}$：协方差矩阵
+
+- 得到状态估计问题：
+
+  通过带噪声的数据 观测方程中的像素坐标$\mathbf{z}$ 和 运动方程中传感器数据$\mathbf{u}$ 来推断 位姿$\mathbf{x}$和地图$\mathbf{y}$
+
+- 求解状态估计的两种方法：
+
+  1. **滤波器 (增量/渐进incremental的方法)**：由于数据是随时间逐渐到来的，所以我们持有一个当前时刻的状态估计，然后用新的数据来更新它。
+     - 仅关心当前时刻的状态估计$x_k$，对之前的状态不考虑
+  2. **批量batch方法**：把数据积攒起来一并处理
+     - 相对于滤波器，可以在更大范围达到最优化，被认为优于传统的滤波器，而称为当今vslam的主流
+     - 极端下可以让机器人收集所有时刻的数据后统一处理，即SFM(Structure from motion)三维重建的主流做法
+     - 但极端情况显然不是实时的，不符合SLAM。所以在SLAM中，通常采用折中的办法：固定一些历史轨迹，仅对当前时刻附近的一些轨迹进行优化，即**滑动窗口估计法**
+  
+- 本节主要讨论**非线性优化为主的批量优化方法**
+  
+  - 状态$x,y$的条件概率分布为:$P(x,y|z,u)$
+  
+    - $x=\{x_1,\cdots ,x_N\}$:机器人位姿
+  
+    - $y=\{y_1,\cdots,y_M\}$：路标坐标
+  
+    - z:所有时刻的观测数据（观测点在像素坐标下的坐标）
+  
+    - u:所有时刻的输入（机器人各种传感器的数据IMU,速度等等）
+  
+      如果没有输入，只有一张张图像，状态估计的条件概率分布为：$P(x,y|z)$,此时SLAM问题也就变成了SFM三维重建问题。
+  
+  - 利用**贝叶法则**估计状态变量的条件分布
+    $$
+    P(x,y|z,u)=\underbrace{\frac{P(x,y|z,u)P(x,y)}{P(z,u)}}_{后验}\propto\underbrace{P(x,y|z,u)}_{似然}\underbrace{P(x,y)}_{先验} \tag{5}
+    $$
+  
+    - 直接求后验分布是困难的，但是**求一个状态最优估计，使得该状态下后验概率最大化是可行的**
+  
+      即：$(x,y)^*=argmaxP(x,y|z,u)P(x,y)$
+  
+    - 贝叶斯法则告诉我们，求解最大后验概率 等价于最大化 **似然和先验的乘积**
+  
+    - 如果我们不知道机器人位姿或路标，就没有了先验，那么就变成了求解**最大似然估计**(MLE,Maximize Likelihood Estimation)，即：$(x,y)^*=argmaxP(x,y|z,u)$
+  
+    - **似然**：在现在位姿下，可能产生怎么样的观测数据
+  
+      **最大似然估计**：在什么状态下，最可能产生现在观测到的数据。
+
+### 1.2 最小二乘的引出
+
+- 由1.1中观测公式2和噪声公式4，可结合得到观测数据条件概率为：
+  $$
+  P(\mathbf{z}_{j,k}|\mathbf{x}_k,\mathbf{y}_j)=N(h(\mathbf{y}_j,\mathbf{x}_k),\mathbf{Q}_{k,j})\tag{6}
+  $$
+
+  -  h()：观测方程
+  -  Q：高斯分布协方差矩阵
+  
+  它依然是一个高斯分布。
+  
+- 对于**单次观测的最大似然估计**，可以使用**最小化负对数**来求一个高斯分布的最大似然。
+
+  1. 首先对高斯分布写成，概率密度函数展开形式
+  2. 然后对其取负对数
+     - 因为对数函数是单调递增的，所以原函数求最大化相当于对负对数求最小化
+
+  带入SLAM的观测模型，我们就是求解：
+  $$
+  \begin{align}
+  (x_k,y_j)^* &=arg\ max \mathcal{N}(h(\mathbf{y}_j,\mathbf{x}_k),\mathbf{Q}_{k,j})\\
+  &=arg\ min\big((\mathbf{z}_{k,j}-h(\mathbf{x}_k,\mathbf{y}_j))^T\mathbf{Q}_{k,j}^{-1}(\mathbf{z}_{k,j}-h(\mathbf{x}_k,\mathbf{y}_j))\big)
+  \end{align}\tag{7}
+  $$
+  
+  - 可以看出7式等价于，最小化噪声(误差)的一个二次型
+    - 这个二次型也称为马氏距离(Mahalanobis distance)
+    - 也可看作是$\mathbf{Q}_{k,j}^{-1}$加权之后的欧氏距离
+  
+- 对于**批量时刻的数据**，可以将其看作**最小二乘问题**(Least Square Problem)
+
+  1. 由于各个输入u,各个观测z之间都是独立的，且u和z之间也是独立的，所以我们可以首先对其因式分解
+     $$
+     P(\mathbf{z,u}|\mathbf{x},\mathbf{y})=\prod_kP(\mathbf{u}_k|\mathbf{x}_{k-1},\mathbf{x}_k)\prod_{k,j}P(\mathbf{z}_{k,j}|\mathbf{x}_k,\mathbf{y}_j) \tag{8}
+     $$
+     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Eigen库
 
 [官方教程](https://eigen.tuxfamily.org/dox/GettingStarted.html)
