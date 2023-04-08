@@ -847,7 +847,9 @@ state estimation**根据可获取的量测数据估算动态系统内部状态�
 
 ### 1.2 转为最小二乘问题
 
-slam的状态估计问题，可以变成一个最小二乘问题。
+slam的状态估计问题，可以变成一个最小二乘问题least squares method。
+
+最小二乘法是一种数学优化建模方法。它通过最小化误差的平方来寻找最佳函数和真实数据相匹配。利用最小二乘法可以简便的求得未知的数据，并使得求得的数据与实际数据之间误差的平方和为最小。
 
 - 由1.1中观测公式2和噪声公式4，可结合得到观测数据条件概率为：
   $$
@@ -958,13 +960,17 @@ slam的状态估计问题，可以变成一个最小二乘问题。
 
 ## 2.非线性最小二乘
 
+最小二乘法是一种数学优化建模方法。它通过最小化误差的平方来寻找最佳函数和真实数据相匹配。
+
+利用最小二乘法可以简便的求得未知的数据，并使得求得的数据与实际数据之间误差的平方和为最小。
+
 最小二乘问题：
 $$
 \mathop{min}_x\ F(x)=\frac{1}{2}||f(x)||_2^2 \tag{1}
 $$
 最小化它可以用解析的方式来求：即令其导数为0。得到的可能式最小、最大或鞍点处的值，只要代入f(x)比较下就可以。
 
-但除非f(x)式简单的线性函数，否则很难求导。
+但除非f(x)是简单的线性函数，否则很难求导。
 
 为此可以用迭代法将求解**导数=0**的问题变成寻找**下降增量$\Delta x_k$**的问题：
 
@@ -1013,13 +1019,108 @@ $$
 
 - 有别于牛顿法，高斯牛顿法是把1式的f(x)而非F(x)进行泰勒展开
   $$
-  f(x+\Delta x)\approx f(x)+\mathbf{J}(x)^T\Delta x
+  f(x+\Delta x)\approx f(x)+\mathbf{J}(x)^T\Delta x \tag{6}
   $$
   
+- 近似二阶泰勒展开，并将求$\Delta x$就变成解一个线性的最小二乘问题：
+  $$
+  \begin{align}
+  \Delta x^*&=arg\ \mathop{min}_{\Delta x}\frac{1}{2}||f(x)+\mathbf{J}(x)^T\Delta x ||^2\\
+  &=arg\ \mathop{min}_{\Delta x}\frac{1}{2}\big(||f(x)||_2^2+2f(x)\mathbf{J}(x)^T\Delta x+\Delta x^T\mathbf{J}(x)\mathbf{J}(x)^T\Delta x \big)
+  \end{align} \tag{7}
+  $$
+
+- 求7式右侧关于$\Delta x$的导数并令其为0,得到**增量方程**如下：
+  $$
+  \mathbf{J}(x)f(x)+\mathbf{J}(x)\mathbf{J}^T(x)\Delta x=0\\
+  \underbrace{\mathbf{J}(x)\mathbf{J}^T(x)}_{H(x)}\Delta x=\underbrace{-\mathbf{J}(x)f(x)}_{g(x)} \tag{8}\\
+  H\Delta x=g
+  $$
+
+  - 增量方程是关于$\Delta x$的线性方程组
+  - 也可以称之为高斯牛顿方程(Gauss-Newton equation)或者正规方程(Normal equation)
+  - 相比于牛顿法中的5式，高斯牛顿法用$\mathbf{J}(x)\mathbf{J}^T(x)$**作为牛顿法中二阶海塞矩阵H的近似，从而省略了计算复杂的海塞矩阵过程。**
+
+- 如上，得到高斯牛顿法的算法步骤：
+
+  1. 给定初始值$x_0$
+  2. 对于第k次迭代，求出当前的雅可比矩阵$\mathbf{J}(x_k)$和误差$f(x_k)$
+  3. 求解增量方程：$H\Delta x_k=g$
+  4. 若$\Delta x_k$足够小，则停止。否则，令$x_{k+1}=x_k+\Delta x_k$，返回第二步。
+
+- 高斯牛顿法的**缺点**
+
+  为求解增量方程，需要$H=JJ^T$的逆，但实际数据中计算得到$JJ^T$只是半正定性的。
+
+  所以在实际计算中，$JJ^T$可能是奇异矩阵或是病态的(ill-condition)，从而导致算法不收敛。
 
 ### 2.3 列文伯格-马夸尔特方法：
 
+L-M方法全称Levenberg-Marquardt方法，一定层度上修正了高斯牛顿法的缺点。因此比高斯牛顿法更健壮，但收敛速度更慢。
 
+也称之为**阻尼牛顿法(Damped Newton Method)**
+
+通常问题性质好时用高斯牛顿法作为梯度下降策略，问题接近病态时用L-M法
+
+- 高斯牛顿法只能在展开点附近有较好的近似效果，L-M法在此基础上给$\Delta x$增加了一个**信赖区域**(Trust Region)
+
+  在这个区域内，对牛顿法中海塞矩阵H的二阶近似是有效的，出了这个区域就可能有问题导致不收敛。
+
+- 根据近似模型和实际函数之间的差异来确定这个区域的范围：
+
+  - 如果差异小：说明近似效果好，扩大近似的范围。
+  - 如果差异大：说明近似效果不好，缩小近似的范围。
+
+- 通过指标$\rho$来判断近似效果的好坏
+  $$
+  \rho=\frac{f(x+\Delta x)-f(x)}{\mathbf{J}(x)^T\Delta x} \tag{9}
+  $$
+
+  - 分子：实际函数下降的值
+  - 分母：近似模型下降的值
+  - $\rho$越接近于1，近似越好
+  - $\rho$太小：说明实际减小的值远少于近似减小的值，近似较差，需要缩小近似范围
+  - $\rho$比较大：说明实际下降的值比预计的要打，可以放大近似范围
+
+- 如上，得到L-M算法：
+
+  1. 给定初始值$x_0$,和初始优化半径$\mu$
+
+  2. 求解增量方程：
+     $$
+     \Delta x=\mathop{min}_{\Delta x_k}\frac{1}{2}||f(x_k)+\mathbf{J}(x_k)^T\Delta x_k||^2,\ \ \ s.t.||\mathbf{D}\Delta x_k||^2<=\mu
+     $$
+
+     - $\mu$:信赖区域的半径
+     - $D$:系数矩阵
+     - s.t.: subject to 受限于
+
+  3. 根据式9，计算指标$\rho$
+
+     - 若$\rho>\frac{3}{4}$,设置$\mu=2\mu$
+     - 若$\rho < \frac{1}{4}$,设置$\mu=0.5\mu$
+     - 如果$\rho$大于某阈值，则认为近似可行，令$x_{k+1}=x_k+\Delta x_k$
+
+  4. 判断算法是否收敛，如不收敛回到第二步，否则结束
+
+- 由于L-M方法中多了一个限制条件:$||\mathbf{D}\Delta x_k||^2<=\mu$，即$\Delta x_k$被约束在一个椭球中，将其放入目标函数后可g构成**拉格朗日函数**：
+  $$
+  \mathcal{L}(\Delta x_k,\lambda)=\frac{1}{2}||f(x_k)+\mathbf{J}(x_k)^T\Delta x_k||^2+\frac{\lambda}{2}\big(||\mathbf{D}\Delta x_k||^2-\mu\big) \tag{10}
+  $$
+
+  - $\lambda$:拉格朗日乘子
+
+- 令10式关于$\Delta x_k$导数为0得到最终要求解的**增量方程**：
+  $$
+  (\mathbf{H}+\lambda \mathbf{D}^T\mathbf{D})\Delta x_k=\mathbf{g} \tag{11}
+  $$
+  相比于高斯牛顿法，增量方程多了$\lambda \mathbf{D}^T\mathbf{D}$,若简化$\mathbf{D}=I$,则11式就变成了
+  $$
+  (\mathbf{H}+\lambda \mathbf{I})\Delta x_k=\mathbf{g} \tag{12}
+  $$
+
+  - 当$\lambda$较小时，H占主导地位，L-M法接近于高斯牛顿法，在范围内能很好的近似
+  - 当$\lambda$较大时，$\lambda I$占主导地位，L-M法接近于一阶梯度下降法（最速下降法），因为此时范围内二阶近似效果不好。
 
 
 # Eigen库
