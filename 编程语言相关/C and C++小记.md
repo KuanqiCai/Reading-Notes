@@ -475,7 +475,7 @@ p40
    - Erst wenn die aufgerufenen Funktionen ihren Wert zurückliefern, werden die Funktionen und ihre Daten vom Stack entfernt.
 
 # C++杂记
-   ## 1. 指针和引用
+   ## 1. 指针，引用和const
 
 参见Tag1中的3，4
 
@@ -537,12 +537,21 @@ p40
     int n = 0;  
     Func2(&n);  //将变量n的地址传给函数的指针变量x
     cout << “n = ” << n << endl; // n = 10  
+    
+    // 指针传递还可以用于传递数组,下面两种效果是一样的
+        1. 形式参数是一个指针：
+    	void myFunction(int *param{}
+        2. 形式参数是一个数组：
+        void myFunction(int param[])
+        //调用时，不用传地址，直接传数组就行：
+        int par[];
+        myFunction(par);
     ```
-
+  
     - 由于Func2 函数体内的x 是指向外部变量n 的指针，改变该指针的内容将导致n 的值改变，所以n 的值成为10.
-
+  
   - 引用传递：
-
+  
     ```c++
     void Func3(int &x)  
     {  
@@ -553,9 +562,38 @@ p40
     Func3(n);  // x是n的别名，指向同一个东西
     cout << “n = ” << n << endl; // n = 10  
     ```
-
+  
     - 由于Func3 函数体内的x 是外部变量n 的引用，x和n 是同一个东西，改变x 等于改变n，所以n 的值成为10.
     - 能用引用传递就不用指针传递
+  
+- Const:
+
+  - const只能修饰输入参数,不能修饰输出参数，否则值不变的输出就没有意义了。
+
+    在指针和引用传递时，可以用于防止函数修改传入的参数
+
+    ```c++
+    //例如StringCopy 函数：
+    void StringCopy(char *strDestination, const char *strSource);
+    ```
+
+    - 其中strSource 是输入参数，strDestination 是输出参数。他们都是指针传递，函数内对他们操作，都会改变他们的值
+    - 给strSource 加上const修饰后，如果函数体内的语句试图改动strSource 的内容，编译器将指出错误。
+
+  - const还可以修饰函数的返回值
+
+    如果给以“指针传递”方式的函数返回值加const 修饰，那么函数返回值（即指针）的内容不能被修改，该返回值只能被赋给加const 修饰的同类型指针。
+
+    ```c++
+    // 例如函数：
+    const char * GetString(void);
+    // 错误用法：
+    char *str = GetString();
+    // 正确的用法：
+    const char *str = GetString();
+    ```
+
+    
 
 ## 2. argc和argv
 
