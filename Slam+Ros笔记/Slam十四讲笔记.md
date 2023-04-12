@@ -1259,7 +1259,9 @@ add_executable(test test.cpp)
 target_link_libraries(test ${OpenCV_LIBS})
 ```
 
+### 3.2 使用ceres进行曲线拟合
 
+### 3.3 使用g2o进行曲线拟合
 
 # Eigen库
 
@@ -2129,7 +2131,7 @@ add_executable( visualizeGeometry visualizeGeometry.cpp )
 target_link_libraries( visualizeGeometry ${Pangolin_LIBRARIES} )
 ```
 
-# OpenCV
+# OpenCV库
 
 教程见笔记
 
@@ -2476,3 +2478,76 @@ target_link_libraries( visualizeGeometry ${Pangolin_LIBRARIES} )
   ```
 
   
+
+# Ceres库
+
+Ceres Solver是一个开源C++库，用于建模和解决大型复杂的优化问题。它可以用于解决具有边界约束和一般无约束优化问题的非线性最小二乘问题。
+
+## 1. 安装
+
+1. 安装依赖
+
+   主要是谷歌自己的日志和测试工具
+
+   ```shell
+   sudo apt-get install liblapack-dev libsuitesparse-dev libcxsparse3 libgflags-dev libgoogle-glog-dev libgtest-dev
+   ```
+
+2. 下载源码
+
+   ```
+   git clone git@github.com:ceres-solver/ceres-solver.git
+   cd ceres-solver/
+   mkdir build
+   cd build
+   cmake ..
+   sudo make install
+   ```
+
+## 2. 使用
+
+- 最小二乘问题如下：
+  $$
+  \mathop{min}_x \frac{1}{2}\sum_i \rho_i\big(||f_i(x_{i1},\cdots,x_{in})||^2 \big)\ \ s.t.\ l_j<=x_j<=u_j
+  $$
+
+  - $x_1,\cdots,x_n$为优化变量，也称为参数块(Parameter blocks)
+
+  - $f_i$称为代价函数(cost function)，也称为残差块(Residual blocks)
+
+  - $l_j,u_j$是第j个优化变量的上限和下限
+
+    最简单的就是趣正负无穷，即无约束
+
+  - $\rho()$:核函数
+
+- 用ceres求解最小二乘问题需要做到：
+  1. 定义参数块：可以是向量，四元数，李代数。
+  2. 定义残差块f()的计算方式，ceres对他们求平方和之后，作为目标函数的值
+  3. 把所有参数块和残差块加入ceres定义的Problem对象中，调用solve函数求解即可。
+
+# g2o库
+
+g2o(General Graphic Optimization)是一个基于图优化的优化库，图优化是一种将非线性优化与图论结合起来的理论。
+
+g2o可以求解任何能够表示为图优化的最小二乘问题。
+
+## 1. 安装
+
+1. 安装依赖
+
+   ```
+   sudo apt-get install qt5-qmake qt5-default libqglviewer-dev-qt5 libsuitesparse-dev libcxsparse3 libcholmod3
+   ```
+
+2. 下载源代码
+
+   ```
+   git clone git@github.com:RainerKuemmerle/g2o.git
+   cd g2o/
+   mkdir build 
+   cd build
+   cmake ..
+   sudo make install
+   ```
+
