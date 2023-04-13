@@ -1261,7 +1261,295 @@ target_link_libraries(test ${OpenCV_LIBS})
 
 ### 3.2 使用ceres进行曲线拟合
 
+#### 3.2.1 代码
+
+```c++
+#include <iostream>
+#include <opencv2/core/core.hpp>
+#include <ceres/ceres.h>
+#include <chrono>
+
+using namespace std;
+
+/* 
+Ceres第一步： 代价函数(残差块)的计算模型，通过定义一个类（或结构体）来实现。
+		     
+我们需要在类中通过关键字operator来定义带模板参数的()运算符，如此这个类就变成了拟函数(Functor),ceres就可以像调用函数一样对该类的某对象a调用a<double>()方法。
+
+ceres会将雅可比矩阵作为类型参数传入此函数，从而实现自动求导功能
+*/
+struct CURVE_FITTING_COST {
+  // 构造函数最后这里没有分号哦！
+  CURVE_FITTING_COST(double x, double y) : _x(x), _y(y) {}
+
+  // 使用模板函数进行 残差的计算
+  template<typename T>
+  bool operator()(const T *const abc, T *residual) const {
+    residual[0] = T(_y) - ceres::exp(abc[0] * T(_x) * T(_x) + abc[1] * T(_x) + abc[2]); // y-exp(ax^2+bx+c)
+    return true;
+  }
+
+  const double _x, _y;    // x,y数据
+};
+
+int main(int argc, char **argv) {
+  double ar = 1.0, br = 2.0, cr = 1.0;         // 真实参数值
+  double ae = 2.0, be = -1.0, ce = 5.0;        // 估计参数值
+  int N = 100;                                 // 数据点
+  double w_sigma = 1.0;                        // 噪声Sigma值
+  double inv_sigma = 1.0 / w_sigma;
+  cv::RNG rng;                                 // OpenCV随机数产生器
+
+  vector<double> x_data, y_data;      // 生成100个模拟数据，用于曲线拟合
+  for (int i = 0; i < N; i++) {
+    double x = i / 100.0;
+    x_data.push_back(x);
+    y_data.push_back(exp(ar * x * x + br * x + cr) + rng.gaussian(w_sigma * w_sigma));
+  }
+  /*
+  Ceres第二步：定义参数块
+  */
+  double abc[3] = {ae, be, ce};
+
+  /*
+  Ceres第三步：构建最小二乘问题
+  
+  优化的梯度计算ceres提供3种选择
+  1. 自动求导:AuoDiff
+  2. 数值求导:NumericDiff
+  3. 我们自己推导解析的倒数形式
+  这里使用第一种：AutoDiffCostFunction。因为它在编码上最方便。
+  自动求导需要指定误差项和优化变量的维度，这里误差是标量所以维度=1，优化变量是a,b,c所以维度=3
+  */
+  ceres::Problem problem;
+  for (int i = 0; i < N; i++) {
+    problem.AddResidualBlock(     // 向问题中添加误差项
+      // 使用自动求导，模板参数：误差类型，输出维度，输入维度，维数要与前面struct中一致
+      new ceres::AutoDiffCostFunction<CURVE_FITTING_COST, 1, 3>(
+        new CURVE_FITTING_COST(x_data[i], y_data[i])
+      ),
+      nullptr,            // 核函数，这里不使用，为空
+      abc                 // 待估计参数
+    );
+  }
+
+  /*
+  Ceres第四步：配置求解器
+  
+  在上面设定好问题后，就可以调用solve函数进行求解了。
+  可以在option里配置优化选项，例如使用Line Search还是Trust Region、迭代次数、步长，等等
+  */
+  ceres::Solver::Options options;     // 这里有很多配置项可以填
+  options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;  // 增量方程如何求解
+  options.minimizer_progress_to_stdout = true;   // 输出到cout
+
+  ceres::Solver::Summary summary;                // 优化信息
+  chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
+  ceres::Solve(options, &problem, &summary);  // 开始优化
+  chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
+  chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
+  cout << "solve time cost = " << time_used.count() << " seconds. " << endl;
+
+  // 输出结果
+  cout << summary.BriefReport() << endl;
+  cout << "estimated a,b,c = ";
+  for (auto a:abc) cout << a << " ";
+  cout << endl;
+
+  return 0;
+}
+```
+
+
+
+#### 3.2.2 编译
+
+```cmake
+cmake_minimum_required(VERSION 3.0)
+project(test)
+
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
+
+# Ceres
+find_package(Ceres REQUIRED)
+include_directories(${CERES_INCLUDE_DIRS})
+
+
+add_executable(test test.cpp)
+target_link_libraries(test ${OpenCV_LIBS} ${CERES_LIBRARIES})
+```
+
 ### 3.3 使用g2o进行曲线拟合
+
+曲线拟合问题中只有一个顶点（优化变量），即曲线模型的参数a,b,c
+
+各个带噪声的数据点，构成了一个个误差项，也就是图优化的边。
+
+#### 3.3.1 代码
+
+```c++
+#include <iostream>
+#include <g2o/core/g2o_core_api.h>
+#include <g2o/core/base_vertex.h>
+#include <g2o/core/base_unary_edge.h>
+#include <g2o/core/block_solver.h>
+#include <g2o/core/optimization_algorithm_levenberg.h>
+#include <g2o/core/optimization_algorithm_gauss_newton.h>
+#include <g2o/core/optimization_algorithm_dogleg.h>
+#include <g2o/solvers/dense/linear_solver_dense.h>
+#include <Eigen/Core>
+#include <opencv2/core/core.hpp>
+#include <cmath>
+#include <chrono>
+
+using namespace std;
+
+// g2o第一步： 继承g2o顶点基本类，创建我们自己的曲线模型的顶点，模板参数：优化变量维度和数据类型
+class CurveFittingVertex : public g2o::BaseVertex<3, Eigen::Vector3d> {
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  // 重写顶点的重置函数，因为本问题的优化参数是a,b,c，所以是3个
+  virtual void setToOriginImpl() override {
+    _estimate << 0, 0, 0;
+  }
+
+  // 重写顶点的更新函数 x_{k+1} = x_k +dx
+  // 简单的加法为什么更新要自己写，g2o不帮我们完成呢？ 因为在向量空间中的确是简单的加法，但如果x是位姿(位移矩阵)就不一定有加法了，根据第四讲需要用左乘或右乘的方式更新。
+  virtual void oplusImpl(const double *update) override {
+    _estimate += Eigen::Vector3d(update);
+  }
+
+  // 存盘和读盘：因为本例不需要读写操作，所以留空
+  virtual bool read(istream &in) {}
+
+  virtual bool write(ostream &out) const {}
+};
+
+// g2o第二步： 继承g2o边基本类，创建我们自己的误差模型 模板参数：观测值维度，类型，连接顶点类型
+class CurveFittingEdge : public g2o::BaseUnaryEdge<1, double, CurveFittingVertex> {
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  CurveFittingEdge(double x) : BaseUnaryEdge(), _x(x) {}
+
+  // 重写边的误差计算，计算曲线模型误差
+  virtual void computeError() override {
+    // 取出边所连接的的顶点的当前估计值
+    const CurveFittingVertex *v = static_cast<const CurveFittingVertex *> (_vertices[0]);
+    const Eigen::Vector3d abc = v->estimate();
+    // 根据曲线模型 和 它的观测值进行比较
+    _error(0, 0) = _measurement - std::exp(abc(0, 0) * _x * _x + abc(1, 0) * _x + abc(2, 0));
+  }
+
+  // 重写边的雅可比计算，计算每条边相对于顶点的雅可比
+  virtual void linearizeOplus() override {
+    const CurveFittingVertex *v = static_cast<const CurveFittingVertex *> (_vertices[0]);
+    const Eigen::Vector3d abc = v->estimate();
+    double y = exp(abc[0] * _x * _x + abc[1] * _x + abc[2]);
+    _jacobianOplusXi[0] = -_x * _x * y;
+    _jacobianOplusXi[1] = -_x * y;
+    _jacobianOplusXi[2] = -y;
+  }
+
+  virtual bool read(istream &in) {}
+
+  virtual bool write(ostream &out) const {}
+
+public:
+  double _x;  // x 值， y 值为 _measurement
+};
+
+int main(int argc, char **argv) {
+  double ar = 1.0, br = 2.0, cr = 1.0;         // 真实参数值
+  double ae = 2.0, be = -1.0, ce = 5.0;        // 估计参数值
+  int N = 100;                                 // 数据点
+  double w_sigma = 1.0;                        // 噪声Sigma值
+  double inv_sigma = 1.0 / w_sigma;
+  cv::RNG rng;                                 // OpenCV随机数产生器
+
+  vector<double> x_data, y_data;      // 数据
+  for (int i = 0; i < N; i++) {
+    double x = i / 100.0;
+    x_data.push_back(x);
+    y_data.push_back(exp(ar * x * x + br * x + cr) + rng.gaussian(w_sigma * w_sigma));
+  }
+
+  // 构建图优化，先设定g2o
+  typedef g2o::BlockSolver<g2o::BlockSolverTraits<3, 1>> BlockSolverType;  // 每个误差项优化变量维度为3，误差值维度为1
+  typedef g2o::LinearSolverDense<BlockSolverType::PoseMatrixType> LinearSolverType; // 线性求解器类型
+
+  // 梯度下降方法，可以从GN, LM, DogLeg 中选
+  auto solver = new g2o::OptimizationAlgorithmGaussNewton(
+    g2o::make_unique<BlockSolverType>(g2o::make_unique<LinearSolverType>()));
+  g2o::SparseOptimizer optimizer;     // 图模型
+  optimizer.setAlgorithm(solver);   // 设置求解器
+  optimizer.setVerbose(true);       // 打开调试输出
+
+  // 往图中增加顶点
+  CurveFittingVertex *v = new CurveFittingVertex();
+  v->setEstimate(Eigen::Vector3d(ae, be, ce));
+  v->setId(0);
+  optimizer.addVertex(v);
+
+  // 往图中增加边
+  for (int i = 0; i < N; i++) {
+    CurveFittingEdge *edge = new CurveFittingEdge(x_data[i]);
+    edge->setId(i);
+    edge->setVertex(0, v);                // 设置连接的顶点
+    edge->setMeasurement(y_data[i]);      // 观测数值
+    edge->setInformation(Eigen::Matrix<double, 1, 1>::Identity() * 1 / (w_sigma * w_sigma)); // 信息矩阵：协方差矩阵之逆
+    optimizer.addEdge(edge);
+  }
+
+  // 执行优化
+  cout << "start optimization" << endl;
+  chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
+  optimizer.initializeOptimization();
+  optimizer.optimize(10);
+  chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
+  chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
+  cout << "solve time cost = " << time_used.count() << " seconds. " << endl;
+
+  // 输出优化值
+  Eigen::Vector3d abc_estimate = v->estimate();
+  cout << "estimated model: " << abc_estimate.transpose() << endl;
+
+  return 0;
+}
+```
+
+
+
+#### 3.3.2 编译
+
+```c++
+cmake_minimum_required(VERSION 3.0)
+project(test)
+
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CXX_FLAGS "-std=c++17 -O3")
+set( G2O_ROOT /usr/local/include/g2o ) 
+
+# OpenCV
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
+
+# g2o
+list(APPEND CMAKE_MODULE_PATH /home/yang/3rd_library/g2o-20230223_git/cmake_modules)
+find_package(G2O REQUIRED)
+include_directories(${G2O_INCLUDE_DIRS})
+
+# Eigen
+include_directories("/usr/include/eigen3")
+
+add_executable(test test.cpp)
+target_link_libraries(test ${OpenCV_LIBS} ${G2O_CORE_LIBRARY} ${G2O_STUFF_LIBRARY})
+
+```
+
+
 
 # Eigen库
 
@@ -2481,6 +2769,10 @@ target_link_libraries( visualizeGeometry ${Pangolin_LIBRARIES} )
 
 # Ceres库
 
+[教程](http://ceres-solver.org/tutorial.html)
+
+书上代码见3.2.1
+
 Ceres Solver是一个开源C++库，用于建模和解决大型复杂的优化问题。它可以用于解决具有边界约束和一般无约束优化问题的非线性最小二乘问题。
 
 ## 1. 安装
@@ -2528,6 +2820,8 @@ Ceres Solver是一个开源C++库，用于建模和解决大型复杂的优化�
 
 # g2o库
 
+书上代码见3.3.1
+
 g2o(General Graphic Optimization)是一个基于图优化的优化库，图优化是一种将非线性优化与图论结合起来的理论。
 
 g2o可以求解任何能够表示为图优化的最小二乘问题。
@@ -2551,3 +2845,43 @@ g2o可以求解任何能够表示为图优化的最小二乘问题。
    sudo make install
    ```
 
+## 2. 图优化基本理论
+
+图优化是把优化问题表现成图的一种方式
+
+图由若干个定点vertex,以及连接着这些定点的边edge组成
+
+- 顶点：表示优化变量
+- 边：表示误差项
+
+## 3. 使用
+
+用g2o进行优化需要做如下事：
+
+1. 定义顶点和边的类型
+2. 构建图
+3. 选择优化算法
+4. 调用g2o进行优化，返回结果
+
+
+
+## 4. 卸载
+
+```
+sudo rm -r /usr/local/include/g2o
+
+sudo rm -r /usr/local/lib/libg2o*
+
+sudo rm -r /usr/local/bin/g2o*
+```
+
+## 5. Doxygen文档
+
+文档在源码目录中，需要自己编译
+
+```
+cd /home/yang/3rd_library/g2o-20230223_git/doc/doxygen
+doxygen doxy.config
+```
+
+然后生成的html文件夹中找到index.html，就是文档了。
