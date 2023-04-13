@@ -609,3 +609,68 @@ int main(int argc,char *argv[])// 等于 int main(int argc,char **argv);
   - argv[1] 指向程序在命令行中执行程序名后的第一个字符串；
   - argv[2] 指向程序在命令行中执行程序名后的第二个字符串；
   - 以此类推直到argv[argc], argv[argc] 在C++中指向nullptr，在C语言中指向NULL。
+
+## 3. 模板类/函数/结构体
+
+- 为什么用模板？
+
+  当你发现一套操作对多个不同类型的变量操作时，为了避免重复定义多个类/函数/结构体却只是变一变数据类型，我们可以使用模板。
+
+- 函数模板
+
+  体现在：调用函数时传递的参数类型
+
+  ```c++
+  // ---------- 语法：----------
+  template<class 数据类型参数标识符>
+  <返回类型><函数名>(参数表)
+  {
+      函数体
+  }
+  
+  // ---------- 示例：----------
+  //下面这个函数就可以遍历输出各个数据类型的数组元素
+  template <class T>  //定义函数模板
+  void outputArray(const T *array, int count) {
+      for (int i = 0; i < count; i++)
+          cout << array[i] << " "; //如果数组元素是类的对象，需要该对象所属类重载了流插入运算符“<<”
+      cout << endl;
+  }
+  ```
+
+- 结构体模板
+
+  体现在：声明结构元素时 StackNode<类型> s
+
+  ```c++
+  // ---------- 示例：----------
+  template<class T>
+  struct StackNode
+  {
+  　　struct T data;
+  　　struct StackNode<T> *next;
+  };
+  
+  ```
+
+- 类模板
+
+  体现在:声明类对象时 Stack<类型> s
+
+  ```c++
+  // ---------- 示例：----------
+  template<class T>
+  class Stack
+  {
+  　public:
+  　　T pop();
+  　　bool push(T e);
+  　private:
+  　　StackNode<T> *p;
+  }
+  template<class T>//类模板外的 成员函数实现
+  T Stack<T>::pop()
+  {...}
+  ```
+
+  
