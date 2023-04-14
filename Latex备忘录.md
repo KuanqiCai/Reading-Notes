@@ -22,6 +22,12 @@
 - 上括号`\overerbrace{P(x,y)}^{先验}`
 
   $\overbrace{P(x,y)}^{先验}$
+  
+- 向量：
+
+  单个字符：`\vec{}`$\vec{x}$
+
+  多个字符：`\overrightarrow{AB}`$\overrightarrow{AB}$
 
 # 括号相关
 
