@@ -2223,6 +2223,56 @@ ORB特征分分为如下两步
 
    **一组3D，一组2D**，使用**PnP**解决
 
+### 3.1 2D-2D：对极几何
+
+对极约束$x_2^Tt^{\wedge}Rx_1=0$简介描述了2个匹配点的空间位置关系，所以相机位姿估计问题变成以下2步：
+
+1. 根据配对点的像素位置求出基础矩阵(Fundamental Matrix)$F$ 或者 本质矩阵(Essential Matrix)$E$
+2. 根据$E$或$F$,求出旋转矩阵$R$和位移向量$t$
+
+- **本质矩阵E**：
+  
+  1. 通过八点算法来求解E，见[[Comupter Vision#3.Acht-Punkt-Algorithmus|笔记]]
+  
+  2. 使用SVD奇异值分解$E=U\Sigma V^T$，恢复出R和t
+  
+     任意E有两个可能的t，R与它对应
+     $$
+     \begin{align}
+     t_1^\wedge&=UR_Z(\frac{\pi}{2})\Sigma U^T,\ R_1=UR_Z^T(\frac{\pi}{2})V^T \\
+     t_2^\wedge&=UR_Z(-\frac{\pi}{2})\Sigma U^T,\ R_2=UR_Z^T(-\frac{\pi}{2})V^T
+     
+     \end{align}
+     $$
+  
+     - $R_Z(\frac{\pi}{2})$:表示沿Z轴旋转90°得到的旋转矩阵
+  
+     - 由于-E和E等价，所以一共存在4个可能的解
+  
+     - 但只有一个解中 物体所在点P 在2个相机中都具有正的深度。
+  
+       所以只要把任意点代入4个解中，计算该点的深度，若2个都为正，那么该解就是正确的了。
+  
+     - 根据八点法中线性方程解出的$E$,可能不满足E的内在性质：奇异值为$\sigma,\sigma,0$的形式
+  
+       这时SVD得到奇异值为$\Sigma=diag(\sigma_1,\sigma_2,\sigma_3)$,为此我们近似取为：$(1,1,0)或(\frac{\sigma_1+\sigma_2}{2}, \frac{\sigma_1+\sigma_2}{2},0)$
+  
+- **基本矩阵F**:
+
+  和本质矩阵E只差一个内参，即F用于未标定的相机，E用于标定过的相机。见[[Comupter Vision#5.Die Fundamentalmatrix|笔记]]
+  
+- **单应矩阵H**:
+
+  如果某场景中所有特征点都落在同一个平面（墙壁，地面等），就可以使用单应矩阵来进行运动估计。
+  
+  可以通过四点法来求解H，见[[Comupter Vision#2.Vier-Punkt-Algorithmus|笔记]]
+
+当特征点共面或相机单纯旋转时，自由度下降（即退化degenerate）,而E/F中多出来的自由度就会主要由噪音决定。为了避免退化现象造成的影响，SLAM中会同时估计E/F 和 H，哪个最后误差小就用哪个。
+
+
+
+
+
 
 
 # 八、视觉里程计：直接法
