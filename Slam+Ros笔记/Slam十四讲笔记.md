@@ -2792,6 +2792,74 @@ P3P使用3对匹配点，来解PnP问题。这里的3D点是世界坐标系下�
 
 ### 6.3 最小化重投影误差(BA,非线性优化法)
 
+- 与线性方法的区别：
+
+  - 线性：先求相机位姿，再求空间点位置
+  - 非线性：将相机位姿和三维点都看成优化变量一起最小化。这种方法也被称为**光束法平差(Bundle Adjustment,BA)**
+    - 这是一种通用的求解方式，可以用它对PnP或ICP给出的结果进行优化。
+    - 这里我们先求出PnP的结果，然后用BA对这个结果进行优化。
+    - 在第九讲中有讲：当相机是连续运动的（大部分SLAM过程），可以直接用BA求解相机位姿。
+
+- 考虑n个三维空间点$\mathbf{P}_i=[X_i,Y_i,Z_i]^T$及其投影$p$,投影坐标为$\mathbf{u}_i=[u_i,v_i]^T$,希望计算相机的位姿$R,t$（李群表示为$T$）
+
+  根据第五讲，像素位置和空间点的位置关系为：
+  $$
+  s_i\mathbf{u}_i=\mathbf{KTP}_i \tag{1}
+  $$
+  由于噪声1式左右不会完全相等，有个误差，因此利用这个误差，将误差求和构建最小二乘问题：
+  $$
+  \mathbf{T}^*=arg\ \mathop{min}_{\mathbf{T}}\frac{1}{2}\sum_{i=1}^n|| \mathbf{u}_i-\frac{1}{s_i}\mathbf{KTP}_i ||_2^2 \tag{2}
+  $$
+  3式中的误差项称为**重投影误差 e**：3D点的投影位置与观测位置的差
+  $$
+  \mathbf{e} = \mathbf{u}_i-\frac{1}{s_i}\mathbf{KTP}_i \tag{3}
+  $$
+  求解2式可以用第六讲中的高斯牛顿法、L-M法，但需要先知道每个误差关于优化变量的导数：
+
+  1. 重投影误差关于相机位姿的导数（**优化位姿**）
+
+     - 利用链式法则和扰动模型：
+       $$
+       \frac{\partial\mathbf{e}}{\partial\delta\xi}=\mathop{lim}_{\delta\xi\rightarrow 0}\frac{e(\delta\xi\oplus \xi)-e(\xi)}{\delta\xi}=\frac{\partial\mathbf{e}}{\partial \mathbf{P'}}\frac{\partial \mathbf{P'}}{\partial\delta\xi}
+       $$
+
+       - $\delta\xi$:给位姿T添加的左乘扰动量
+       - $\oplus$:李代数上的左乘扰动
+       - $P'$:相机坐标系下的空间点坐标
+
+     - 计算得到矩阵：
+       $$
+       \frac{\partial\mathbf{e}}{\partial\delta\mathbf{\xi}}=\left [\begin{array}{cccc}
+       \frac{f_x}{Z'} & 0 & -\frac{f_xX'}{Z'^2} & -\frac{f_xX'Y'}{Z'^2} & f_x+\frac{f_xX'^2}{Z'^2} & -\frac{f_xY'}{Z'} \\
+       0 &\frac{f_y}{Z'} & -\frac{f_yY'}{Z'^2} & -f_y-\frac{f_yY'^2}{Z'^2} & \frac{f_yX'Y'}{Z'^2} & \frac{f_yX'}{Z'} \\
+       
+       \end{array}\right] \tag{4}
+       $$
+
+  2. 重投影误差关于空间点的导数（**优化空间位置**）
+
+     - 利用链式法则得到：
+       $$
+       \frac{\partial\mathbf{e}}{\partial\mathbf{P}}=\frac{\partial\mathbf{e}}{\partial\mathbf{P'}}\frac{\partial\mathbf{P'}}{\partial\mathbf{P}}
+       $$
+
+     - 计算得到矩阵：
+       $$
+       \frac{\partial\mathbf{e}}{\partial\mathbf{P}}=-\left [\begin{array}{cccc}
+       \frac{f_x}{Z'} & 0 & -\frac{f_xX'}{Z'^2} \\
+       0 & \frac{f_y}{Z'} & -\frac{f_yY'}{Z'^2}  \\
+       \end{array}\right]\mathbf{R} \tag{5}
+       $$
+     
+  3. 
+  
+## 7. 实践：求解PnP
+
+### 7.1 EPnP法求解位姿
+
+
+
+  
 
 
 # 八、视觉里程计：直接法
