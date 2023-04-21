@@ -59,7 +59,7 @@ $$
 | \exists | $\exists$ | \vee | $\vee$ |
 | \partial | $\partial$ | \varphi | $\varphi$ |
 | \xi | $\xi$ | \propto | $\propto$ |
-|                    |                      |        |          |
+| \oplus | $\oplus$ |        |          |
 
 # 矩阵行列式：
 
