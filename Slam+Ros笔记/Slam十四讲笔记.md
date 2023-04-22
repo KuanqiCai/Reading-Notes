@@ -2853,7 +2853,7 @@ P3P使用3对匹配点，来解PnP问题。这里的3D点是世界坐标系下�
      
   3. 
   
-## 7. 实践：求解PnP
+## 7.实践：求解PnP
 
 - 代码：
 
@@ -3262,12 +3262,69 @@ P3P使用3对匹配点，来解PnP问题。这里的3D点是世界坐标系下�
           fmt::fmt)
   ```
 
-## 8. 3D-3D：ICP
+## 8.3D-3D：ICP
 
+迭代最近点(Iterative Closest Point,ICP)解决问题：根据一对匹配好的3D点$P=\{p_1,\cdots,p_n\}$和$P'=\{p_1',\cdots,p_n' \}$来得到位姿$R,t$。$\forall i,\mathbf{p}_i=\mathbf{R}\mathbf{p}_i'+t $
 
+和PnP类似，ICP可以用线性代数(SVD)和非线性优化方式(类似BA)求解：
 
-  
+### 8.1 SVD方法
 
+根据上述ICP问题，定义第i对点的误差：
+$$
+\mathbf{e}_i=\mathbf{p}_i-(\mathbf{Rp}_i'+\mathbf{t}) \tag{1}
+$$
+根据误差，构建最小二乘问题，求使误差平方和达到最小的$R,t$
+$$
+\mathop{min}_{\mathbf{R,t}}\frac{1}{2}\sum_{i=1}^n||\mathbf{p}_i-(\mathbf{Rp}_i'+\mathbf{t})||_2^2 \tag{2}
+$$
+定义两组点的质心：
+$$
+\mathbf{p}=\frac{1}{n} \sum_{i=1}^{n}(\mathbf{p}_i),\ \ \mathbf{p}'=\frac{1}{n}\sum_{i=1}^n(\mathbf{p}_i') \tag{3}
+$$
+对2式展开后，可将优化目标函数简化为： 
+$$
+\mathop{min}_{\mathbf{R,t}}\ J=\frac{1}{2}\sum_{i=1}^n||\mathbf{p}_i-\mathbf{p}-\mathbf{R}(\mathbf{p}_i'-\mathbf{p}')||^2+||\mathbf{p}-\mathbf{Rp}'-\mathbf{t}||^2 \tag{4}
+$$
+观察4式发现：左边只和旋转矩阵有关，右边既有$R,t$也和质心相关。所以可以先得到R,再令第二项为0得到t
+$$
+\begin{align}
+1.& \text{计算每个点的去质心坐标：}\ \ \mathbf{q}_i=\mathbf{p}_i-\mathbf{p},\ \ \mathbf{q}_i'=\mathbf{p}_i'-\mathbf{p}' \\
+2.& \text{由优化问题计算旋转矩阵：}\ \ \mathbf{R}^*=arg\ \mathop{min}_{\mathbf{R}}\frac{1}{2}\sum_{i=1}^n||\mathbf{q}_i-\mathbf{Rq}_i'||^2\\
+3.& \text{根据2式中算出的R计算t:}\ \ \ \ \ \ \mathbf{t}^*=\mathbf{p}-\mathbf{Rp}'
+\end{align} \tag{5}
+$$
+5式中的第二步展开后发现实际的优化目标函数变为：
+$$
+\sum_{i=1}^n-\mathbf{q}_i^T\mathbf{R}\mathbf{q}_i'=-tr(\mathbf{R}\sum_{i=1}^n\mathbf{q}_i'\mathbf{q}_i^T) \tag{6}
+$$
+用SVD的方法求解，定义矩阵：
+$$
+\mathbf{W}=\sum_{i=1}^n\mathbf{q}_i\mathbf{q}_i'^T \tag{7}
+$$
+对3x3矩阵$\mathbf{W}$进行SVD分解
+$$
+\mathbf{W}=\mathbf{U\Sigma V}^T \tag{8}
+$$
+当$\mathbf{W}$为满秩时, 得到R
+$$
+\mathbf{R}=\mathbf{UV}^T\tag{9}
+$$
+得到R后代入5式的第三步公式计算t
+
+### 8.2 非线性优化方法
+
+以李代数表达位姿时，目标函数写成：
+$$
+\mathop{min}_\xi =\frac{1}{2}\sum_{i=1}^n ||\mathbf{p}_i-exp(\xi^{\wedge})\mathbf{p}_i'||_2^2 \tag{10}
+$$
+使用李代数扰动模型求误差项关于位姿的导数：
+$$
+\frac{\partial\mathbf{e}}{\partial\delta\xi}=-(exp(\xi^{\wedge})\mathbf{p}_i')^{\odot}
+$$
+ICP存在唯一解和无穷多解的情况，唯一解时，只要能找到极小值解，这个解就是全局最优值。这也意味着ICP可以任意选定初始值。
+
+## 9.实践：求解ICP
 
 # 八、视觉里程计：直接法
 
