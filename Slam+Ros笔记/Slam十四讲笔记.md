@@ -2851,7 +2851,7 @@ P3P使用3对匹配点，来解PnP问题。这里的3D点是世界坐标系下�
        \end{array}\right]\mathbf{R} \tag{5}
        $$
      
-  3. 
+     
   
 ## 7.实践：求解PnP
 
@@ -3694,6 +3694,148 @@ ICP存在唯一解和无穷多解的情况，唯一解时，只要能找到极�
   - 直接法不需要知道点和点之间的对应关系，而是通过最小化**光度误差(Photometric error)**来求他们。
 
 # 九、后端优化：BA图优化
+
+前端里程计能给出一个短时间内的轨迹和地图，但由于不可避免的误差累积，这个地图在长时间内是不准确的。
+
+所以我们需要构建一个更大尺度和规模的优化问题，以考虑长时间内的最优轨迹和地图。
+
+## 1. 概述
+
+### 1.1 状态估计的概率解释
+
+- 我们用“批量的”信息处理方式，来保证整个运动轨迹在较长时间内都能保持最优状态
+
+  - 批量的batch:不仅使用过去的信息更新自己的状态，也用未来的信息来更新以前的某一状态。、
+  - 渐进的incremental：当前的状态只由过去的时刻决定。用滤波器求解状态估计就是这种情况。
+
+- 由于噪声，位姿$\mathbf{x}$和路标$\mathbf{y}$可以看成**服从某种概率分布的随机变量**。
+
+  所以问题变成了：**当存在一些运动数据$\mathbf{u}$和观测数据$\mathbf{z}$时，如何估计状态变量x/y的高斯分布。**
+
+  这是个状态估计问题。
+
+  而由六，1.1可知：**批量状态估计问题可以转化为最大似然估计问题，并使用最小二乘法进行求解**
+
+- 问题的定量推到：
+
+  1. 定义变量$\mathbf{x}_k=\{\mathbf{x}_k,\mathbf{y}_1,\cdots,\mathbf{y}_m\}$为k时刻所有未知量，包含当前时刻位姿和m个路标点。$\mathbf{z}_k$为k时刻所有观测。得到运动/观测方程
+     $$
+     \begin{cases}
+     \mathbf{x}_k=f(\mathbf{x}_{k-1},\mathbf{u}_k)+\mathbf{w}_k \\
+     \mathbf{z}_k = h(\mathbf{x}_k)+\mathbf{v}_k \\
+     \end{cases}\ \ \ k=1,\cdots,N\tag{1}
+     $$
+
+  2. 用过去0到k中的数据来估计现在的状态分布,然后利用贝叶斯法则得到贝叶斯估计：
+     $$
+     P(\mathbf{x}_k|\mathbf{x}_0,\mathbf{u}_{1:k},\mathbf{z}_{1:k})\propto P(\mathbf{z}_k|\mathbf{x}_k)P(\mathbf{x}_k|\mathbf{x}_0,\mathbf{u}_{1:k},\mathbf{z}_{1:k-1}) \tag{2}
+     $$
+
+     - 第一项是**似然**，第二项是**先验**
+
+  3. 在先验部分，$\mathbf{x}_k$基于过去所有状态估计得来，现在考虑k-1时刻，以$\mathbf{x}_{k-1}$为条件概率展开
+     $$
+     P(\mathbf{x}_k|\mathbf{x}_0,\mathbf{u}_{1:k},\mathbf{z}_{1:k-1})=\displaystyle \int P(\mathbf{x}_k|\mathbf{x}_{k-1},\mathbf{x}_0,\mathbf{u}_{1:k},\mathbf{z}_{1:k-1})P(\mathbf{x}_{k-1}|\mathbf{x}_0,\mathbf{u}_{1:k},\mathbf{z}_{1:k-1})d\mathbf{x}_{k-1} \tag{3}
+     $$
+
+- 由于3式没有具体的概率分布形式，需要进一步后续处理，这里由2种方案：
+
+  1. 以**扩展卡尔曼滤波(EKF)**为代表的滤波方法。
+
+     需要假设马尔可夫性，即当前状态只和前1时刻状态有关。
+
+  2. **非线性优化**
+
+     当前状态取决于之前所有时刻的状态。这也是vslam中主流的方法。
+### 1.2 线性系统和KF
+
+- 问题描述
+
+  考虑一个线性高斯系统：它的运动/观测方程由线性方程描述，噪声和状态变量均满足高斯分布：
+  $$
+  \begin{cases}
+  \mathbf{x}_k=\mathbf{A}_k\mathbf{x}_{k-1}+\mathbf{u}_k+\mathbf{w}_k \\
+  \mathbf{z}_k = \mathbf{C}_k\mathbf{x}_k+\mathbf{v}_k \\
+  \end{cases}\ \ \ k=1,\cdots,N\tag{4}它的噪声服从零均值高斯分布：
+  $$
+  它的噪声服从零均值高斯分布：
+  $$
+  \mathbf{w}_k \sim N(\mathbf{0},\mathbf{R}),\ \mathbf{v}_k\sim N(\mathbf{0},\mathbf{Q}) \tag{5}
+  $$
+  下面使用卡尔曼滤波器将k-1时刻的状态分布推导至k时刻，最终得到线性系统的最优无偏估计
+
+  - 由于基于马尔可夫性假设，所以在实际编程中，我们只需要维护一个状态变量
+  - 而又由于状态变量服从高斯分布，我们只需要维护状态变量的均值矩阵$\hat{\mathbf{x}}_k$和协方差矩阵$\hat{\mathbf{P}}_k$
+
+- 卡尔曼滤波由如下两步组成，并用$\hat{a}$表示后验，$\check{a}$表示先验分布：
+
+  1. **预测**(prediction)
+
+     从上一时刻的状态，根据输入信息（有噪声）推断当前时刻的状态分布
+     $$
+     \check{\mathbf{x}}_k=\mathbf{A}_k\hat{\mathbf{x}}_{k-1}+\mathbf{u}_k\\
+     \check{\mathbf{P}}_k=\mathbf{A}_k\hat{\mathbf{P}}_{k-1}\mathbf{A}_k^T+\mathbf{R} \tag{6}
+     $$
+
+  2. **更新**（correctiion/measurment update）
+
+     比较在当前时刻的状态输入（也叫**测量**值）和**预测**的状态变量， 从而对预测出的系统状态进行修正.
+
+     - 先计算卡尔曼增益K：
+       $$
+       \mathbf{K}=\check{\mathbf{P}}_k\mathbf{C}_k^T(\mathbf{C}_k\check{\mathbf{P}}_k\mathbf{C}_k^T+\mathbf{Q}_k)^{-1}\tag{7}
+       $$
+
+     - 然后计算后验概率分布
+       $$
+       \hat{\mathbf{x}}_k=\check{\mathbf{x}}_k+\mathbf{K}(\mathbf{z}_k-\mathbf{C}_k\check{\mathbf{x}}_k)\\
+       \hat{\mathbf{P}}_k=(\mathbf{I}-\mathbf{KC}_k)\check{\mathbf{P}}_k \tag{8}
+       $$
+
+- 
+
+### 1.3 非线性系统和EKF
+
+在SLAM中运动/观测方程通常都是非线性的，而卡尔曼滤波KF只能用于线性系统，对于非线性系统需要使用先在某点附近对运动/观测方程进行一阶泰勒展开，保留一阶项以近似成线性发成，最后使用扩展卡尔曼滤波EKF进行无偏最优估计
+
+- 扩展卡尔曼滤波EKF同样由2部分组成
+
+  1. **预测**：
+     $$
+     \check{\mathbf{x}}_k=f(\hat{\mathbf{x}}_{k-1},\mathbf{u}_k)\\
+     \check{\mathbf{P}}_k=\mathbf{F}\hat{\mathbf{P}}_{k-1}\mathbf{F}^T+\mathbf{R}_k \tag{9} 
+     $$
+
+  2. **更新**：
+
+     - 先计算卡尔曼增益$K_k$
+       $$
+       \mathbf{K}_k=\check{\mathbf{P}}_k\mathbf{H}^T(\mathbf{H}\check{\mathbf{P}}_k\mathbf{H}^T+\mathbf{Q}_k)^{-1}\tag{10}
+       $$
+
+     - 然后计算后验概率分布：
+       $$
+       \hat{\mathbf{x}}_k=\check{\mathbf{x}}_k+\mathbf{K}_k(\mathbf{z}_k-h(\check{\mathbf{x}}_k))\\
+       \hat{\mathbf{P}}_k=(\mathbf{I}-\mathbf{K}_k\mathbf{H})\check{\mathbf{P}}_k \tag{8}
+       $$
+       
+
+### 1.4 EKF的讨论
+
+当想要在某段时间内估计某个不确定量时，EKF是个很好的方法。但在计算资源充足或估计量复杂的场合，非线性优化是种更好的方法。
+
+EKF有着如下局限性：
+
+1. 滤波器基于马尔可夫性，这就导致了只能使用前一时刻的数据，而以前的数据都被忽略了。
+2. 一节泰勒展开无法完全线性近似非线性方程，从而产生非线性误差。
+3. EKF需要维护存储状态变量的均值和方差，在大场景中，如果把路标也放进状态，就使得这个存储规模呈平方增长，所以不适合大场景
+4. EKF没有异常检测机制，导致系统在异常值时容易发散。
+
+所以在相同计算量下，非线性优化通常比EKF在精度和鲁棒性上更好。
+
+
+
+## 2. BA与图优化
 
 # 十、后端优化：位姿图
 
