@@ -3,7 +3,7 @@
 - 加粗：`\mathbf{}`
 - 斜体:`\it{}`
 
-# 上下标置于正上/下方
+# 各种头
 
 - 使用`\limits`：
   命令格式：`expr1\limits_{expr2}^{expr3}`
@@ -28,6 +28,19 @@
   单个字符：`\vec{}`$\vec{x}$
 
   多个字符：`\overrightarrow{AB}`$\overrightarrow{AB}$
+  
+- 尖括号
+
+  - `\hat{a}`$\hat{a}$
+  - `\widehat{abc}`$\widehat{abc}$
+  - `\check{a}`$\check{a}$
+
+- 导数
+
+  - `\dot{x}`$\dot{x}$
+  - `\ddot{x}`$\ddot{x}$
+
+- 
 
 # 括号相关
 
@@ -61,6 +74,11 @@ $$
 | \xi | $\xi$ | \propto | $\propto$ |
 | \oplus | $\oplus$ | \odot | $\odot$ |
 |  |  |  |  |
+
+# 各种等号
+
+- `\sim`$\sim$
+- `\approx`$\approx$
 
 # 矩阵行列式：
 
