@@ -21,6 +21,13 @@
 - ubuntu 18.04没法全屏
    - sudo apt-get update
    - sudo apt-get install open-vm-tools
+   
+- Ubuntu分区：
+
+   - `/boot`: 逻辑分区1024MB,ext4
+   - `/swap`: 逻辑分区2048MB.交换分区
+   - `/`:主分区，所有剩下的容量.ext4
+
 
 # 双系统安装
 
