@@ -33,64 +33,55 @@
 
 ## 1. 删除双系统
 
-https://www.its404.com/article/ZChen1996/115436436#win10__ubuntu__EFI__7
+https://blog.csdn.net/qq_43310597/article/details/105782722
 
 ## 2.安装双系统
 
-https://blog.csdn.net/m0_46318517/article/details/104396858
-
 https://zhuanlan.zhihu.com/p/363640824
 
-## 3.浏览器
+# 安装基础软件
 
-- 安装chrome
-- 卸载firefox:`sudo apt-get purge firefox  firefox-globalmenu  firefox-gnome-support  firefox-locale-en  firefox-locale-zh-hans`
+## 1. Terminator
 
-## 4.连接Git
+terminator:`sudo apt-get install terminator`
 
-见[笔记](https://github.com/Fernweh-yang/Reading-Notes/blob/main/git%E5%B0%8F%E8%AE%B0.md)
+美化：`sudo gedit ~/.config/terminator/config`并输入
 
-## 5.安装基础软件
+```
+[global_config]
+  handle_size = -3
+  title_transmit_fg_color = "#000000"
+  title_transmit_bg_color = "#3e3838"
+  inactive_color_offset = 1.0
+  enabled_plugins = CustomCommandsMenu, LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
+  suppress_multiple_term_dialog = True
+[keybindings]
+[profiles]
+  [[default]]
+    background_color = "#2e3436"
+    background_darkness = 0.8
+    background_type = transparent
+    cursor_shape = ibeam
+    cursor_color = "#e8e8e8"
+    font = Ubuntu Mono 14
+    foreground_color = "#e8e8e8"
+    show_titlebar = False
+    scroll_background = False
+    scrollback_lines = 3000
+    palette = "#292424:#5a8e1c:#00ff00:#cdcd00:#1e90ff:#cd00cd:#00cdcd:#d6d9d4:#4c4c4c:#868e09:#00ff00:#ffff00:#4682b4:#ff00ff:#00ffff:#ffffff"
+    use_system_font = False
+[layouts]
+  [[default]]
+    [[[child1]]]
+      parent = window0
+      profile = default
+      type = Terminal
+    [[[window0]]]
+      parent = ""
+      size = 925, 570
+      type = Window
+[plugins]
+```
 
-- terminator:`sudo apt-get install terminator`
 
-  美化：`sudo gedit ~/.config/terminator/config`并输入
-
-  ```
-  [global_config]
-    handle_size = -3
-    title_transmit_fg_color = "#000000"
-    title_transmit_bg_color = "#3e3838"
-    inactive_color_offset = 1.0
-    enabled_plugins = CustomCommandsMenu, LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
-    suppress_multiple_term_dialog = True
-  [keybindings]
-  [profiles]
-    [[default]]
-      background_color = "#2e3436"
-      background_darkness = 0.8
-      background_type = transparent
-      cursor_shape = ibeam
-      cursor_color = "#e8e8e8"
-      font = Ubuntu Mono 14
-      foreground_color = "#e8e8e8"
-      show_titlebar = False
-      scroll_background = False
-      scrollback_lines = 3000
-      palette = "#292424:#5a8e1c:#00ff00:#cdcd00:#1e90ff:#cd00cd:#00cdcd:#d6d9d4:#4c4c4c:#868e09:#00ff00:#ffff00:#4682b4:#ff00ff:#00ffff:#ffffff"
-      use_system_font = False
-  [layouts]
-    [[default]]
-      [[[child1]]]
-        parent = window0
-        profile = default
-        type = Terminal
-      [[[window0]]]
-        parent = ""
-        size = 925, 570
-        type = Window
-  [plugins]
-  ```
-
-  
 
