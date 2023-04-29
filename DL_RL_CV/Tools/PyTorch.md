@@ -1,3 +1,7 @@
+# PyTorch教程汇总
+
+- 官网教程（本笔记）：https://pytorch.org/tutorials/beginner/basics/intro.html
+
 # PyTorch安装
 
 - Cuda和cuDNN安装
@@ -467,10 +471,11 @@ Tensor所有提供的[Operations](https://pytorch.org/docs/stable/torch.html#mat
 ## 四、Autograd(Back Progagation)
 
 - `torch.autograd` supports automatic computation of gradient for any computational graph.
+  
   -  If we set the attribute `.requires_grad` of `torch.Tensor` as `True`, it tracks all operations applied on that tensor.
   -  Once all the computations are finished, the function `.backward()` computes the gradients into the `Tensor.grad` variable
   - 也可以自定义自己的反向传播，见[官网](https://pytorch.org/docs/stable/autograd.html#function)
-
+  
 - 例子：
 
   ```python
@@ -663,10 +668,68 @@ import torchvision.models as models
   model = torch.load('model.pth')
   ```
 
+# PyTorch常用小工具
+
+## 1. Summary
+
+[Summary](https://github.com/sksq96/pytorch-summary)可以计算每层参数的个数
+
+- 安装使用：
+
+  ```python
+  pip install torchsummary
+  from torchsummary import summary
+  summary(your_model, input_size=(channels, H, W))
+  ```
+
+- 官网:示例
+
+  CNN for MNIST
+
+  ```python
+  import torch
+  import torch.nn as nn
+  import torch.nn.functional as F
+  from torchsummary import summary
+  
+  class Net(nn.Module):
+      def __init__(self):
+          super(Net, self).__init__()
+          self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
+          self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
+          self.conv2_drop = nn.Dropout2d()
+          self.fc1 = nn.Linear(320, 50)
+          self.fc2 = nn.Linear(50, 10)
+  
+      def forward(self, x):
+          x = F.relu(F.max_pool2d(self.conv1(x), 2))
+          x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+          x = x.view(-1, 320)
+          x = F.relu(self.fc1(x))
+          x = F.dropout(x, training=self.training)
+          x = self.fc2(x)
+          return F.log_softmax(x, dim=1)
+  
+  device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # PyTorch v0.4.0
+  model = Net().to(device)
+  
+  summary(model, (1, 28, 28))
+  ```
+
+## 2. Profiler
+
+[profiler](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html)不需要额外下载，pytorch自带。
+
+可以用它来分析模型各种性能：
+
+- 可以分析每个操作在GPU/CPU的时间花销
+- 可以分析模型占用的GPU/CPU内存
+- 追踪功能
 
 
 
-# Tensorboard
+
+## 3.Tensorboard
 
 - TensorBoard helps us track跟踪 our metrics such as loss, accuracy and visualize the results, model graphs that may be needed during the machine learning workflow.
 - 运行：
@@ -674,9 +737,9 @@ import torchvision.models as models
   - Win: 在Anaconda终端中`tensorboard --logdir=runs`
     - 然后在网页中打开`http://localhost:6006/`
 
-## 一、TUM课程例子
+### 3.1 TUM课程例子
 
-### 1.1 Set up TensorBoard
+#### 1.1 Set up TensorBoard
 
 - 加载数据
 
@@ -770,7 +833,7 @@ import torchvision.models as models
   writer = SummaryWriter('runs/introduction')
   ```
 
-### 1.2 Writing to TensorBoard
+#### 1.2 Writing to TensorBoard
 
 - Log一些数据到`SummaryWritter`
 
@@ -791,7 +854,7 @@ import torchvision.models as models
 
   - TensorBoard需要刷新一下才能看到结果
 
-### 1.3 Visualization Model Architectures
+#### 1.3 Visualization Model Architectures
 
 - 将1.1中的神经网络模型`Net`可视化出来
 
@@ -802,7 +865,7 @@ import torchvision.models as models
 
   - TensorBoard需要刷新一下才能看到结果
 
-### 1.4 Training Network Models
+#### 1.4 Training Network Models
 
 这是TensorBoard最重要的用法
 
@@ -894,7 +957,7 @@ import torchvision.models as models
   - 在TensorBoard的Scalar中可以看到损失函数的下降
   - 在TensorBoard的IMAGES中可以看到各图片的预测结果
 
-### 1.5 Experimenting weight initialization strategies
+#### 1.5 Experimenting weight initialization strategies
 
 - 新建一个SummaryWriter实例，将数据保存在weight_init_experiments
 
@@ -966,7 +1029,7 @@ import torchvision.models as models
   - This helps us look at the distribution of activation values. 
   - Select the `HISTOGRAMS` tab in TensorBoard to visualise the experiment results.
 
-#### 1.5.1 Constant weight initialization with $tanh$ activation
+##### 1.5.1 Constant weight initialization with $tanh$ activation
 
 ```python
 net_const = Net("tanh")
@@ -986,7 +1049,7 @@ for i, x in enumerate(layer_out):
 
 - We can see that initialization with constant values does not break the symmetry对称性 of weights, i.e. all neurons in network always learn the same features from the input since the weights are the same.
 
-#### 1.5.2 Random weight initialization of small numerical values with $tanh$ activation
+##### 1.5.2 Random weight initialization of small numerical values with $tanh$ activation
 
 ```python
 net_small_normal = Net("tanh")
@@ -1007,7 +1070,7 @@ for i, x in enumerate(layer_out):
 - It will end up with **vanishing gradient problem**
   - If weights are initialized with low values, it gets mapped to around 0, and the small values will kill gradients when backpropagating through the network.
 
-#### 1.5.3 Random weight initialization of large numerical values with $tanh$ activation
+##### 1.5.3 Random weight initialization of large numerical values with $tanh$ activation
 
 ```python
 net_large_normal = Net("tanh")
@@ -1028,7 +1091,7 @@ for i, x in enumerate(layer_out):
 - It will end up with **vanishing gradient problem**
   - If weights are initialized with very high values, the term $Xw+b$ becomes significantly higher and with activation function such as $tanh$, the function returns value very close to $-1$ or $1$. At these values, the gradient of $tanh$ is very low, thus learning takes a lot of time.
 
-#### 1.5.4 Xavier initialization with $tanh$ activation
+##### 1.5.4 Xavier initialization with $tanh$ activation
 
 From the previous examples, we can see that a proper weight initialization is needed to ensure nice distribution of the output of each layers. Here comes the **Xavier Initialization**.
 
@@ -1054,7 +1117,7 @@ for i, x in enumerate(layer_out):
     writer.add_histogram('xavier_tanh', x, i+1)
 ```
 
-#### 1.5.5 Xavier initialization with ReLU
+##### 1.5.5 Xavier initialization with ReLU
 
 ```python
 net_xavier_relu = Net("relu")
@@ -1079,7 +1142,7 @@ for i, x in enumerate(layer_out):
 
   所以Xavier不适用于ReLu
 
-#### 1.5.6  He initialization with ReLU
+##### 1.5.6  He initialization with ReLU
 
 即Kaiming Initialization.
 
@@ -1107,16 +1170,16 @@ for i, x in enumerate(layer_out):
     writer.add_histogram('kaiming_relu', x, i+1)
 ```
 
-# [PyTorchLightning](https://www.pytorchlightning.ai/)
+## 4.PyTorch Lightning
 
 [源代码](https://github.com/Lightning-AI/lightning)
 
-*PyTorch已经足够简单易用，但是简单易用不等于方便快捷。特别是做大量实验的时候，很多东西都会变得复杂，代码也会变得庞大，这时候就容易出错。*
-*针对这个问题，就有了PyTorch Lightning。它可以重构你的PyTorch代码，抽出复杂重复部分，让你专注于核心的构建，让你的实验更快速更便捷地开展迭代。*
+PyTorch已经足够简单易用，但是简单易用不等于方便快捷。特别是做大量实验的时候，很多东西都会变得复杂，代码也会变得庞大，这时候就容易出错。
+针对这个问题，就有了[PyTorchLightning](https://www.pytorchlightning.ai/)。它可以重构你的PyTorch代码，抽出复杂重复部分，让你专注于核心的构建，让你的实验更快速更便捷地开展迭代。
 
 代码都可以直接在PyTorch跑, Lightning只是帮助我们整合了这些代码
 
-## 一、Idea behind PyTorch Lightning
+### 4.1 Idea behind PyTorch Lightning
 
 - Codes in a Deep learning project consists of three main categories:
 
@@ -1139,11 +1202,11 @@ for i, x in enumerate(layer_out):
 
 
 
-## 二、Training with PyTorch Lightning
+### 4.2 Training with PyTorch Lightning
 
 下面一个两层类的例子
 
-### 2.1 LightningModule
+#### 2.1 LightningModule
 
 定义模型，训练，验证和优化部分
 
@@ -1218,7 +1281,7 @@ for i, x in enumerate(layer_out):
           return optim
   ```
 
-  ### 2.2 LightningDataModule
+  #### 2.2 LightningDataModule
 
  PyTorch Lightning 提供 `LightningDataModule` 作为基类，来设置dataloaders数据加载.
 
@@ -1253,7 +1316,7 @@ class FashionMNISTDataModule(pl.LightningDataModule):
 
 
 
-### 2.3 Fitting the model with a Trainer
+#### 2.3 Fitting the model with a Trainer
 
 - 首先初始化我们的模型并加载数据（2.1，2.2）
 
@@ -1295,7 +1358,7 @@ class FashionMNISTDataModule(pl.LightningDataModule):
   - 每一次运行`trainer.fit(model, data)`,都会在/lightning_logs下生成一个新的/version_xx文件夹，里面有checkpoints,logs和我们设置的超参数们
   - 可以用`tensorboard --logdir lightning_logs`,来查看各种设置和结果
 
-### 2.4 Add images to tensorboard
+#### 2.4 Add images to tensorboard
 
 - The tensorboard logger is a submodule of the `LightningModule` and can be accessed via `self.logger`. We can add images to the logging module by calling
 
