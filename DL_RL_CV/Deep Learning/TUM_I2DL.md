@@ -1151,6 +1151,13 @@ $$
   1. Use the trained encoder to get latent embedding for each unlabeled image
   2. DO clustering. Assign分配 each image to it's cluster centre.
 
+## 13) MLP
+
+Multi-Layer Perception多层感知器是最基本的神经网络。下面的CNN，RNN都是更高级一点的神经网络
+
+- MLP包括三层：输入层、隐藏层和输出层
+- MLP不同层之间是全连接的（上一层的任何一个神经元和下一层的所有神经元都有连接）
+
 # 四、CNN卷积神经网络
 
 [Convolutional Neural Networks](https://www.zybuluo.com/hanbingtao/note/485480)
