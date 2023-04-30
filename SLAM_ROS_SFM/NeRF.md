@@ -35,3 +35,30 @@
     - 点云
     - 网格
     - 体素
+
+## 1.2 NeRF源码安装
+
+- [NeRF论文](https://www.matthewtancik.com/nerf)是用TensorFlow做的：[TensorFlow版本](https://github.com/bmild/nerf)
+
+- 使用别人写好的[Pytorch版本](https://github.com/yenchenlin/nerf-pytorch)的NeRF
+
+  ```
+  git clone https://github.com/yenchenlin/nerf-pytorch.git
+  cd nerf-pytorch
+  pip install -r requirements.txt
+  ```
+
+- 如何运行见[Pytorch版本](https://github.com/yenchenlin/nerf-pytorch)的README。
+
+## 1.3 Instant-ngp安装
+
+[Instant-ngp](https://github.com/NVlabs/instant-ngp)使用了[Tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn)5s算完NeRF,否则要算五个半小时
+
+```
+$ git clone --recursive https://github.com/nvlabs/instant-ngp
+$ cd instant-ngp
+$ cmake . -B build -DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.1/bin/nvcc -DTCNN_CUDA_ARCHITECTURES=61
+$ cmake --build build --config RelWithDebInfo -j
+```
+
+使用见git[主页](https://github.com/NVlabs/instant-ngp#usage)
