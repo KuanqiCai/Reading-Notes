@@ -27,6 +27,12 @@
    - `/boot`: 逻辑分区2048MB,ext4 (固态)
    - `/swap`: 逻辑分区32GB.交换分区 (固态)
    - `/`:主分区，所有剩下的容量.ext4 (机械)
+   
+- BusyBox v1.30.1(Debin 1:1.30.1-4) built-in shell(ash)的提示信息，无法正常开机
+
+   - `fsck -y /dev/sda3(替换成自己的，我的是sda3)`的命令成功执行后会出现file system was modified字样
+   - 然后输入exit退出
+
 
 
 # 双系统安装
