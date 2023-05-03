@@ -1,4 +1,4 @@
-# 1. NeRF
+# 1. NeRF论文笔记
 
 详细论文笔记见Zotero上pdf的笔记
 
@@ -45,58 +45,7 @@
   - 对光照处理不好
   - 训练的模型都只能代表一个场景，没有泛化能力
 
-
-## 1.2 NeRF源码安装
-
-- [NeRF论文](https://www.matthewtancik.com/nerf)是用TensorFlow做的：[TensorFlow版本](https://github.com/bmild/nerf)
-
-- 使用别人写好的[Pytorch版本](https://github.com/yenchenlin/nerf-pytorch)的NeRF
-
-  ```
-  git clone https://github.com/yenchenlin/nerf-pytorch.git
-  cd nerf-pytorch
-  pip install -r requirements.txt
-  ```
-
-- 如何运行见[Pytorch版本](https://github.com/yenchenlin/nerf-pytorch)的README。
-
-- 实测可运行：
-
-  ```
-  Pytorch:2.0.0
-  Cuda(conda):11.8
-  Cuda(系统):12.1
-  Ubuntu:20.04
-  ```
-
-  
-
-## 1.3 Instant-ngp安装
-
-[Instant-ngp](https://github.com/NVlabs/instant-ngp)使用了[Tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn)5s算完NeRF,否则要算五个半小时
-
-```
-$ git clone --recursive https://github.com/nvlabs/instant-ngp
-$ cd instant-ngp
-$ cmake . -B build -DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.1/bin/nvcc -DTCNN_CUDA_ARCHITECTURES=61
-$ cmake --build build --config RelWithDebInfo -j
-```
-
-- 如何使用见git[主页](https://github.com/NVlabs/instant-ngp#usage)
-
-- 实测可运行
-
-  ```
-  Pytorch:2.0.0
-  Cuda(conda):11.8
-  Cuda(系统):12.1
-  Ubuntu:20.04
-  CMake:3.26.3
-  ```
-
-  
-
-## 1.4 NeRF原理
+## 1.2 NeRF原理
 
 1. **神经辐射场网络**：输入5D坐标$(x,y,z,\theta,\phi)$到MLP训练得到颜色$C$和体密度$\sigma$. (2D->3D)
 
@@ -108,7 +57,7 @@ $ cmake --build build --config RelWithDebInfo -j
 
    - use classical volume rendering techniques to accumulate those colors and densities into a 2D image
 
-## 1.5 NeRF公式
+## 1.3 NeRF公式
 
 1. **神经辐射场网络**
 
@@ -169,11 +118,11 @@ $ cmake --build build --config RelWithDebInfo -j
 
    - 这里精细/粗糙网络算出来的RGB值$\hat{C}$具体见1.6.2
 
-## 1.6NeRF的两个优化
+## 1.4NeRF的两个优化
 
 直接将5D坐标送入MLP学习，没法表达高分辨率的复杂场景，所以使用了2个提升措施：
 
-### 1.6.1 Positional encoding
+### 1.4.1 Positional encoding
 
 由于5D输入在颜色和几何的高频变换方面表现不好，所以在5D输入传递到NeRF网络之前，使用高频函数将输入映射到更高维空间可以更好地拟合包含高频变换的数据。
 
@@ -199,7 +148,7 @@ $ cmake --build build --config RelWithDebInfo -j
 
 - 为什么傅里叶变换后可以学习到更多特征？见[论证论文](https://arxiv.org/abs/2006.10739)
 
-### 1.6.2 Hierarchical volume sampling
+### 1.4.2 Hierarchical volume sampling
 
 为了解决对渲染图像没有贡献的自由空间和遮挡区域仍然被重复采样的问题，这里采用了层级采样。
 
@@ -224,7 +173,7 @@ $ cmake --build build --config RelWithDebInfo -j
    - 这样选出来的128个点，就会集中于我们想要渲染的目标
 4. 最后使用2次采样$N_c+N_f$，即64+128个采样点的数据，来渲染出最终的颜色$\hat{C}_f(\mathbf{r})$
 
-## 1.7 性能指标PSNR/SSIM/LPIPS
+## 1.5 性能指标PSNR/SSIM/LPIPS
 
 - PSNR（峰值信噪比，Peak Signal-to-Noise Ratio）
   - PSNR 最小值为 0，PSNR 越大，两张图像差异越小
@@ -232,4 +181,161 @@ $ cmake --build build --config RelWithDebInfo -j
   - SSIM 越大，两张图像越相似
 - LPIPS（学习感知图像块相似度，Learned Perceptual Image Patch Similarity)
   - LPIPS的值越低，表示两张图像越相似
+
+
+
+# 2. NeRF源码笔记
+
+## 2.1 NeRF源码安装
+
+- [NeRF论文](https://www.matthewtancik.com/nerf)是用TensorFlow做的：[TensorFlow版本](https://github.com/bmild/nerf)
+
+- 使用别人写好的[Pytorch版本](https://github.com/yenchenlin/nerf-pytorch)的NeRF
+
+  ```
+  git clone https://github.com/yenchenlin/nerf-pytorch.git
+  cd nerf-pytorch
+  pip install -r requirements.txt
+  ```
+
+- 具体如何运行见[Pytorch版本](https://github.com/yenchenlin/nerf-pytorch)的README。
+
+  ```shell
+  # 下载数据集lego和fern,在nerf-pytorch文件夹下：
+  bash download_example_data.sh
+  # train a low-res lego NeRF:
+  python run_nerf.py --config configs/lego.txt
+  # train a low-res fern NeRF:
+  python run_nerf.py --config configs/fern.txt
+  ```
+
+- 实测可运行：
+
+  ```
+  Pytorch:2.0.0
+  Cuda(conda):11.8
+  Cuda(系统):12.1
+  Ubuntu:20.04
+  ```
+
+  
+
+## 2.2 Instant-ngp安装
+
+[Instant-ngp](https://github.com/NVlabs/instant-ngp)使用了[Tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn)5s算完NeRF,否则要算五个半小时
+
+```
+$ git clone --recursive https://github.com/nvlabs/instant-ngp
+$ cd instant-ngp
+$ cmake . -B build -DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.1/bin/nvcc -DTCNN_CUDA_ARCHITECTURES=61
+$ cmake --build build --config RelWithDebInfo -j
+```
+
+- 如何使用见git[主页](https://github.com/NVlabs/instant-ngp#usage)
+
+- 实测可运行
+
+  ```
+  Pytorch:2.0.0
+  Cuda(conda):11.8
+  Cuda(系统):12.1
+  Ubuntu:20.04
+  CMake:3.26.3
+  ```
+
+
+## 2.3 代码调试
+
+在2.1中运行代码时需要同时给入配置文件，在debug时同样需要配置一下：
+
+1. VSCODE打开NeRF代码仓库文件夹
+
+2. 点开`Run and Debug`，然后点`create a launch.json file`
+
+3. 将运行命令参数输入进去
+
+   ```json
+   {
+       "version": "0.2.0",
+       "configurations": [
+           {
+               "name": "Python: Current File",
+               "type": "python",
+               "request": "launch",
+               "program": "${file}",
+               "console": "integratedTerminal",
+               "justMyCode": true,
+               // 比如调试fern这个数据集
+               // 将命令“python run_nerf.py --config configs/fern.txt”中的参数加入到当前配置文件中
+               "args": [
+                   "--config","configs/fern.txt"
+               ]
+           }
+       ]
+   }
+   ```
+
+## 2.4 代码运行流程
+
+```mermaid
+flowchart LR
+ train -->|1.参数设置|config_parser
+ train -->|2.数据加载|load_llff_data/..
+ train -->|3.NeRF网络构建|create_nerf
+ train -->|4.构建raybatch tensor|get_rays_np
+ train -->|5.渲染核心|render
+ train -->|6.计算loss|img2mse
+```
+
+### 2.4.1 参数设置
+
+见2.3的config
+
+### 2.4.2 数据加载
+
+```mermaid
+flowchart LR
+	load_llff_data-->|2.1读取原始数据|_load_data-->|创建目标分辨率图像|_minify
+	load_llff_data-->|2.2中心重定义|recenter_poses
+	load_llff_data-->|2.3渲染pose计算|render_path_spiral
+```
+
+### 2.4.3 NeRF网络构建
+
+```mermaid
+flowchart LR
+	create_nerf-->|3.1位置编码|get_embedder
+	create_nerf-->|3.2NeRF模型初始化|NeRF
+	create_nerf-->|3.3模型批量处理数据函数|run_network
+	create_nerf-->|3.4优化器定义|optimizer
+```
+
+### 2.4.4 生成光线ray数据
+
+```mermaid
+flowchart
+get_rays_np
+```
+
+世界坐标系转到图像坐标系
+
+
+
+### 2.4.5 渲染过程
+
+```mermaid
+flowchart LR
+	render-->|渲染|batchify_rays
+	batchify_rays-->|minibatch渲染|render_rays
+	render_rays-->|coarse网络推断|networ_query_fn
+	render_rays-->|coarse raw数据转换为rgbdepth等|raw2outputs
+	render_rays-->|find pdf采样|sample_pdf
+	render_rays-->|find网络推断|network_query_fn
+	render_rays-->|fine raw数据转换为rgbdepth等|raw2outputs
+	networ_query_fn-->run_network
+	run_network-->|位置编码|embede_fn
+	run_network-->|网络学习|batchify
+```
+
+
 
