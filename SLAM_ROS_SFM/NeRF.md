@@ -283,19 +283,22 @@ flowchart LR
  train -->|2.数据加载|load_llff_data/..
  train -->|3.NeRF网络构建|create_nerf
  train -->|4.构建raybatch tensor|get_rays_np
- train -->|5.渲染核心|render
+ train -->|5.渲染过程|render
  train -->|6.计算loss|img2mse
 ```
 
 ### 2.4.1 参数设置
 
-见2.3的config
+参数见代码的`config_parser`类，要修改训练参数/数据集/保存地址等等可以通过:
+
+1. 直接修改类里的默认值
+2. 编写configs.txt，然后运行代码时作为参数传入
 
 ### 2.4.2 数据加载
 
 ```mermaid
 flowchart LR
-	load_llff_data-->|2.1读取原始数据|_load_data-->|创建目标分辨率图像|_minify
+	load_llff_data-->|2.1读取原始数据|_load_data-->|2.1.1创建目标分辨率图像|_minify
 	load_llff_data-->|2.2中心重定义|recenter_poses
 	load_llff_data-->|2.3渲染pose计算|render_path_spiral
 ```
@@ -309,6 +312,12 @@ flowchart LR
 	create_nerf-->|3.3模型批量处理数据函数|run_network
 	create_nerf-->|3.4优化器定义|optimizer
 ```
+
+![](https://github.com/Fernweh-yang/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/slam/nerf%E7%BD%91%E7%BB%9C%E7%BB%93%E6%9E%84.png?raw=true)
+
+- 位置xyz从3维位置编码成63维的高维空间后用8层256通道神经网络去学习得到256个特征值和不透明度$\sigma$
+- 方向$\theta,\varphi$从2维位置编码成27维的高维空间后和不透明度$\sigma$用一层128通道神经网络学习得到RGB值
+- 在第五层，xyz的高维空间值还会传入一遍
 
 ### 2.4.4 生成光线ray数据
 
