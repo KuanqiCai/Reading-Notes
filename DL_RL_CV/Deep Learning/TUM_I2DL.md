@@ -22,7 +22,7 @@ https://numpy.org/doc/stable/
 
 # 二、一些特别的Python机制
 
-## 1） Iterator迭代器和Generator生成器
+## 1. Iterator迭代器和Generator生成器
 
 - 为什么需要迭代器和生成器？
 
@@ -100,7 +100,7 @@ https://numpy.org/doc/stable/
 
 # 三、一些重要概念
 
-## 0）超参数Hyperparameters
+## 0. 超参数Hyperparameters
 
 - 参数和超参数：
 
@@ -151,7 +151,7 @@ https://numpy.org/doc/stable/
   
   
 
-## 1）损失函数Loss Functions
+## 1. 损失函数Loss Functions
 
 **代码实现**参见2.4
 
@@ -242,7 +242,7 @@ https://numpy.org/doc/stable/
 - Full Loss = Data Loss + Reg Loss
   - Data Loss: 即选择用cross Entropy还是Hinge function来计算$L_i$,然后所有样本的loss值相加取平均
 
-## 2) 激活函数Activation Functions
+## 2. 激活函数Activation Functions
 
 激活函数（Activation Function）类似于人类大脑中基于神经元的模型，激活函数最终决定了要发射给下一个神经元的内容。
 
@@ -359,7 +359,7 @@ Rectified Linear Units线性整流单元 are the currently **most used** non-lin
   - Solved **Dead ReLU Problem(神经元坏死现象)**
 - 代码实现见3.2.2
 
-## 3) 优化算法Optimization 
+## 3. 优化算法Optimization 
 
 **具体代码**实现见3.5
 
@@ -597,7 +597,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   - 二阶中心矩就是对随机变量与均值(期望)的差的平方求期望
   - 为什么要用平方，因为如果序列中有负数就会产生较大波动，而平方运算就好像对序列添加了绝对值，这样更能体现偏离均值的范围
 
-## 4) Learning Rate
+## 4. Learning Rate
 
 - 不同learning rate的implication可能后果
 
@@ -628,7 +628,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
     - t is decay rate<1.0
   - $\alpha =\frac{t}{\sqrt{epoch}}\cdot\alpha_0$
 
-## 5) Performance measure
+## 5. Performance measure
 
 [参考](https://zhuanlan.zhihu.com/p/78204581)
 
@@ -670,7 +670,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   - **Variance方差**：refers to too many attention on trainins data and missing generalization on unseen data -> overfitting
 
 
-## 6) 参数的初始化
+## 6. 参数的初始化
 
 - 初始化时权重Weights不能设置为如下三种
   1. 都是同一个值 ：
@@ -738,7 +738,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
 - $Var(w)=\frac{2}{n}$
   - $n$：the number of input neurons for the layer of weights you want to initialize
 
-## 7) 数据集
+## 7. 数据集
 
 - Training set('train')
 
@@ -792,7 +792,7 @@ RMSProp is an adaptive learning rate method自适应学习率方法。It scale t
   - Ideal Training： Small gap between training and validation loss, and both
     go down at same rate (stable without fluctuations波动).
 
-## 8) 关于过拟合
+## 8. 关于过拟合
 
 - **过拟合的原因：**
   - 训练集数据太少，很容易就过拟合了。
@@ -1009,7 +1009,7 @@ $$
     - Random brightniess and contrast changes
     - shear剪切(使倾斜)
 
-## 9) Transfer Learning迁移学习
+## 9. Transfer Learning迁移学习
 
 - [迁移学习](https://www.zhihu.com/question/41979241)(Transfer learning) 
   - 就是把已学训练好的模型参数迁移到新的模型来帮助新模型训练。考虑到大部分数据或任务是存在相关性的，所以通过迁移学习我们可以将已经学到的模型参数（也可理解为模型学到的知识）通过某种方式来分享给新模型从而加快并优化模型的学习效率不用像大多数网络那样从零学习（starting from scratch，tabula rasa）。
@@ -1022,7 +1022,7 @@ $$
     - T2 extract high level features
 
 
-## 10）类别不平衡的分类问题
+## 10. 类别不平衡的分类问题
 
 也叫长尾分布学习，long-tailed recognition。
 
@@ -1037,7 +1037,7 @@ $$
     - 对不同类别的loss分配不同的权重
   - reweight dataloader 
 
-## 11）Residual connections
+## 11. Residual connections
 
 残差连接，也叫skip connect.
 
@@ -1069,7 +1069,7 @@ $$
 
   1. Help prevent vanishing gradients 
   2. Provides highway for the gradients in backward pass
-## 12） 一个应用：Encoder编码器
+## 12. 一个应用：Encoder编码器
 
 代码实现见下面6.4.3
 
@@ -1151,12 +1151,61 @@ $$
   1. Use the trained encoder to get latent embedding for each unlabeled image
   2. DO clustering. Assign分配 each image to it's cluster centre.
 
-## 13) MLP
+## 13. MLP
 
 Multi-Layer Perception多层感知器是最基本的神经网络。下面的CNN，RNN都是更高级一点的神经网络
 
 - MLP包括三层：输入层、隐藏层和输出层
 - MLP不同层之间是全连接的（上一层的任何一个神经元和下一层的所有神经元都有连接）
+
+## 14. 微分求解方法
+
+[参考](https://blog.csdn.net/aws3217150/article/details/70214422)
+
+微分求解大致可以分为4种方式：
+
+- 手动求解法(Manual Differentiation)
+- 数值微分法(Numerical Differentiation)
+- 符号微分法(Symbolic Differentiation)
+- 自动微分法(Automatic Differentiation)
+
+### 14.1 手动求解法
+
+手动求解其实就对应我们传统的backprop算法，我们求解出梯度公式，然后编写代码，代入实际数值，得出真实的梯度。在这样的方式下，每一次我们修改算法模型，都要修改对应的梯度求解算法，因此没有很好的办法解脱用户手动编写梯度求解的代码。
+
+### 14.2 数值微分法
+
+数值微分法是根据导数的原始定义：
+$$
+f'(x)=\mathop{lim}_{h\rightarrow0}\frac{f(x+h)-f(x)}{h}
+$$
+优点：可以对用户隐藏求解过程，用户只要给出目标函数和要求解的梯度的变量，程序可以自动给出相应的梯度.
+
+缺点：数值微分法计算量太大，求解速度是这四种方法中最慢的，且无法避免roundoff error舍入误差和truncatrion error截断误差。
+
+但是由于它实在是太简单实现了，于是很多时候，我们利用它来检验其他算法的正确性，比如在实现backprop的时候，我们用的"gradient check"就是利用数值微分法。
+
+### 14.3 符号微分法
+
+利用代数工具去求解各项微分公式后，最后代入数值。
+
+用户只要提供具有closed form的数学表达式，就能用这些代数公式自动求解。
+
+closed form: 必须能写成完整数学表达式的，不能有编程语言中的循环结构，条件结构等
+
+优点：某种程度上的自动微分
+
+缺点：1.必须要有closed form数学表达式。 2. “表达式膨胀"（expression swell）问题，即数学表达式特别复杂，使得计算变慢
+
+### 14.4 自动微分法
+
+自动微分的存在依赖于它识破如下事实：**所有数值计算归根结底是一系列有限的可微算子的组合**
+
+- 自动微分法是一种介于符号微分和数值微分的方法：
+  - 数值微分强调一开始直接代入数值近似求解；
+  - 符号微分强调直接对代数进行求解，最后才代入问题数值；
+  - 自动微分将符号微分法应用于最基本的算子，比如常数，幂函数，指数函数，对数函数，三角函数等，然后代入数值，保留中间结果，最后再应用于整个函数。
+- 应用相当灵活，可以做到完全向用户隐藏微分求解过程
 
 # 四、CNN卷积神经网络
 
