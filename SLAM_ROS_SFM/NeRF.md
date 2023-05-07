@@ -182,7 +182,19 @@
 - LPIPS（学习感知图像块相似度，Learned Perceptual Image Patch Similarity)
   - LPIPS的值越低，表示两张图像越相似
 
+## 1.6 生成自己的数据集
 
+参考1：课程
+
+参考2：[知乎](https://zhuanlan.zhihu.com/p/576416530)
+
+- 第一步：采集图像
+  - 方法1：自己拍照
+  - 方法2：使用[dtu数据集](https://roboimagedata.compute.dtu.dk/?page_id=36)，[tanks and temples数据集](https://www.tanksandtemples.org/download/)
+- 第二步：位姿计算
+  - 方法1：使用OpenMVG/SLAM
+  - 方法2：使用colmap计算位姿
+- 第三步：转换成llff数据格式
 
 # 2. NeRF源码笔记
 
@@ -303,6 +315,10 @@ flowchart LR
 	load_llff_data-->|2.3渲染pose计算|render_path_spiral
 ```
 
+- 这里用的是llff数据格式：
+
+  LLFF格式数据可以将对应图片参数、相机位姿和相机参数简洁有效地存储在一个npy文件中，以方便python读取，NeRF模型源码有直接对LLFF格式数据集进行训练的配置和模块`load_llff_data`。
+
 ### 2.4.3 NeRF网络构建
 
 ```mermaid
@@ -334,16 +350,16 @@ get_rays_np
 
 ```mermaid
 flowchart LR
-	render-->|渲染|batchify_rays
-	batchify_rays-->|minibatch渲染|render_rays
-	render_rays-->|coarse网络推断|networ_query_fn
-	render_rays-->|coarse raw数据转换为rgbdepth等|raw2outputs
-	render_rays-->|find pdf采样|sample_pdf
-	render_rays-->|find网络推断|network_query_fn
-	render_rays-->|fine raw数据转换为rgbdepth等|raw2outputs
+	render-->|5.1 渲染|batchify_rays
+	batchify_rays-->|5.2 minibatch渲染|render_rays
+	render_rays-->|5.2.1 coarse网络推断|networ_query_fn
+	render_rays-->|5.2.2 coarse raw数据转换为rgbdepth等|raw2outputs
+	render_rays-->|5.2.3 fine pdf采样|sample_pdf
+	render_rays-->|5.2.4 fine网络推断|network_query_fn
+	render_rays-->|5.2.5 fine raw数据转换为rgbdepth等|raw2outputs
 	networ_query_fn-->run_network
-	run_network-->|位置编码|embede_fn
-	run_network-->|网络学习|batchify
+	run_network-->|5.2.1.1位置编码|embede_fn
+	run_network-->|5.2.1.2网络学习|batchify
 ```
 
 
