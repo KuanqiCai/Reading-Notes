@@ -492,13 +492,18 @@ $$
     \mathbf{R}=exp(\phi^\wedge)
     $$
   
-  - 		指数映射的计算：
+  - 		指数映射：李代数->李群
     $$
     exp(\phi^{\wedge})=exp(\theta\mathbf{a}^{\wedge})=cos\theta\mathbf{I}+(1-cos\theta)\mathbf{aa}^T+sin\theta\mathbf{a}^{\wedge}
     $$
   
     - $\phi=\theta\mathbf{a}$:因为$\phi$是三维向量，所以可以分解为一个模长$||a||$和方向$\theta$
-    - $\theta=arccos\frac{tr(\mathbf{R}-1)}{2}$
+    
+  - 对数映射：李群->李代数
+    $$
+    \theta=arccos\frac{tr(\mathbf{R}-1)}{2}
+    $$
+    
   
 - 李代数$\mathfrak{se}(3)$
 
@@ -517,7 +522,7 @@ $$
 
     - $\xi^{\wedge}$:不是反对称矩阵的意思，但也是向量转矩阵，这里是六维向量转4x4矩阵
 
-  - 指数映射的计算：
+  - 指数映射：李代数->李群
     $$
     exp(\xi^{\wedge})=\left [\begin{array}{cccc}
     exp(\phi^{\wedge})& \mathbf{J}\rho \\
@@ -525,6 +530,12 @@ $$
     
     \end{array}\right]\\
     \mathbf{J}=\frac{sin\theta}{\theta}\mathbf{I}+(1-\frac{sin\theta}{\theta})\mathbf{aa}^T+\frac{1-cos\theta}{\theta}\mathbf{a}^{\wedge}
+    $$
+    
+  
+  - 对数映射：李群->李代数
+    $$
+    \theta=arccos\frac{tr(\mathbf{R})-1}{2}
     $$
     
 
