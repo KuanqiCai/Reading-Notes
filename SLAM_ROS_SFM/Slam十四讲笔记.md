@@ -445,7 +445,7 @@ $$
 
 - 特殊正交群SO(3)
   $$
-  SO(3)=\{R\in \mathbb{R}^{3\times 3} |RR^T=I,det(R)=1\}
+  SO(3)=\{R\in \mathbb{R}^{3\times 3} |RR^T=I,det(R)=1\} \tag{1}
   $$
 
 - 特殊欧氏群SE(3)
@@ -454,7 +454,7 @@ $$
   R & t \\
   0^T & 1  \\
   
-  \end{array}\right]\in\mathbb{R}^{4\times4}|R\in SO(3),t\in\mathbb{R}^3 \big\}
+  \end{array}\right]\in\mathbb{R}^{4\times4}|R\in SO(3),t\in\mathbb{R}^3 \big\} \tag{2}
   $$
 
 - 群：只有一个运算规则的集合
@@ -476,7 +476,28 @@ $$
     - 雅可比等价:$\forall \mathbf{X,Y,Z}\in\mathbb{V},[\mathbf{[X,[Y,Z]]}+\mathbf{[Z,[X,Y]]}+\mathbf{[Y,[Z,X]]}=0]$
   - 例子：三维向量的叉积 X, 就是一种李代数，可以写作：$\mathfrak{g}=(\mathbb{R}^3,\mathbb{R},\times)$
   
-- 李代数$\mathfrak{so}(3)$
+- 下面的$\phi$是怎么来的：
+  
+  1. 任意旋转矩阵代表相继旋转，会随时间变换，所以有：$\mathbf{R}(t)\mathbf{R}(t)^T=\mathbf{I}$
+  
+  2. 在等式两边对时间求导：$\mathbf{\dot{R}}(t)\mathbf{R}(t)^T+\mathbf{R}(t)\mathbf{\dot{R}}(t)^T=0$
+  
+  3. 可以看出$\mathbf{\dot{R}}(t)\mathbf{R}(t)^T$是反对称矩阵，由此我们可以找到一个三维向量$\phi(t)\in\mathbb{R}^3$与之对应：$\mathbf{\dot{R}}(t)\mathbf{R}(t)^T=\phi(t)^{\wedge}$
+  
+  4. 两边等式同乘$\mathbf{R}(t)$有：
+     $$
+     \mathbf{\dot{R}}(t)=\phi(t)^{\wedge}\mathbf{R}(t)=\left [\begin{array}{cccc}
+     0 & -\phi_3 & \phi_2 \\
+     \phi_3 & 0 & -\phi_1  \\
+     -\phi_2 & \phi_1 & 0 \\
+     \end{array}\right]\mathbf{R}(t) \tag{3}
+     $$
+  
+     - 每对旋转矩阵求一次导数，只需左乘一个$\phi^{\wedge}(t)$
+     - 所以$\phi$反应了旋转矩阵 $\mathbf{R}$的导数性质，也就是R的李代数/R的切空间。
+     - 结论：李代数是李群的切空间，由李群求导得到，表达了李群的局部性质。
+  
+- 李代数$\mathfrak{so} (3)$
 
   - 李群$SO(3)$对应的李代数$\phi$是定义在$\mathbb{R}^3$的向量
     $$
@@ -487,23 +508,34 @@ $$
   
   ​	
   
-  - 		与李群的关系由指数映射给定：
+  - 		指数映射：李代数->李群：
     $$
-    \mathbf{R}=exp(\phi^\wedge)
-    $$
-  
-  - 		指数映射：李代数->李群
-    $$
-    exp(\phi^{\wedge})=exp(\theta\mathbf{a}^{\wedge})=cos\theta\mathbf{I}+(1-cos\theta)\mathbf{aa}^T+sin\theta\mathbf{a}^{\wedge}
+    \mathbf{R}=exp(\phi^\wedge) \tag{4}
     $$
   
-    - $\phi=\theta\mathbf{a}$:因为$\phi$是三维向量，所以可以分解为一个模长$||a||$和方向$\theta$
-    
-  - 对数映射：李群->李代数
+  - 		对数映射：李群->李代数
     $$
-    \theta=arccos\frac{tr(\mathbf{R}-1)}{2}
+    \phi=ln(\mathbf{R})^{\vee} \tag{5}
     $$
     
+  - 		虽然可以用泰勒展开的方式去求解4式和5式，但会非常的复杂和不太可能。
+    
+    - 对于指数映射，经过一系列推倒，可以用如下公式计算：
+      $$
+      exp(\phi^{\wedge})=exp(\theta\mathbf{a}^{\wedge})=cos\theta\mathbf{I}+(1-cos\theta)\mathbf{aa}^T+sin\theta\mathbf{a}^{\wedge} \tag{6}
+      $$
+    
+      - $\phi=\theta\mathbf{a}$: 因为$\phi$是三维向量，所以可以分解为一个单位方向向量$a$和模长$\theta$
+      
+        \mathbf{Ra=a}
+      
+      - 这表明李代数$\mathfrak{so} (3)$实际上就是由所谓的**旋转向量**组成的空间
+      
+    - 对于对数映射，可以利用迹的性质来计算：
+      $$
+      \theta=arccos\frac{tr(\mathbf{R}-1)}{2} \\
+      \mathbf{Ra=a}\tag{7}
+      $$
   
 - 李代数$\mathfrak{se}(3)$
 
@@ -524,20 +556,34 @@ $$
 
   - 指数映射：李代数->李群
     $$
-    exp(\xi^{\wedge})=\left [\begin{array}{cccc}
-    exp(\phi^{\wedge})& \mathbf{J}\rho \\
-    o^T& 1  \\
-    
-    \end{array}\right]\\
-    \mathbf{J}=\frac{sin\theta}{\theta}\mathbf{I}+(1-\frac{sin\theta}{\theta})\mathbf{aa}^T+\frac{1-cos\theta}{\theta}\mathbf{a}^{\wedge}
+    \mathbf{T}=exp(\xi^{\wedge}) \tag{8}
     $$
     
-  
   - 对数映射：李群->李代数
     $$
-    \theta=arccos\frac{tr(\mathbf{R})-1}{2}
+    \xi=ln(\mathbf{T})^{\vee} \tag{9}
     $$
     
+    
+  - 同样泰勒展开来计算8/9式非常复杂，不现实。
+    
+    - 对于指数映射，经过一系列推倒，可以用如下公式计算：
+      $$
+      exp(\xi^{\wedge})=\left [\begin{array}{cccc}
+      exp(\phi^{\wedge})& \mathbf{J}\rho \\
+      o^T& 1  \\
+      
+      \end{array}\right]\\
+      \mathbf{J}=\frac{sin\theta}{\theta}\mathbf{I}+(1-\frac{sin\theta}{\theta})\mathbf{aa}^T+\frac{1-cos\theta}{\theta}\mathbf{a}^{\wedge} \tag{10}
+      $$
+    
+    - 对于对数映射，还是用迹的性质来计算：
+      $$
+      \theta=arccos\frac{tr(\mathbf{R})-1}{2}\\
+      \mathbf{Ra}=\mathbf{a}\\
+      \mathbf{t}=\mathbf{J\rho}
+      $$
+      
 
 ## 3. 李代数求导与扰动模型
 
