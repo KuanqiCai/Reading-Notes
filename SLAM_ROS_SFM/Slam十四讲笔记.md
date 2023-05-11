@@ -564,7 +564,6 @@ $$
     \xi=ln(\mathbf{T})^{\vee} \tag{9}
     $$
     
-    
   - 同样泰勒展开来计算8/9式非常复杂，不现实。
     
     - 对于指数映射，经过一系列推倒，可以用如下公式计算：
@@ -581,7 +580,7 @@ $$
       $$
       \theta=arccos\frac{tr(\mathbf{R})-1}{2}\\
       \mathbf{Ra}=\mathbf{a}\\
-      \mathbf{t}=\mathbf{J\rho}
+      \mathbf{t}=\mathbf{J\rho} \tag{11}
       $$
       
 
@@ -591,25 +590,27 @@ $$
 
 Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基础
 
-- BCH公式给出了两个李代数指数映射乘积的完整形式，其近似表达式为：
+- **BCH公式**给出了两个李代数指数映射乘积的完整形式，其近似表达式为：
   $$
   ln(exp(\phi_1^{\wedge})exp(\phi_2^{\wedge}))^{\vee}\approx\begin{cases}
   \mathbf{J_l}(\phi_2)^{-1}\phi_1+\phi_2 \ \ ，当\phi_1为小量 \\
   \mathbf{J_r}(\phi_1)^{-1}\phi_2+\phi_1 \ \ ，当\phi_2为小量 \\
-  \end{cases}
+  \end{cases} \tag{12}
   $$
 
   - 当对一个旋转矩阵$\mathbf{R}_2$(李代数为$\phi_2$)左乘一个微小旋转矩阵$\mathbf{R}_1$(李代数为$\phi_1$)时，可以近似的看作，在原有的李代数$\phi_2$上加上了一项$\mathbf{J_l}(\phi_2)^{-1}\phi_1$
   - 第二个近似描述了右乘一个微小位移的情况。
 
   - $\bf{J}_l$为左乘BCH近似雅可比式：$\bf{J}_l=\frac{sin\theta}{\theta}\bf{I}+(1-\frac{sin\theta}{\theta})\bf{aa}^T+\frac{1-cos{\theta}}{\theta}\bf{a}^{\wedge}$
+    - 逆：$\mathbf{J}_l^{-1}=\frac{\theta}{2}cot\frac{\theta}{2}\mathbf{I}+(1-\frac{\theta}{2}cot\frac{\theta}{2})\mathbf{aa}^T-\frac{\theta}{2}\mathbf{a}^{\wedge}$
   - $\bf{J}_r$为右乘BCH近似雅可比式：$\bf{J}_r(\phi)=\bf{J}_l(-\phi)$
+  - 12式中的$\mathbf{J}(\phi)$是一个整体
   
 - 由上可总结出：
 
   - 对某个旋转$R$(李代数为$\phi$)，给它左乘一个微小的旋转$\Delta\mathbf{R}$(李代数为$\Delta\phi$),那么在李群上结果为$\Delta \mathbf{R}\cdot \mathbf{R}$，在李代数上结果为$\mathbf{J}_l^{-1}(\phi)\Delta\phi+\phi$
 
-    即：$exp(\Delta\phi^{\wedge})exp(\phi^{\wedge})=exp((\phi+J_l^{-1}(\phi)\Delta\phi)^{\wedge})$
+    即：$exp(\Delta\phi^{\wedge})exp(\phi^{\wedge})=exp((\phi+\mathbf{J}_l^{-1}(\phi)\Delta\phi)^{\wedge})$
 
   - 反之，如果在李代数上进行加法，让一个$\phi$加上$\Delta \phi$,可近似为利群上带右雅可比的乘法
 
@@ -641,7 +642,7 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
 
 一个空间点p经过旋转R后得到$Rp$,求导最后得到：$\frac{\partial\bf{Rp}}{\partial\bf{\phi}}=(-\bf{Rp}^{\wedge}\bf{J}_l)$
 
-- 其中的左乘雅可比式$\bf{J}_l$很复杂，所以使用扰动模型即BCH来计算导数
+- 其中的左乘雅可比式$\bf{J}_l$很复杂，我们不希望计算它，所以使用扰动模型即BCH来计算导数
 
 #### 3.2.3 扰动求导（左乘）
 
