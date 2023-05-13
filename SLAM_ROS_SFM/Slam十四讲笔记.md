@@ -443,10 +443,25 @@ $$
 
 ## 1. 李群
 
+- 群：由一个集合以及一个二元运算所组成
+
+  - 群运算满足 1.封闭性(closure), 2. 结合律(associativity), 3. 存在幺元(identity), 4. 存在逆(invertibility)，这4个性质与光滑性准则一起，将 SO(3) 和 SE(3) 构建为**矩阵李群**(matrix Lie group)。
+- 李群（Lie group）也是一个微分流形（differential manifold），群上的运算是**光滑**的
+  - 矩阵李群中的元素都是矩阵形式，把它们组合起来的运算是矩阵乘法，而逆运算是矩阵求逆。
+  - 李群对加法不封闭：$R_1+R_2\notin SO(3),\ T_1+T_2\notin SE(3)$
+    - 所以SO(3)和SE(3)都无法构成一个向量空间（向量空间的子空间仍然是一个向量空间）。
+    - 尽管 SO(3) 和 SE(3) 都不是向量空间，但它们都是矩阵李群
+  - 李群对乘法封闭：$R_1R_2\in SO(3),\ T_1T_2\in SE(3)$
+    - 这是有物理意义的，矩阵的乘法意味着做了2次旋转，加法就变成了1次新的旋转的了
+
 - 特殊正交群SO(3)
   $$
   SO(3)=\{R\in \mathbb{R}^{3\times 3} |RR^T=I,det(R)=1\} \tag{1}
   $$
+
+  - $RR^T=1$给具有九个参数的旋转矩阵引入了六项约束，把旋转矩阵的自由度降到了三
+
+  - det(C)=1 保证我们获得一个有效旋转(proper rotation),det(C)=-1时C称为瑕旋转(improper rotation)或者反射旋转(rotary reflection)。
 
 - 特殊欧氏群SE(3)
   $$
@@ -456,34 +471,35 @@ $$
   
   \end{array}\right]\in\mathbb{R}^{4\times4}|R\in SO(3),t\in\mathbb{R}^3 \big\} \tag{2}
   $$
-
-- 群：只有一个运算规则的集合
-
-  - 李群对加法不封闭：$R_1+R_2\notin SO(3),\ T_1+T_2\notin SE(3)$
-  - 李群对乘法封闭：$R_1R_2\in SO(3),\ T_1T_2\in SE(3)$
-    - 这是有物理意义的，矩阵的乘法意味着做了2次旋转，加法就变成了1次新的旋转的了
+  
 
 ## 2. 李代数
 
-- 每个李群都有与之对应的李代数，李代数描述了李群的局部性质（单位元附近的正切空间Tangent Space）
-  - 李代数由一个集合$\mathbb{V}$、一个数域$\mathbb{F}$和一个二元运算[,]组成。二元运算又称为**李括号**。
-  - 如果集合、数域和二元运算满足以下条件，则乘之为一个李代数$\mathfrak{g}=(\mathbb{V},\mathbb{F},[,])$
+- 每个李群都有与之对应的李代数(Lie algebra)。
+  
+  - 不同于李群，李代数由数域$\mathbb{F}$上张成的向量空间$\mathbb{V}$ 和一个二元运算符$[ , ]$构成，所以李代数构成一个向量空间
+    - 李代数的向量空间是一个**切空间**(tangent space),这个切空间与对应李群上的幺元相关联，它完全地刻画了这个李群的局部性质。
+  
+      - 幺元：$R,1\in SO(3)\Rightarrow R1=1R=R$
+  
+  - 如果集合、数域和二元运算满足以下条件，则称之为一个李代数$\mathfrak{g}=(\mathbb{V},\mathbb{F},[,])$
     - 封闭性：$\forall \mathbf{X,Y}\in\mathbb{V},[\mathbf{X,Y}]\in\mathbb{V}$
     - 双线性:$\forall \mathbf{X,Y,Z}\in\mathbb{V},a,b\in\mathbb{F},有$：
       - $[a\mathbf{X}+b\mathbf{Y},\mathbf{Z}]=a[\mathbf{X,Z}]+b[\mathbf{Y,Z}]$
       - $[\mathbf{Z},a\mathbf{X}+b\mathbf{Y}]=a[\mathbf{Z,X}]+b[\mathbf{Z,Y}]$
     - 自反性:$\forall \mathbf{X}\in\mathbb{V},[\mathbf{X,X}]=0$
     - 雅可比等价:$\forall \mathbf{X,Y,Z}\in\mathbb{V},[\mathbf{[X,[Y,Z]]}+\mathbf{[Z,[X,Y]]}+\mathbf{[Y,[Z,X]]}=0]$
+  
   - 例子：三维向量的叉积 X, 就是一种李代数，可以写作：$\mathfrak{g}=(\mathbb{R}^3,\mathbb{R},\times)$
   
 - 下面的$\phi$是怎么来的：
-  
+
   1. 任意旋转矩阵代表相继旋转，会随时间变换，所以有：$\mathbf{R}(t)\mathbf{R}(t)^T=\mathbf{I}$
-  
+
   2. 在等式两边对时间求导：$\mathbf{\dot{R}}(t)\mathbf{R}(t)^T+\mathbf{R}(t)\mathbf{\dot{R}}(t)^T=0$
-  
+
   3. 可以看出$\mathbf{\dot{R}}(t)\mathbf{R}(t)^T$是反对称矩阵，由此我们可以找到一个三维向量$\phi(t)\in\mathbb{R}^3$与之对应：$\mathbf{\dot{R}}(t)\mathbf{R}(t)^T=\phi(t)^{\wedge}$
-  
+
   4. 两边等式同乘$\mathbf{R}(t)$有：
      $$
      \mathbf{\dot{R}}(t)=\phi(t)^{\wedge}\mathbf{R}(t)=\left [\begin{array}{cccc}
@@ -492,52 +508,64 @@ $$
      -\phi_2 & \phi_1 & 0 \\
      \end{array}\right]\mathbf{R}(t) \tag{3}
      $$
-  
+
      - 每对旋转矩阵求一次导数，只需左乘一个$\phi^{\wedge}(t)$
      - 所以$\phi$反应了旋转矩阵 $\mathbf{R}$的导数性质，也就是R的李代数/R的切空间。
      - 结论：李代数是李群的切空间，由李群求导得到，表达了李群的局部性质。
-  
-- 李代数$\mathfrak{so} (3)$
+
+- 旋转$\mathbf{R}$：李代数$\mathfrak{so} (3)$
 
   - 李群$SO(3)$对应的李代数$\phi$是定义在$\mathbb{R}^3$的向量
     $$
     \mathfrak{so}(3)=\{\phi\in \mathbb{R}^3,\mathbf{\phi}=\phi^{\wedge}\in\mathbb{R}^{3\times3} \}
     $$
-  
+
     - $\phi^{\wedge}$:是将向量变成反对称矩阵的意思
-  
-  ​	
-  
+
   - 		指数映射：李代数->李群：
     $$
-    \mathbf{R}=exp(\phi^\wedge) \tag{4}
+    \mathbf{R}=exp(\phi^\wedge)=\sum_{n=0}^{\infty}\frac{1}{n!}(\phi^{\wedge})^n \tag{4}
     $$
-  
+
+    $$
+    \mathbf{T}=exp(\xi^{\wedge})=\sum_{n=0}^{\infty}\frac{1}{n!}(\xi^{\wedge})^n \tag{8}
+    $$
+
+    - 指数映射是一个**满射**(surjective-only),这说明每一个$SO(3)$中的元素都可以对应多个$\mathfrak{so}(3)$中的元素
+
   - 		对数映射：李群->李代数
     $$
     \phi=ln(\mathbf{R})^{\vee} \tag{5}
     $$
-    
+
   - 		虽然可以用泰勒展开的方式去求解4式和5式，但会非常的复杂和不太可能。
-    
-    - 对于指数映射，经过一系列推倒，可以用如下公式计算：
+
+    - 对于指数映射，4式泰勒展开后经过一系列化简，可以得到旋转矩阵$\mathbf{R}$的公式：
       $$
-      exp(\phi^{\wedge})=exp(\theta\mathbf{a}^{\wedge})=cos\theta\mathbf{I}+(1-cos\theta)\mathbf{aa}^T+sin\theta\mathbf{a}^{\wedge} \tag{6}
+      \mathbf{R}=exp(\phi^{\wedge})=exp(\theta\mathbf{a}^{\wedge})=cos\theta\mathbf{I}+(1-cos\theta)\mathbf{aa}^T+sin\theta\mathbf{a}^{\wedge} \tag{6}
       $$
-    
-      - $\phi=\theta\mathbf{a}$: 因为$\phi$是三维向量，所以可以分解为一个单位方向向量$a$和模长$\theta$
-      
-        \mathbf{Ra=a}
+
+      - $\phi=\theta\mathbf{a}$: 因为$\phi$是三维向量，所以可以用轴角表示，单位长度的旋转轴$a$和旋转的角度$\theta$。$\theta=\theta+2k\pi$所以每一个$R$有无数个对应的李代数，给角度施加限制就唯一了。
       
       - 这表明李代数$\mathfrak{so} (3)$实际上就是由所谓的**旋转向量**组成的空间
       
-    - 对于对数映射，可以利用迹的性质来计算：
+    - 对于对数映射，6式两边取迹(对角元素之和)后，可以得到旋转角度的公式：
       $$
-      \theta=arccos\frac{tr(\mathbf{R}-1)}{2} \\
+      \theta=arccos\frac{tr(\mathbf{R})-1}{2} \\
       \mathbf{Ra=a}\tag{7}
       $$
-  
-- 李代数$\mathfrak{se}(3)$
+
+  - 		一个二维例子：
+
+    ![](https://cdn.jsdelivr.net/gh/Fernweh-yang/ImageHosting@main/img/%E6%9D%8E%E7%BE%A4%E6%9D%8E%E4%BB%A3%E6%95%B0%E4%BE%8B%E5%AD%90.png)
+
+    - 		上图说明了当旋转被约束在平面上时，李群和李代数之间的关系。
+    - 		在零旋转点的附近，即$\theta_{vi}=0$，李代数的向量空间就是旋转圆的切线。
+      - 		因为(1,0)点经过旋转矩阵C变换后是$(1,\theta)$，一条线上，所以是切线。
+    - 		在旋转接近零时，李代数反映了李群的局部结构信息。
+    - 		这一个例子是约束在平面上的（只有一个轴的旋转自由度），但通常 李代数的向量空间的维度为三。换言之，图中的直线，是整个三维李代数向量空间中的一维子空间。
+
+- 位姿$\mathbf{T}$：李代数$\mathfrak{se}(3)$
 
   - 李群$SE(3)$对应的李代数$\xi$位于$\mathbb{R}^6$空间
     $$
@@ -545,37 +573,51 @@ $$
     \rho \\
     \phi  \\
     
-    \end{array}\right]\in\mathbb{R}^{6},\rho\in\mathbb{R}^3,\phi\in\mathfrak{so}(3),\xi^{\wedge}=\left [\begin{array}{cccc}
+    \end{array}\right]\in\mathbb{R}^{6},\rho\in\mathbb{R}^3,\phi\in\mathfrak{so}(3),\\ \xi^{\wedge}=\left [\begin{array}{cccc}
     \phi^{\wedge}& \rho \\
     o^T& 0  \\
     
     \end{array}\right]\in \mathbb{R}^{4\times4} \big\}
     $$
 
-    - $\xi^{\wedge}$:不是反对称矩阵的意思，但也是向量转矩阵，这里是六维向量转4x4矩阵
+    - $\xi^{\wedge}$的$\wedge$不是反对称矩阵的意思，但也是向量转矩阵，算是对$\phi的(\cdot)^\wedge$的重载，可以将$\mathbb{R}^{6}$中的元素转换为$\mathbb{R}^{4\times4}$中的元素，并保持线性性质。
 
   - 指数映射：李代数->李群
     $$
-    \mathbf{T}=exp(\xi^{\wedge}) \tag{8}
+    \mathbf{T}=exp(\xi^{\wedge})=\sum_{n=0}^{\infty}\frac{1}{n!}(\xi^{\wedge})^n \tag{8}
     $$
+    
+    - 指数映射是一个**满射**(surjective-only),这说明每一个$T\in SE(3)$中的元素都可以由$\mathfrak{se}(3)$中的不同$\xi \in \mathbb{R}^6$产生
+    
+    - 图例：
+    
+      ![](https://cdn.jsdelivr.net/gh/Fernweh-yang/ImageHosting@main/img/%E4%BD%8D%E5%A7%BF%E6%9D%8E%E4%BB%A3%E6%95%B0%E6%AF%8F%E4%B8%80%E4%B8%AA%E9%87%8F%E7%9A%84%E5%90%AB%E4%B9%89.png)
+    
+      - 改变$\xi$中的每一个分量，构建$T=exp(\xi^\wedge)$，然后用它作用于长方体的角点上，我们可以看到角点的位姿可以 被平移或旋转。把这些基本移动结合起来，可以生成任意位姿变换。
     
   - 对数映射：李群->李代数
     $$
     \xi=ln(\mathbf{T})^{\vee} \tag{9}
     $$
-    
+
   - 同样泰勒展开来计算8/9式非常复杂，不现实。
-    
-    - 对于指数映射，经过一系列推倒，可以用如下公式计算：
+
+    - 对于指数映射，泰勒展开后化简，可以得到位姿T的计算公式：
       $$
-      exp(\xi^{\wedge})=\left [\begin{array}{cccc}
+      \mathbf{T}=exp(\xi^{\wedge})=\left [\begin{array}{cccc}
+      \mathbf{R}& \mathbf{r}\\
+      o^T& 1  \\
+      \end{array}\right]=\left [\begin{array}{cccc}
       exp(\phi^{\wedge})& \mathbf{J}\rho \\
       o^T& 1  \\
-      
       \end{array}\right]\\
-      \mathbf{J}=\frac{sin\theta}{\theta}\mathbf{I}+(1-\frac{sin\theta}{\theta})\mathbf{aa}^T+\frac{1-cos\theta}{\theta}\mathbf{a}^{\wedge} \tag{10}
+      
+      \begin{align}
+      其中:\mathbf{J}&=\sum_{n=0}^{\infty}\frac{1}{(n+1)!}(\phi^{\wedge})^n\\&=\frac{sin\theta}{\theta}\mathbf{I}+(1-\frac{sin\theta}{\theta})\mathbf{aa}^T+\frac{1-cos\theta}{\theta}\mathbf{a}^{\wedge} 
+      \end{align}
+      \tag{10}
       $$
-    
+      
     - 对于对数映射，还是用迹的性质来计算：
       $$
       \theta=arccos\frac{tr(\mathbf{R})-1}{2}\\
