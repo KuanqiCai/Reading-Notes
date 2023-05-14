@@ -2,6 +2,12 @@
 
 [toc]
 
+# 零、学习资料汇总
+
+- 主体是：SLAM十四讲
+- 辅助教材：
+  - State Estimation for Robotics
+
 # 一、预备知识
 
 配套代码：https://github.com/gaoxiang12/slambook2
@@ -513,6 +519,8 @@ $$
      - 所以$\phi$反应了旋转矩阵 $\mathbf{R}$的导数性质，也就是R的李代数/R的切空间。
      - 结论：李代数是李群的切空间，由李群求导得到，表达了李群的局部性质。
 
+### 2.1 旋转的李代数
+
 - 旋转$\mathbf{R}$：李代数$\mathfrak{so} (3)$
 
   - 李群$SO(3)$对应的李代数$\phi$是定义在$\mathbb{R}^3$的向量
@@ -538,14 +546,18 @@ $$
     \phi=ln(\mathbf{R})^{\vee} \tag{5}
     $$
 
-  - 		虽然可以用泰勒展开的方式去求解4式和5式，但会非常的复杂和不太可能。
+  - 虽然可以用泰勒展开的方式去求解4式和5式，但会非常的复杂和不太可能。
 
     - 对于指数映射，4式泰勒展开后经过一系列化简，可以得到旋转矩阵$\mathbf{R}$的公式：
       $$
       \mathbf{R}=exp(\phi^{\wedge})=exp(\theta\mathbf{a}^{\wedge})=cos\theta\mathbf{I}+(1-cos\theta)\mathbf{aa}^T+sin\theta\mathbf{a}^{\wedge} \tag{6}
       $$
 
-      - $\phi=\theta\mathbf{a}$: 因为$\phi$是三维向量，所以可以用轴角表示，单位长度的旋转轴$a$和旋转的角度$\theta$。$\theta=\theta+2k\pi$所以每一个$R$有无数个对应的李代数，给角度施加限制就唯一了。
+      - $\phi=\theta\mathbf{a}$: 
+      
+        因为$\phi$是三维向量，所以可以用轴角表示，单位长度的旋转轴$a$和旋转的角度$\theta$。
+      
+        $\theta=\theta+2k\pi$所以每一个$R$有无数个对应的李代数，给角度施加限制就唯一了。
       
       - 这表明李代数$\mathfrak{so} (3)$实际上就是由所谓的**旋转向量**组成的空间
       
@@ -565,6 +577,8 @@ $$
     - 		在旋转接近零时，李代数反映了李群的局部结构信息。
     - 		这一个例子是约束在平面上的（只有一个轴的旋转自由度），但通常 李代数的向量空间的维度为三。换言之，图中的直线，是整个三维李代数向量空间中的一维子空间。
 
+### 2.2 位姿的李代数
+
 - 位姿$\mathbf{T}$：李代数$\mathfrak{se}(3)$
 
   - 李群$SE(3)$对应的李代数$\xi$位于$\mathbb{R}^6$空间
@@ -581,7 +595,9 @@ $$
     $$
 
     - $\xi^{\wedge}$的$\wedge$不是反对称矩阵的意思，但也是向量转矩阵，算是对$\phi的(\cdot)^\wedge$的重载，可以将$\mathbb{R}^{6}$中的元素转换为$\mathbb{R}^{4\times4}$中的元素，并保持线性性质。
-
+    - $\rho$: 沿着3轴的位移
+    - $\phi$: 绕着3轴的旋转
+    
   - 指数映射：李代数->李群
     $$
     \mathbf{T}=exp(\xi^{\wedge})=\sum_{n=0}^{\infty}\frac{1}{n!}(\xi^{\wedge})^n \tag{8}
@@ -610,55 +626,267 @@ $$
       \end{array}\right]=\left [\begin{array}{cccc}
       exp(\phi^{\wedge})& \mathbf{J}\rho \\
       o^T& 1  \\
-      \end{array}\right]\\
-      
-      \begin{align}
-      其中:\mathbf{J}&=\sum_{n=0}^{\infty}\frac{1}{(n+1)!}(\phi^{\wedge})^n\\&=\frac{sin\theta}{\theta}\mathbf{I}+(1-\frac{sin\theta}{\theta})\mathbf{aa}^T+\frac{1-cos\theta}{\theta}\mathbf{a}^{\wedge} 
-      \end{align}
-      \tag{10}
+      \end{array}\right]\\ \tag{10}
       $$
+      
+      其中$J$为雅可比矩阵：
+      $$
+      \begin{align}
+      \mathbf{J}&=\sum_{n=0}^{\infty}\frac{1}{(n+1)!}(\phi^{\wedge})^n\\&=\frac{sin\theta}{\theta}\mathbf{I}+(1-\frac{sin\theta}{\theta})\mathbf{aa}^T+\frac{1-cos\theta}{\theta}\mathbf{a}^{\wedge} 
+      \end{align}
+      \tag{11}
+      $$
+      
+      
+      - 雅可比矩阵在将$\mathfrak{se}(3)$中的平移分量转换为$SE(3)$中的平移分量的过程中起到了非常重要的作用，即$\mathbf{r}=\mathbf{J\rho}$
+      
+      - 除了用雅可比矩阵，也可直接级数展开10式得到类似6式的式子，来求$\mathbf{T}$:
+        $$
+        \mathbf{T}=exp(\xi^{\wedge})=\mathbf{I}+\xi^{\wedge}+(\frac{1-cos\theta}{\theta^2})(\xi^{\wedge})^2+(\frac{\theta-sin\theta}{\theta^3})(\xi^{\wedge})^2 \tag{12}
+        $$
+        
       
     - 对于对数映射，还是用迹的性质来计算：
       $$
       \theta=arccos\frac{tr(\mathbf{R})-1}{2}\\
       \mathbf{Ra}=\mathbf{a}\\
-      \mathbf{t}=\mathbf{J\rho} \tag{11}
+      \mathbf{r}=\mathbf{J\rho} \tag{13}
       $$
-      
+    
+
+### 2.3 雅可比矩阵
+
+- $\mathbf{JJ^T}$和它的逆：
+  $$
+  \begin{align}
+  \mathbf{JJ^T}&=\gamma\mathbf{I}+(1-\gamma)\mathbf{aa}^T\\
+  \mathbf{(JJ^T)^-1}&=\frac{1}{\gamma}\mathbf{I}+(1-\frac{1}{\gamma})\mathbf{aa}^T\\
+  其中: \gamma&=2\frac{1-cos\theta}{\theta^2}
+  \end{align}\tag{14}
+  $$
+
+  - $\mathbf{JJ^T}$是正定的
+
+- $\mathbf{J}$和$\mathbf{R}$的关系：
+  $$
+  \mathbf{R}=\mathbf{I}+\phi^{\wedge}\mathbf{J} \tag{15}
+  $$
+
+  - 但由于$\phi^{\wedge}$不可逆，所以不能通过这种方式求出$\mathbf{J}$
+
+### 2.4 伴随
+
+#### 2.4.1 位姿李群的伴随矩阵
+
+- 一个6x6的变换矩阵$\mathcal{T}$, 可以直接由一个4X4的变换矩阵构造而成。我们将这个6X6的矩阵称为$SE(3)$元素的伴随adjoint矩阵：
+  $$
+  \mathcal{T}=Ad(\mathbf{T})=Ad\big(\left [\begin{array}{cccc}
+  \mathbf{R} & \mathbf{r}  \\
+  \mathbf{0}^T & 1   \\
+  \end{array}\right]\big)=\left [\begin{array}{cccc}
+  \mathbf{R} & \mathbf{r}^\wedge\mathbf{R}  \\
+  \mathbf{0} & \mathbf{R}   \\
+  \end{array}\right]\tag{16}
+  $$
+
+- 将$SE(3)$中所有元素伴随矩阵的集合记为：
+  $$
+  Ad(SE(3))=\{\mathcal{T}=Ad(\mathbf{T})\ |\ \mathbf{T}\in SE(3)\} \tag{17}
+  $$
+
+  - $Ad(SE(3))$：同样是一个矩阵李群
+
+#### 2.4.2 位姿李代数的伴随矩阵
+
+同样是4x4 -> 6x6
+
+- 对于$\xi^{\wedge}\in \mathcal{se}(3)$的伴随矩阵是：
+  $$
+  ad(\xi^{\wedge})=\xi^{\curlywedge}\tag{18}
+  $$
+  其中：
+  $$
+  \xi^{\curlywedge}=\left [\begin{array}{cccc}
+  \mathbf{\rho}   \\
+  \mathbf{\phi}   \\
+  \end{array}\right]^{\curlywedge}=\left [\begin{array}{cccc}
+  \phi^{\wedge} & \rho^{\wedge}  \\
+  \mathbf{0} & \phi^{\wedge}   \\
+  \end{array}\right]\in\mathbb{R}^{6\times6},\ \ \ \rho,\phi\in\mathbb{R}^3 \tag{19}
+  $$
+
+  - $ad(\xi^{\wedge})$是一个向量空间。
+
+- $ad(\mathcal{se}(3))$是$Ad(SE(3))$的李代数
+
+#### 2.4.3 伴随矩阵的指数/对数映射
+
+- 指数映射：
+  $$
+  \begin{align}
+  \mathcal{T}&=exp(\xi^{\curlywedge})=\sum_{n=0}^{\infty}\frac{1}{n!}(\xi^{\curlywedge})^n \tag{20}\\
+  &=\sum_{n=0}^{\infty}\frac{1}{n!}\left [\begin{array}{cccc}
+  \phi^{\wedge} & \rho^{\wedge}  \\
+  \mathbf{0} & \phi^{\wedge}   \\
+  \end{array}\right]^n\\
+  &=\left [\begin{array}{cccc}
+  \mathbf{R} & \mathbf{K}  \\
+  \mathbf{0} & \mathbf{R}   \\
+  \end{array}\right]\tag{21} \\
+  \mathbf{K}&=(\mathbf{J\rho})^{\wedge}\mathbf{R} \tag{22}
+  \end{align}
+  $$
+
+  - 和$T$的12式一样，20式直接级数展开
+    $$
+    \mathcal{T}=\mathbf{I}+(\frac{2sin(\theta)-\theta cos(\theta)}{2\theta})\xi^{\curlywedge}+(\frac{4-\theta sin(\theta)-4 cos(\theta)}{2\theta^2})(\xi^{\curlywedge})^2 + (\frac{sin(\theta)-\theta cos(\theta)}{2\theta^3})(\xi^{\curlywedge})^3+(\frac{2-\theta sin(\theta)-2 cos(\theta)}{2\theta^4})(\xi^{\curlywedge})^4 \tag{23}
+    $$
+    
+
+- 对数映射：
+  $$
+  \xi=ln(\mathcal{T})^{{\curlyvee}} \tag{24}
+  $$
+
+- 不同的李群李代数之间都有可交换的关系：
+
+  ![](https://cdn.jsdelivr.net/gh/Fernweh-yang/ImageHosting@main/img/%E4%B8%8D%E5%90%8C%E6%9D%8E%E7%BE%A4%E6%9D%8E%E4%BB%A3%E6%95%B0%E4%B9%8B%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB.png)
+
+
 
 ## 3. 李代数求导与扰动模型
 
-### 3.1 BCH公式
+### 3.1 BCH公式用于旋转
 
 Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基础
 
-- **BCH公式**给出了两个李代数指数映射乘积的完整形式，其近似表达式为：
+- 利用BCH公式给出了两个旋转李代数指数映射乘积的近似表达式：
   $$
-  ln(exp(\phi_1^{\wedge})exp(\phi_2^{\wedge}))^{\vee}\approx\begin{cases}
+  ln(\mathbf{R}_1\mathbf{R}_2)^{\vee}=ln(exp(\phi_1^{\wedge})exp(\phi_2^{\wedge}))^{\vee}\approx\begin{cases}
   \mathbf{J_l}(\phi_2)^{-1}\phi_1+\phi_2 \ \ ，当\phi_1为小量 \\
-  \mathbf{J_r}(\phi_1)^{-1}\phi_2+\phi_1 \ \ ，当\phi_2为小量 \\
-  \end{cases} \tag{12}
+  \phi_1 +\mathbf{J_r}(\phi_1)^{-1}\phi_2\ \ ，当\phi_2为小量 \\
+  \end{cases} \tag{25}
   $$
 
   - 当对一个旋转矩阵$\mathbf{R}_2$(李代数为$\phi_2$)左乘一个微小旋转矩阵$\mathbf{R}_1$(李代数为$\phi_1$)时，可以近似的看作，在原有的李代数$\phi_2$上加上了一项$\mathbf{J_l}(\phi_2)^{-1}\phi_1$
   - 第二个近似描述了右乘一个微小位移的情况。
-
-  - $\bf{J}_l$为左乘BCH近似雅可比式：$\bf{J}_l=\frac{sin\theta}{\theta}\bf{I}+(1-\frac{sin\theta}{\theta})\bf{aa}^T+\frac{1-cos{\theta}}{\theta}\bf{a}^{\wedge}$
-    - 逆：$\mathbf{J}_l^{-1}=\frac{\theta}{2}cot\frac{\theta}{2}\mathbf{I}+(1-\frac{\theta}{2}cot\frac{\theta}{2})\mathbf{aa}^T-\frac{\theta}{2}\mathbf{a}^{\wedge}$
-  - $\bf{J}_r$为右乘BCH近似雅可比式：$\bf{J}_r(\phi)=\bf{J}_l(-\phi)$
   - 12式中的$\mathbf{J}(\phi)$是一个整体
+  - 雅可比矩阵的公式见2.3雅可比矩阵
   
 - 由上可总结出：
-
+  
   - 对某个旋转$R$(李代数为$\phi$)，给它左乘一个微小的旋转$\Delta\mathbf{R}$(李代数为$\Delta\phi$),那么在李群上结果为$\Delta \mathbf{R}\cdot \mathbf{R}$，在李代数上结果为$\mathbf{J}_l^{-1}(\phi)\Delta\phi+\phi$
-
+  
     即：$exp(\Delta\phi^{\wedge})exp(\phi^{\wedge})=exp((\phi+\mathbf{J}_l^{-1}(\phi)\Delta\phi)^{\wedge})$
-
+  
   - 反之，如果在李代数上进行加法，让一个$\phi$加上$\Delta \phi$,可近似为利群上带右雅可比的乘法
 
     即：$exp((\phi+\Delta \phi)^{\wedge})=exp((\mathbf{J}_l\Delta\phi)^{\wedge})exp(\phi^{\wedge})$=$exp(\phi^{\wedge})exp((\mathbf{J}_r\Delta\phi)^{\wedge})$
 
+#### 3.1.1 旋转的左右雅可比矩阵
+
+雅可比矩阵$\mathbf{J}$的计算由10式展开级数后得到：
+
+- $\bf{J}_l$为左乘BCH近似雅可比式：
+  $$
+  \bf{J}_l(\phi)=\frac{sin\theta}{\theta}\bf{I}+(1-\frac{sin\theta}{\theta})\bf{aa}^T+\frac{1-cos{\theta}}{\theta}\bf{a}^{\wedge}\tag{26}
+  $$
+
+  - $\theta=|\mathbf{\phi}|$：旋转角度
+  - $\mathbf{a}=\frac{\phi}{\theta}$：单位长度的旋转轴
+
+  $\bf{J}_l$的逆为：
+  $$
+  \mathbf{J}_l(\phi)^{-1}=\frac{\theta}{2}cot\frac{\theta}{2}\mathbf{I}+(1-\frac{\theta}{2}cot\frac{\theta}{2})\mathbf{aa}^T-\frac{\theta}{2}\mathbf{a}^{\wedge} \tag{27}
+  $$
   
+
+  - 由于当$\theta=2k\pi$时，$cot(\frac{\theta}{2})$不存在，也就是说此时$\mathbf{J}$有奇异性，不存在逆矩阵。
+
+- $\bf{J}_r$为右乘BCH近似雅可比式：
+  $$
+  \bf{J}_r(\phi)=\bf{J}_l(-\phi)=\frac{sin\theta}{\theta}\bf{I}+(1-\frac{sin\theta}{\theta})\bf{aa}^T-\frac{1-cos{\theta}}{\theta}\bf{a}^{\wedge}\tag{28}
+  $$
+  $\bf{J}_r$的逆为：
+  $$
+  \mathbf{J}_r(\phi)^{-1}=\frac{\theta}{2}cot\frac{\theta}{2}\mathbf{I}+(1-\frac{\theta}{2}cot\frac{\theta}{2})\mathbf{aa}^T+\frac{\theta}{2}\mathbf{a}^{\wedge} \tag{29}
+  $$
+  
+
+- $\bf{J}_l$和$\bf{J}_r$之间的关系：
+  $$
+  \bf{J}_l(\phi)=\mathbf{R}\bf{J}_r(\phi) \\ 
+  \bf{J}_r(\phi)=\bf{J}_l(-\phi)\tag{30}
+  $$
+
+- $\mathbf{JJ^T}$是正定的
+
+### 3.2 BCH公式用于位姿
+
+- 利用BCH公式给出了两个位姿李代数指数映射乘积的近似表达式：
+  $$
+  ln(\mathbf{T}_1\mathbf{T}_2)^{\vee}=ln(exp(\xi_1^{\wedge})exp(\xi_2^{\wedge}))^{\vee}\approx\begin{cases}
+  \mathcal{J}_l(\xi_2)^{-1}\xi_1+\xi_2 \ \ ，当\xi_1为小量 \\
+  \xi_1 +\mathcal{J}_r(\xi_1)^{-1}\xi_2\ \ ，当\xi_2为小量 \\
+  \end{cases} \tag{31}
+  $$
+
+#### 3.2.1 位姿的左右雅可比矩阵
+
+- SE(3)的左雅可比：
+  $$
+  \mathcal{J}_l(\xi)=\sum_{n=0}^{\infty}\frac{1}{(n+1)!}(-\xi^{\curlywedge})^n=\left [\begin{array}{cccc}
+  \mathbf{J}_l & \mathbf{Q}_l  \\
+  \mathbf{0} & \mathbf{J}_l   \\
+  \end{array}\right] \tag{32}
+  $$
+
+  - 其中$\mathbf{Q}_l$:
+    $$
+    \begin{align}
+    \mathbf{Q}_l(\xi)=\frac{1}{2}\rho^{\wedge}&+(\frac{\theta-sin\theta}{\theta^3})(\phi^{\wedge}\rho^{\wedge}+\rho^{\wedge}\phi^{\wedge}+\phi^{\wedge}\rho^{\wedge}\phi^{\wedge})\\
+    &+(\frac{\theta^2+2cos\theta-2}{2\theta^4})(\phi^{\wedge}\phi^{\wedge}\rho^{\wedge}+\rho^{\wedge}\phi^{\wedge}\phi^{\wedge}-3\phi^{\wedge}\rho^{\wedge}\phi^{\wedge})\\&+(\frac{2\theta-3sin\theta+\theta cos\theta}{2\theta^5})(\phi^{\wedge}\rho^{\wedge}\phi^{\wedge}\phi^{\wedge}+\phi^{\wedge}\phi^{\wedge}\rho^{\wedge}\phi^{\wedge})
+    \end{align}\tag{33}
+    $$
+
+  - 左雅可比的逆：
+    $$
+    \mathcal{J}_l^{-1}=\left [\begin{array}{cccc}
+    \mathbf{J}_l^{-1} & -\mathbf{J}_l^{-1}\mathbf{Q}_l\mathbf{J}_l^{-1}  \\
+    \mathbf{0} & \mathbf{J}_l^{-1}   \\
+    \end{array}\right] \tag{34}
+    $$
+    
+
+- SE(3)的右雅可比：
+  $$
+  \mathcal{J}_r(\xi)=\sum_{n=0}^{\infty}\frac{1}{(n+1)!}(-\xi^{\curlywedge})^n=\left [\begin{array}{cccc}
+  \mathbf{J}_r & \mathbf{Q}_r  \\
+  \mathbf{0} & \mathbf{J}_r   \\
+  \end{array}\right] \tag{35}
+  $$
+
+  - 其中$\mathbf{Q}_r$:
+    $$
+    \mathbf{Q}_r(\xi)=\mathbf{Q}_l(-\xi)=R\mathbf{Q}_l(\xi)+(\mathbf{J}_l\rho)^{\wedge}\mathbf{R}\mathbf{J}_l \tag{36}
+    $$
+
+  - 右雅可比的逆：
+    $$
+    \mathcal{J}_r^{-1}=\left [\begin{array}{cccc}
+    \mathbf{J}_r^{-1} & -\mathbf{J}_r^{-1}\mathbf{Q}_r\mathbf{J}_r^{-1}  \\
+    \mathbf{0} & \mathbf{J}_r^{-1}   \\
+    \end{array}\right] \tag{37}
+    $$
+    
+
+- 左右雅可比之间的关系：
+  $$
+  \mathcal{J}_l(\xi)=\mathcal{T}\mathcal{J}_r(\xi)\\
+  \mathcal{J}_l(-\xi)=\mathcal{J}_r(\xi) \tag{38}
+  $$
+
+- $\mathcal{JJ}^T$是正定的
 
 ### 3.2 SO(3)上李代数求导
 
