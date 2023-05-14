@@ -73,7 +73,7 @@ $$
 | \partial | $\partial$ | \varphi | $\varphi$ |
 | \xi | $\xi$ | \propto | $\propto$ |
 | \oplus | $\oplus$ | \odot | $\odot$ |
-|  |  |  |  |
+| \curlywedge | $\curlywedge$ | \curlyvee | $\curlyvee$ |
 
 # 各种等号
 
