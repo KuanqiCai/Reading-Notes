@@ -6,7 +6,7 @@
 
 - 主体是：SLAM十四讲
 - 辅助教材：
-  - State Estimation for Robotics
+  - State Estimation for Robotics： 针对第四章：李群与李代数 和 第六章：非线性优化（状态估计）
 
 # 一、预备知识
 
@@ -462,7 +462,7 @@ $$
 
 - 特殊正交群SO(3)
   $$
-  SO(3)=\{R\in \mathbb{R}^{3\times 3} |RR^T=I,det(R)=1\} \tag{1}
+  SO(3)=\{R\in \mathbb{R}^{3\times 3} |RR^T=I,det(R)=1\} \tag{1.1}
   $$
 
   - $RR^T=1$给具有九个参数的旋转矩阵引入了六项约束，把旋转矩阵的自由度降到了三
@@ -475,7 +475,7 @@ $$
   R & t \\
   0^T & 1  \\
   
-  \end{array}\right]\in\mathbb{R}^{4\times4}|R\in SO(3),t\in\mathbb{R}^3 \big\} \tag{2}
+  \end{array}\right]\in\mathbb{R}^{4\times4}|R\in SO(3),t\in\mathbb{R}^3 \big\} \tag{1.2}
   $$
   
 
@@ -512,7 +512,7 @@ $$
      0 & -\phi_3 & \phi_2 \\
      \phi_3 & 0 & -\phi_1  \\
      -\phi_2 & \phi_1 & 0 \\
-     \end{array}\right]\mathbf{R}(t) \tag{3}
+     \end{array}\right]\mathbf{R}(t) \tag{2.0}
      $$
 
      - 每对旋转矩阵求一次导数，只需左乘一个$\phi^{\wedge}(t)$
@@ -532,25 +532,25 @@ $$
 
   - 		指数映射：李代数->李群：
     $$
-    \mathbf{R}=exp(\phi^\wedge)=\sum_{n=0}^{\infty}\frac{1}{n!}(\phi^{\wedge})^n \tag{4}
+    \mathbf{R}=exp(\phi^\wedge)=\sum_{n=0}^{\infty}\frac{1}{n!}(\phi^{\wedge})^n \tag{2.1.1}
     $$
 
     $$
-    \mathbf{T}=exp(\xi^{\wedge})=\sum_{n=0}^{\infty}\frac{1}{n!}(\xi^{\wedge})^n \tag{8}
+    \mathbf{T}=exp(\xi^{\wedge})=\sum_{n=0}^{\infty}\frac{1}{n!}(\xi^{\wedge})^n \tag{2.1.2}
     $$
 
     - 指数映射是一个**满射**(surjective-only),这说明每一个$SO(3)$中的元素都可以对应多个$\mathfrak{so}(3)$中的元素
 
   - 		对数映射：李群->李代数
     $$
-    \phi=ln(\mathbf{R})^{\vee} \tag{5}
+    \phi=ln(\mathbf{R})^{\vee} \tag{2.1.3}
     $$
 
   - 虽然可以用泰勒展开的方式去求解4式和5式，但会非常的复杂和不太可能。
 
     - 对于指数映射，4式泰勒展开后经过一系列化简，可以得到旋转矩阵$\mathbf{R}$的公式：
       $$
-      \mathbf{R}=exp(\phi^{\wedge})=exp(\theta\mathbf{a}^{\wedge})=cos\theta\mathbf{I}+(1-cos\theta)\mathbf{aa}^T+sin\theta\mathbf{a}^{\wedge} \tag{6}
+      \mathbf{R}=exp(\phi^{\wedge})=exp(\theta\mathbf{a}^{\wedge})=cos\theta\mathbf{I}+(1-cos\theta)\mathbf{aa}^T+sin\theta\mathbf{a}^{\wedge} \tag{2.1.4}
       $$
 
       - $\phi=\theta\mathbf{a}$: 
@@ -564,7 +564,7 @@ $$
     - 对于对数映射，6式两边取迹(对角元素之和)后，可以得到旋转角度的公式：
       $$
       \theta=arccos\frac{tr(\mathbf{R})-1}{2} \\
-      \mathbf{Ra=a}\tag{7}
+      \mathbf{Ra=a}\tag{2.1.5}
       $$
 
   - 		一个二维例子：
@@ -600,7 +600,7 @@ $$
     
   - 指数映射：李代数->李群
     $$
-    \mathbf{T}=exp(\xi^{\wedge})=\sum_{n=0}^{\infty}\frac{1}{n!}(\xi^{\wedge})^n \tag{8}
+    \mathbf{T}=exp(\xi^{\wedge})=\sum_{n=0}^{\infty}\frac{1}{n!}(\xi^{\wedge})^n \tag{2.2.1}
     $$
     
     - 指数映射是一个**满射**(surjective-only),这说明每一个$T\in SE(3)$中的元素都可以由$\mathfrak{se}(3)$中的不同$\xi \in \mathbb{R}^6$产生
@@ -613,7 +613,7 @@ $$
     
   - 对数映射：李群->李代数
     $$
-    \xi=ln(\mathbf{T})^{\vee} \tag{9}
+    \xi=ln(\mathbf{T})^{\vee} \tag{2.2.2}
     $$
 
   - 同样泰勒展开来计算8/9式非常复杂，不现实。
@@ -626,7 +626,7 @@ $$
       \end{array}\right]=\left [\begin{array}{cccc}
       exp(\phi^{\wedge})& \mathbf{J}\rho \\
       o^T& 1  \\
-      \end{array}\right]\\ \tag{10}
+      \end{array}\right]\\ \tag{2.2.3}
       $$
       
       其中$J$为雅可比矩阵：
@@ -634,7 +634,7 @@ $$
       \begin{align}
       \mathbf{J}&=\sum_{n=0}^{\infty}\frac{1}{(n+1)!}(\phi^{\wedge})^n\\&=\frac{sin\theta}{\theta}\mathbf{I}+(1-\frac{sin\theta}{\theta})\mathbf{aa}^T+\frac{1-cos\theta}{\theta}\mathbf{a}^{\wedge} 
       \end{align}
-      \tag{11}
+      \tag{2.2.4}
       $$
       
       
@@ -642,7 +642,7 @@ $$
       
       - 除了用雅可比矩阵，也可直接级数展开10式得到类似6式的式子，来求$\mathbf{T}$:
         $$
-        \mathbf{T}=exp(\xi^{\wedge})=\mathbf{I}+\xi^{\wedge}+(\frac{1-cos\theta}{\theta^2})(\xi^{\wedge})^2+(\frac{\theta-sin\theta}{\theta^3})(\xi^{\wedge})^2 \tag{12}
+        \mathbf{T}=exp(\xi^{\wedge})=\mathbf{I}+\xi^{\wedge}+(\frac{1-cos\theta}{\theta^2})(\xi^{\wedge})^2+(\frac{\theta-sin\theta}{\theta^3})(\xi^{\wedge})^2 \tag{2.2.5}
         $$
         
       
@@ -650,7 +650,7 @@ $$
       $$
       \theta=arccos\frac{tr(\mathbf{R})-1}{2}\\
       \mathbf{Ra}=\mathbf{a}\\
-      \mathbf{r}=\mathbf{J\rho} \tag{13}
+      \mathbf{r}=\mathbf{J\rho} \tag{2.2.6}
       $$
     
 
@@ -662,14 +662,14 @@ $$
   \mathbf{JJ^T}&=\gamma\mathbf{I}+(1-\gamma)\mathbf{aa}^T\\
   \mathbf{(JJ^T)^-1}&=\frac{1}{\gamma}\mathbf{I}+(1-\frac{1}{\gamma})\mathbf{aa}^T\\
   其中: \gamma&=2\frac{1-cos\theta}{\theta^2}
-  \end{align}\tag{14}
+  \end{align}\tag{2.3.1}
   $$
 
   - $\mathbf{JJ^T}$是正定的
 
 - $\mathbf{J}$和$\mathbf{R}$的关系：
   $$
-  \mathbf{R}=\mathbf{I}+\phi^{\wedge}\mathbf{J} \tag{15}
+  \mathbf{R}=\mathbf{I}+\phi^{\wedge}\mathbf{J} \tag{2.3.2}
   $$
 
   - 但由于$\phi^{\wedge}$不可逆，所以不能通过这种方式求出$\mathbf{J}$
@@ -726,12 +726,12 @@ $$
   \end{array}\right]\big)=\left [\begin{array}{cccc}
   \mathbf{R} & \mathbf{r}^\wedge\mathbf{R}  \\
   \mathbf{0} & \mathbf{R}   \\
-  \end{array}\right]\tag{16}
+  \end{array}\right]\tag{2.4.1}
   $$
 
 - 将$SE(3)$中所有元素伴随矩阵的集合记为：
   $$
-  Ad(SE(3))=\{\mathcal{T}=Ad(\mathbf{T})\ |\ \mathbf{T}\in SE(3)\} \tag{17}
+  Ad(SE(3))=\{\mathcal{T}=Ad(\mathbf{T})\ |\ \mathbf{T}\in SE(3)\} \tag{2.4.2}
   $$
 
   - $Ad(SE(3))$：同样是一个矩阵李群
@@ -742,7 +742,7 @@ $$
 
 - 对于$\xi^{\wedge}\in \mathfrak{se}(3)$的伴随矩阵是：
   $$
-  ad(\xi^{\wedge})=\xi^{\curlywedge}\tag{18}
+  ad(\xi^{\wedge})=\xi^{\curlywedge}\tag{2.4.3}
   $$
   其中：
   $$
@@ -752,7 +752,7 @@ $$
   \end{array}\right]^{\curlywedge}=\left [\begin{array}{cccc}
   \phi^{\wedge} & \rho^{\wedge}  \\
   \mathbf{0} & \phi^{\wedge}   \\
-  \end{array}\right]\in\mathbb{R}^{6\times6},\ \ \ \rho,\phi\in\mathbb{R}^3 \tag{19}
+  \end{array}\right]\in\mathbb{R}^{6\times6},\ \ \ \rho,\phi\in\mathbb{R}^3 \tag{2.4.4}
   $$
 
   - $ad(\xi^{\wedge})$是一个向量空间。
@@ -764,7 +764,7 @@ $$
 - 指数映射：
   $$
   \begin{align}
-  \mathcal{T}&=exp(\xi^{\curlywedge})=\sum_{n=0}^{\infty}\frac{1}{n!}(\xi^{\curlywedge})^n \tag{20}\\
+  \mathcal{T}&=exp(\xi^{\curlywedge})=\sum_{n=0}^{\infty}\frac{1}{n!}(\xi^{\curlywedge})^n \tag{2.4.5}\\
   &=\sum_{n=0}^{\infty}\frac{1}{n!}\left [\begin{array}{cccc}
   \phi^{\wedge} & \rho^{\wedge}  \\
   \mathbf{0} & \phi^{\wedge}   \\
@@ -772,20 +772,20 @@ $$
   &=\left [\begin{array}{cccc}
   \mathbf{R} & \mathbf{K}  \\
   \mathbf{0} & \mathbf{R}   \\
-  \end{array}\right]\tag{21} \\
-  \mathbf{K}&=(\mathbf{J\rho})^{\wedge}\mathbf{R} \tag{22}
+  \end{array}\right]\tag{2.4.6} \\
+  \mathbf{K}&=(\mathbf{J\rho})^{\wedge}\mathbf{R} \tag{2.4.7}
   \end{align}
   $$
 
   - 和$T$的12式一样，20式直接级数展开
     $$
-    \mathcal{T}=\mathbf{I}+(\frac{2sin(\theta)-\theta cos(\theta)}{2\theta})\xi^{\curlywedge}+(\frac{4-\theta sin(\theta)-4 cos(\theta)}{2\theta^2})(\xi^{\curlywedge})^2 + (\frac{sin(\theta)-\theta cos(\theta)}{2\theta^3})(\xi^{\curlywedge})^3+(\frac{2-\theta sin(\theta)-2 cos(\theta)}{2\theta^4})(\xi^{\curlywedge})^4 \tag{23}
+    \mathcal{T}=\mathbf{I}+(\frac{2sin(\theta)-\theta cos(\theta)}{2\theta})\xi^{\curlywedge}+(\frac{4-\theta sin(\theta)-4 cos(\theta)}{2\theta^2})(\xi^{\curlywedge})^2 + (\frac{sin(\theta)-\theta cos(\theta)}{2\theta^3})(\xi^{\curlywedge})^3+(\frac{2-\theta sin(\theta)-2 cos(\theta)}{2\theta^4})(\xi^{\curlywedge})^4 \tag{2.4.8}
     $$
     
 
 - 对数映射：
   $$
-  \xi=ln(\mathcal{T})^{{\curlyvee}} \tag{24}
+  \xi=ln(\mathcal{T})^{{\curlyvee}} \tag{2.4.9}
   $$
 
 - 不同的李群李代数之间都有可交换的关系：
@@ -805,7 +805,7 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
   ln(\mathbf{R}_1\mathbf{R}_2)^{\vee}=ln(exp(\phi_1^{\wedge})exp(\phi_2^{\wedge}))^{\vee}\approx\begin{cases}
   \mathbf{J_l}(\phi_2)^{-1}\phi_1+\phi_2 \ \ ，当\phi_1为小量 \\
   \phi_1 +\mathbf{J_r}(\phi_1)^{-1}\phi_2\ \ ，当\phi_2为小量 \\
-  \end{cases} \tag{25}
+  \end{cases} \tag{3.1}
   $$
 
   - 当对一个旋转矩阵$\mathbf{R}_2$(李代数为$\phi_2$)左乘一个微小旋转矩阵$\mathbf{R}_1$(李代数为$\phi_1$)时，可以近似的看作，在原有的李代数$\phi_2$上加上了一项$\mathbf{J_l}(\phi_2)^{-1}\phi_1$
@@ -829,7 +829,7 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
 
 - $\bf{J}_l$为左乘BCH近似雅可比式：
   $$
-  \bf{J}_l(\phi)=\frac{sin\theta}{\theta}\bf{I}+(1-\frac{sin\theta}{\theta})\bf{aa}^T+\frac{1-cos{\theta}}{\theta}\bf{a}^{\wedge}\tag{26}
+  \bf{J}_l(\phi)=\frac{sin\theta}{\theta}\bf{I}+(1-\frac{sin\theta}{\theta})\bf{aa}^T+\frac{1-cos{\theta}}{\theta}\bf{a}^{\wedge}\tag{3.1.1}
   $$
 
   - $\theta=|\mathbf{\phi}|$：旋转角度
@@ -837,7 +837,7 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
 
   $\bf{J}_l$的逆为：
   $$
-  \mathbf{J}_l(\phi)^{-1}=\frac{\theta}{2}cot\frac{\theta}{2}\mathbf{I}+(1-\frac{\theta}{2}cot\frac{\theta}{2})\mathbf{aa}^T-\frac{\theta}{2}\mathbf{a}^{\wedge} \tag{27}
+  \mathbf{J}_l(\phi)^{-1}=\frac{\theta}{2}cot\frac{\theta}{2}\mathbf{I}+(1-\frac{\theta}{2}cot\frac{\theta}{2})\mathbf{aa}^T-\frac{\theta}{2}\mathbf{a}^{\wedge} \tag{3.1.2}
   $$
   
 
@@ -845,17 +845,17 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
 
 - $\bf{J}_r$为右乘BCH近似雅可比式：
   $$
-  \bf{J}_r(\phi)=\bf{J}_l(-\phi)=\frac{sin\theta}{\theta}\bf{I}+(1-\frac{sin\theta}{\theta})\bf{aa}^T-\frac{1-cos{\theta}}{\theta}\bf{a}^{\wedge}\tag{28}
+  \bf{J}_r(\phi)=\bf{J}_l(-\phi)=\frac{sin\theta}{\theta}\bf{I}+(1-\frac{sin\theta}{\theta})\bf{aa}^T-\frac{1-cos{\theta}}{\theta}\bf{a}^{\wedge}\tag{3.1.2}
   $$
   $\bf{J}_r$的逆为：
   $$
-  \mathbf{J}_r(\phi)^{-1}=\frac{\theta}{2}cot\frac{\theta}{2}\mathbf{I}+(1-\frac{\theta}{2}cot\frac{\theta}{2})\mathbf{aa}^T+\frac{\theta}{2}\mathbf{a}^{\wedge} \tag{29}
+  \mathbf{J}_r(\phi)^{-1}=\frac{\theta}{2}cot\frac{\theta}{2}\mathbf{I}+(1-\frac{\theta}{2}cot\frac{\theta}{2})\mathbf{aa}^T+\frac{\theta}{2}\mathbf{a}^{\wedge} \tag{3.1.3}
   $$
   
 - $\bf{J}_l$和$\bf{J}_r$之间的关系：
   $$
   \bf{J}_l(\phi)=\mathbf{R}\bf{J}_r(\phi) \\ 
-  \bf{J}_r(\phi)=\bf{J}_l(-\phi)\tag{30}
+  \bf{J}_r(\phi)=\bf{J}_l(-\phi)\tag{3.1.4}
   $$
 
 - $\mathbf{JJ^T}$是正定的
@@ -867,7 +867,7 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
   ln(\mathbf{T}_1\mathbf{T}_2)^{\vee}=ln(exp(\xi_1^{\wedge})exp(\xi_2^{\wedge}))^{\vee}\approx\begin{cases}
   \mathcal{J}_l(\xi_2)^{-1}\xi_1+\xi_2 \ \ ，当\xi_1为小量 \\
   \xi_1 +\mathcal{J}_r(\xi_1)^{-1}\xi_2\ \ ，当\xi_2为小量 \\
-  \end{cases} \tag{31}
+  \end{cases} \tag{3.2}
   $$
 
 #### 3.2.1 位姿的左右雅可比矩阵
@@ -877,7 +877,7 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
   \mathcal{J}_l(\xi)=\sum_{n=0}^{\infty}\frac{1}{(n+1)!}(-\xi^{\curlywedge})^n=\left [\begin{array}{cccc}
   \mathbf{J}_l & \mathbf{Q}_l  \\
   \mathbf{0} & \mathbf{J}_l   \\
-  \end{array}\right] \tag{32}
+  \end{array}\right] \tag{3.2.1}
   $$
 
   - 其中$\mathbf{Q}_l$:
@@ -885,7 +885,7 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
     \begin{align}
     \mathbf{Q}_l(\xi)=\frac{1}{2}\rho^{\wedge}&+(\frac{\theta-sin\theta}{\theta^3})(\phi^{\wedge}\rho^{\wedge}+\rho^{\wedge}\phi^{\wedge}+\phi^{\wedge}\rho^{\wedge}\phi^{\wedge})\\
     &+(\frac{\theta^2+2cos\theta-2}{2\theta^4})(\phi^{\wedge}\phi^{\wedge}\rho^{\wedge}+\rho^{\wedge}\phi^{\wedge}\phi^{\wedge}-3\phi^{\wedge}\rho^{\wedge}\phi^{\wedge})\\&+(\frac{2\theta-3sin\theta+\theta cos\theta}{2\theta^5})(\phi^{\wedge}\rho^{\wedge}\phi^{\wedge}\phi^{\wedge}+\phi^{\wedge}\phi^{\wedge}\rho^{\wedge}\phi^{\wedge})
-    \end{align}\tag{33}
+    \end{align}\tag{3.2.2}
     $$
 
   - 左雅可比的逆：
@@ -893,7 +893,7 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
     \mathcal{J}_l^{-1}=\left [\begin{array}{cccc}
     \mathbf{J}_l^{-1} & -\mathbf{J}_l^{-1}\mathbf{Q}_l\mathbf{J}_l^{-1}  \\
     \mathbf{0} & \mathbf{J}_l^{-1}   \\
-    \end{array}\right] \tag{34}
+    \end{array}\right] \tag{3.2.3}
     $$
     
 
@@ -902,12 +902,12 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
   \mathcal{J}_r(\xi)=\sum_{n=0}^{\infty}\frac{1}{(n+1)!}(-\xi^{\curlywedge})^n=\left [\begin{array}{cccc}
   \mathbf{J}_r & \mathbf{Q}_r  \\
   \mathbf{0} & \mathbf{J}_r   \\
-  \end{array}\right] \tag{35}
+  \end{array}\right] \tag{3.2.4}
   $$
 
   - 其中$\mathbf{Q}_r$:
     $$
-    \mathbf{Q}_r(\xi)=\mathbf{Q}_l(-\xi)=R\mathbf{Q}_l(\xi)+(\mathbf{J}_l\rho)^{\wedge}\mathbf{R}\mathbf{J}_l \tag{36}
+    \mathbf{Q}_r(\xi)=\mathbf{Q}_l(-\xi)=R\mathbf{Q}_l(\xi)+(\mathbf{J}_l\rho)^{\wedge}\mathbf{R}\mathbf{J}_l \tag{3.2.5}
     $$
 
   - 右雅可比的逆：
@@ -915,14 +915,14 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
     \mathcal{J}_r^{-1}=\left [\begin{array}{cccc}
     \mathbf{J}_r^{-1} & -\mathbf{J}_r^{-1}\mathbf{Q}_r\mathbf{J}_r^{-1}  \\
     \mathbf{0} & \mathbf{J}_r^{-1}   \\
-    \end{array}\right] \tag{37}
+    \end{array}\right] \tag{3.2.6}
     $$
     
 
 - 左右雅可比之间的关系：
   $$
   \mathcal{J}_l(\xi)=\mathcal{T}\mathcal{J}_r(\xi)\\
-  \mathcal{J}_l(-\xi)=\mathcal{J}_r(\xi) \tag{38}
+  \mathcal{J}_l(-\xi)=\mathcal{J}_r(\xi) \tag{3.2.7}
   $$
 
 - $\mathcal{JJ}^T$是正定的
@@ -1005,28 +1005,304 @@ Baker-Campbell-Hausdorff公式为在李代数上做微积分提供了理论基�
 
 - 定义$\mathfrak{so}(3)$的内积为：
   $$
-  <\phi_1^{\wedge},\phi_2^{\wedge}>=\frac{1}{2}tr(\phi_1^{\wedge}{\phi_2^{\wedge}}^T)=\phi_1^T\phi_2
+  <\phi_1^{\wedge},\phi_2^{\wedge}>=\frac{1}{2}tr(\phi_1^{\wedge}{\phi_2^{\wedge}}^T)=\phi_1^T\phi_2 \tag{4.1.1}
   $$
 
-- 定义两个旋转之间的差异有两种方式：
+- 定义两个旋转之间的差异有两种度量方式：
   $$
-  \phi_{12}=ln(\mathbf{C}_1^T\mathbf{C}_2)^{\vee}\\
-  \phi_{21}=ln(\mathbf{C}_2\mathbf{C}_1^T)^{\vee}
+  \phi_{12}=ln(\mathbf{R}_1^T\mathbf{R}_2)^{\vee}\\
+  \phi_{21}=ln(\mathbf{R}_2\mathbf{R}_1^T)^{\vee} \tag{4.1.2}
   $$
 
-- 两个旋转的距离可以有两种方式定义：
+- 两个旋转的**距离**可以有两种方式定义：
 
   1. 两个旋转的差的内积的平方根
-  2. 两个旋转的差的欧几 里得范数
+  2. 两个旋转的差的欧几里得范数
 
   $$
-  \phi_{12}=\sqrt{<ln(\mathbf{C}_1^T\mathbf{C}_2),ln(\mathbf{C}_1^T\mathbf{C}_2)>}=\sqrt{<\phi_{12}^{\wedge},\phi_{12}^{\wedge}>}=\sqrt{\phi_{12}^{T}\phi_{12}}=|\phi_{12}|\\
-  \phi_{21}=\sqrt{<ln(\mathbf{C}_2\mathbf{C}_1^T),ln(\mathbf{C}_2\mathbf{C}_1^T)>}=\sqrt{<\phi_{21}^{\wedge},\phi_{21}^{\wedge}>}=\sqrt{\phi_{21}^{T}\phi_{21}}=|\phi_{21}|
+  右差:\phi_{12}=\sqrt{<ln(\mathbf{R}_1^T\mathbf{R}_2),ln(\mathbf{R}_1^T\mathbf{R}_2)>}=\sqrt{<\phi_{12}^{\wedge},\phi_{12}^{\wedge}>}=\sqrt{\phi_{12}^{T}\phi_{12}}=|\phi_{12}|\\
+  左差:\phi_{21}=\sqrt{<ln(\mathbf{R}_2\mathbf{R}_1^T),ln(\mathbf{R}_2\mathbf{R}_1^T)>}=\sqrt{<\phi_{21}^{\wedge},\phi_{21}^{\wedge}>}=\sqrt{\phi_{21}^{T}\phi_{21}}=|\phi_{21}| \tag{4.1.3}
   $$
 
-  这也可以看作是两旋转角度差异的大小
+  这也可以看作是两旋转角度差异的大小。
+  
+  对旋转$\mathbf{R}=exp(\phi^{\wedge})\in SO(3)$施加一个微小扰动后，得到$\mathbf{R}'=exp((\phi+\delta\phi)^{\wedge})\in SO(3)$，他们之间的右差左差分别为：
+  $$
+  \begin{align}
+  ln(\delta\mathbf{R}_r)^{\vee}&=ln(\mathbf{R}^T\mathbf{R'})^{\vee}=ln(\mathbf{R}^Texp((\phi+\delta\phi)^{\wedge}))^\vee\\
+  &\approx ln(\mathbf{R}^T\mathbf{R}exp((\mathbf{J}_r\delta\phi)^{\wedge}))^\vee=\mathbf{J}_r\delta\phi\\
+  ln(\delta\mathbf{R}_l)^{\vee}&=ln(\mathbf{R}'\mathbf{R}^T)^{\vee}=ln(exp((\phi+\delta\phi)^{\wedge})\mathbf{R}^T)^\vee\\
+  &\approx ln(exp((\mathbf{J}_l\delta\phi)^{\wedge})\mathbf{R}\mathbf{R}^T)^\vee=\mathbf{J}_l\delta\phi
+  \end{align} \tag{4.1.4}
+  $$
+  
+- 求得$\mathbf{J}_r$和$\mathbf{J}_l$的列元素所构成的平行六面体的**体积**，即他们的行列是：
+  $$
+  det(\mathbf{J}_l)=det(\mathbf{RJ}_r)=\underbrace{det(\mathbf{R})}_1\ det(\mathbf{J}_r)=det(\mathbf{J}_r) \tag{4.1.5}
+  $$
+
+- 由上式得到旋转的无穷小量$d\mathbf{R}$:
+  $$
+  d\mathbf{R}=|det(\mathbf{J})|d\phi \tag{4.1.6}
+  $$
+
+  - 这表明无论我们使用右差或者左差，无穷小量都是相同的
+
+- 最后得到旋转的**积分方程**：
+  $$
+  \displaystyle \int_{SO(3)}f(\mathbf{R})d\mathbf{R}\rightarrow\displaystyle \int_{|\phi|<\pi}f(\phi)|det(\mathbf{J})|d\phi \tag{4.1.7}
+  $$
 
 ### 4.2 对于位姿
+
+- 定义两个位姿$SE(3)$和伴随$Ad(SE(3))$之间的差异有两种度量方式：
+  $$
+  \xi_{12}=ln(\mathbf{T}_1^{-1}\mathbf{T}_2)^{\vee}=ln(\mathcal{T}_1^{-1}\mathcal{T}_2)^{\curlyvee}\\
+  \xi_{21}=ln(\mathbf{T}_2\mathbf{T}_1^{-1})^{\vee}=ln(\mathcal{T}_2\mathcal{T}_1^{-1})^{\curlyvee} \tag{4.2.1}
+  $$
+
+- 定义$4\times4$和$6\times6$的内积为：
+  $$
+  <\xi_1^{\wedge},\xi_2^{\wedge}>=-tr(\xi_1^{\wedge}\left [\begin{array}{cccc}
+  \frac{1}{2}\mathbf{I} & \mathbf{0}  \\
+  \mathbf{0}^T & 1   \\
+  \end{array}\right]{\xi_2^{\wedge}}^T)=\xi_1^T\xi_2\\
+  <\xi_1^{\curlywedge},\xi_2^{\curlywedge}>=-tr(\xi_1^{\curlywedge}\left [\begin{array}{cccc}
+  \frac{1}{4}\mathbf{I} & \mathbf{0}  \\
+  \mathbf{0} & \frac{1}{2}\mathbf{I}   \\
+  \end{array}\right]{\xi_2^{\curlywedge}}^T)=\xi_1^T\xi_2 \tag{4.2.2}
+  $$
+
+- 位姿的**距离**通用有右差和左差：
+  $$
+  右差:\xi_{12}=\sqrt{<\xi_{12}^{\wedge},\xi_{12}^{\wedge}>}=\sqrt{<\xi_{12}^{\curlywedge},\xi_{12}^{\curlywedge}>}=\sqrt{\xi_{12}^{T}\xi_{12}}=|\xi_{12}|\\
+  左差:\xi_{21}=\sqrt{<\xi_{21}^{\wedge},\xi_{21}^{\wedge}>}=\sqrt{<\xi_{21}^{\curlywedge},\xi_{21}^{\curlywedge}>}=\sqrt{\xi_{21}^{T}\xi_{21}}=|\xi_{21}| \tag{4.2.3}
+  $$
+
+- 求得$\mathcal{J}_r$和$\mathcal{J}_l$的列元素所构成的平行六面体的**体积**，即他们的行列是：
+  $$
+  det(\mathcal{J}_l)=det(\mathcal{TJ}_r)=\underbrace{det(\mathcal{T})}_{=(det(R))^2=1}det(\mathcal{J}_r)=det(\mathcal{J}_r) \tag{4.2.4}
+  $$
+
+- 由上式得到旋转的无穷小量$d\mathbf{T}$:
+  $$
+  d\mathbf{T}=|det(\mathcal{J})|d\xi \tag{4.2.5}
+  $$
+
+- 利用这个无穷小量计算积分：
+  $$
+  \displaystyle \int_{SE(3)}f(\mathbf{T})d\mathbf{T}=\displaystyle \int_{\mathbb{R}^3,|\phi|<\pi}f(\xi)|det(\mathcal{J})|d\xi \tag{4.2.6}
+  $$
+
+## 5. 插值
+
+有时候，我们需要在两个矩阵李群之间进行插值。然而常用的线性插值方法并不适用，因为它不满足结合律（所以插值的结果不再属于群）。经典的线性插值为：$x=(1-\alpha)x_1+\alpha x_2,\alpha \in [0,1]$
+
+### 5.1 对于旋转
+
+1. 旋转的插值为：
+   $$
+   \mathbf{R}=(\mathbf{R}_2\mathbf{R}_1^T)^{\alpha}\mathbf{R}_1,\ \ \ \alpha\in[0,1] \tag{5.1.1}
+   $$
+   
+
+   - 当$\alpha=0$时，$\mathbf{R}=\mathbf{R}_1$, 当$\alpha=1$时，$\mathbf{R}=\mathbf{R}_2$
+
+2. 认为旋转矩阵是一个时间相关的函数：
+   $$
+   \mathbf{R}(t)=(\mathbf{R}(t_2)\mathbf{R}(t_1)^T)^{\alpha}\mathbf{R}(t_1),\ \ \alpha=\frac{t-t_1}{t_2-t_1} \tag{5.1.2}
+   $$
+   并强制约束角速度为常量$\omega$:
+   $$
+   \omega=\frac{1}{t_2-t_1}\phi_{21}\\
+   其中:\mathbf{R}_{21}=exp(\phi_{21}^{\wedge})=\mathbf{R}_2\mathbf{R}_1^T \tag{5.1.3}
+   $$
+   最后得到李群插值：
+   $$
+   \mathbf{R}(t)=exp((t-t_1)\omega^{\wedge})\mathbf{R}(t_1) \tag{5.1.4}
+   $$
+   李代数插值：
+   $$
+   \begin{align}
+   \phi&=ln(\mathbf{R})^{\vee}=ln((\mathbf{R}_2\mathbf{R}_1^T)^{\alpha}\mathbf{R}_1)^{\vee}\\
+   &=ln(exp(\alpha\phi_{21}^\wedge)exp(\phi_1^{\wedge}))^{\vee}\approx\alpha\mathbf{J}(\phi_1)^{-1}\phi_{21}+\phi_1
+   \end{align} \tag{5.1.5}
+   $$
+
+### 5.2 对于位姿
+
+类似于旋转定义位姿的插值方式为：
+$$
+\mathbf{T}=(\mathbf{T}_2\mathbf{T}_1^{-1})^{\alpha}\mathbf{T}_1,\ \ \ \alpha\in[0,1] \tag{5.2.1}
+$$
+李代数插值为：
+$$
+\begin{align}
+\xi&=ln(\mathbf{T})^{\vee}=ln((\mathbf{T}_2\mathbf{T}_1^{-1})^{\alpha}\mathbf{T}_1)^{\vee}\\
+&=ln(exp(\alpha\xi_{21}^\wedge)exp(\xi_1^{\wedge}))^{\vee}\approx\alpha\mathcal{J}(\xi_1)^{-1}\xi_{21}+\xi_1
+\end{align} \tag{5.2.2}
+$$
+
+## 6. 齐次坐标点
+
+- 任意$\mathbb{R}^3$的点都可以用$4\times1$的齐次坐标表达：
+  $$
+  \mathbf{P}=\left [\begin{array}{cccc}
+  sx  \\
+  sy  \\
+  sz  \\
+  s
+  \end{array}\right]=\left [\begin{array}{cccc}
+  \epsilon  \\
+  \eta  
+  \end{array}\right] \tag{6.1}
+  $$
+
+  - s为非零实数用来表示尺度
+  - $\epsilon\in\mathbb{R}^3$, $\eta$是标量
+  - 当s为0时，这个点就不能转回$\mathbb{R}^3$了，此时表示无穷远的点
+  - 齐次坐标系可以被用来描述近距离和远距离的路标点，不会带来奇异性或尺度问题
+
+- 两个操作符：
+  $$
+  \left [\begin{array}{cccc}
+  \epsilon  \\
+  \eta  
+  \end{array}\right]^{\odot}=\left [\begin{array}{cccc}
+  \eta \mathbf{I} & -\epsilon^{\wedge}  \\
+  \mathbf{0}^T &  \mathbf{0}^T
+  \end{array}\right] \ \in4\times6\\
+  
+  \left [\begin{array}{cccc}
+  \epsilon  \\
+  \eta  
+  \end{array}\right]^{\circledcirc}=\left [\begin{array}{cccc}
+  \mathbf{0} & \epsilon  \\
+  -\epsilon ^\wedge &  \mathbf{0}
+  \end{array}\right] \in 6\times4 \tag{6.2}
+  $$
+  
+- 可以得到如下恒等式：
+  $$
+  \xi^{\wedge}\mathbf{p}=\mathbf{p}^{\odot}\xi\\
+  \mathbf{p}^{T}\xi^{\wedge}=\xi^{T}\mathbf{p}^{{\circledcirc}} \tag{6.3}
+  $$
+
+  - $\xi\in\mathbb{R}^{6},\mathbf{p}\in\mathbb{R}^4$
+
+## 7. 旋转的运动学
+
+上面的6章都属于旋转的几何学，下面几何会随着时间改变，即运动学
+
+### 7.1 李群
+
+对旋转矩阵$\mathbf{R}=exp(\phi^{\wedge})$有李群的运动学方程（泊松方程）：
+$$
+\dot{\mathbf{R}}=\omega^{\wedge}\mathbf{R}\\
+或\ \omega^{\wedge}=\dot{\mathbf{R}}\mathbf{R}^{T} \tag{7.1.1}
+$$
+
+- $\omega$是角速度。
+
+- 由于基于旋转矩阵，所以这个运动学方程没有奇异性，但有正交矩阵的约束
+
+### 7.2 李代数
+
+对$\mathbf{R}=exp(\phi^{\wedge})$求导后，李代数下的运动学表达为：
+$$
+\omega=\mathbf{J}\dot{\phi}\\
+或\dot{\phi}=\mathbf{J}^{-1}\omega \tag{7.2.1}
+$$
+
+- $\omega$是角速度。
+- J是左雅可比矩阵$\bf{J}_l(\phi)=\frac{sin\theta}{\theta}\bf{I}+(1-\frac{sin\theta}{\theta})\bf{aa}^T+\frac{1-cos{\theta}}{\theta}\bf{a}^{\wedge}\tag{3.1.1}$
+- 由于左雅可比矩阵在$\theta=2k\pi$出不存在逆，所以相比李群有奇异性，但没有正交约束
+
+## 8. 位姿的运动学
+
+### 8.1 李群
+
+- 变换矩阵可以写成如下形式：
+  $$
+  \mathbf{T}=exp(\xi^{\wedge})=\left [\begin{array}{cccc}
+  \mathbf{R}& \mathbf{r}\\
+  o^T& 1  \\
+  \end{array}\right]=\left [\begin{array}{cccc}
+  exp(\phi^{\wedge})& \mathbf{J}\rho \\
+  o^T& 1  \\
+  \end{array}\right]\\ \tag{8.1.1}
+  $$
+
+  - 其中$\xi=\left [\begin{array}{cccc}
+    \rho \\
+    \phi  \\
+    \end{array}\right]$
+
+- 旋转和平移分开写的运动学方程为：
+  $$
+  \dot{\mathbf{r}}=\omega^{\wedge}\mathbf{r}+\mathcal{v}\\
+  \dot{\mathbf{R}}=\omega^{\wedge}\mathbf{R}\tag{8.1.2}
+  $$
+
+  - $\mathcal{v}$和$\omega$分别为平移速度和旋转速度
+
+- 于是变换矩阵对应的运动方程为：
+  $$
+  \dot{\mathbf{T}}=\varpi^{\wedge}\mathbf{T}\\
+  或\ \varpi^{\wedge}=\dot{\mathbf{T}}\mathbf{T}^{-1} \tag{8.1.3}
+  $$
+
+  - 其中$\varpi=\left [\begin{array}{cccc}
+    \mathcal{v} \\
+    \omega  \\
+    \end{array}\right]$​是广义速度(generalized velocity)
+- 这些等式都是非奇异的，但都有正交约束
+
+### 8.2 李代数
+
+- 对$\mathbf{T}=exp(\xi^{\wedge})$求导后，可以得到李代数的运动学方程为：
+  $$
+  \varpi=\mathcal{J}\dot{\xi}\\
+  或\ \dot{\xi}=\mathcal{J}^{-1}\varpi \tag{8.2.1}
+  $$
+  
+
+- 此时不再受到正交约束
+
+### 8.3 一种混合方法
+
+通过组合$\dot{\mathbf{r}}$和$\dot{\phi}$有：
+$$
+\left [\begin{array}{cccc}
+\dot{\mathbf{r}} \\
+\dot{\phi} \\
+\end{array}\right]=\left [\begin{array}{cccc}
+\mathbf{I} & -\mathbf{r}^{\wedge}\\
+\mathbf{0} & \mathbf{J}^{-1} \\
+\end{array}\right]\left [\begin{array}{cccc}
+v\\
+\omega \\
+\end{array}\right]
+$$
+
+- 这种方法仍然由于$\mathbf{J}^{-1}$的存在，具有奇异性，但是不再需要估计 Q，并且避免了积分之后，需要进行$r=\mathbf{J}\rho$这一转换
+- 同时，该方法也不存在约束条件。
+
+### 8.4 运动学
+
+见书，用到时再记笔记
+
+
+
+## 9. 旋转的线性化
+
+关于李群和李代数的运动学方程，可以在它们的标称形式上施加扰动（即线性化）
+
+见书，用到时再记笔记
+
+## 10.位姿的线性化
+
+见书，用到时再记笔记
 
 # 五、相机与图像
 
