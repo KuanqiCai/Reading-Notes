@@ -74,6 +74,10 @@ $$
 | \xi | $\xi$ | \propto | $\propto$ |
 | \oplus | $\oplus$ | \odot | $\odot$ |
 | \curlywedge | $\curlywedge$ | \curlyvee | $\curlyvee$ |
+| \circledcirc | $\circledcirc$ |  |  |
+|  |  |  |  |
+|  |  |  |  |
+|  |  |  |  |
 
 # 各种等号
 
