@@ -80,3 +80,27 @@
 - 根据官网得到安装命令：
 
   `conda install pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia`
+
+
+
+# 6.多版本cuda切换
+
+1. 安装第二个[cuda](https://developer.nvidia.com/cuda-toolkit-archive)版本时，选择runfile(local)安装
+
+2. cudnn如果是11.x,12.x这样的大版本不同，也要安装对应的cudnn
+
+3. 在.bashrc中选择使用哪个cuda:
+
+   ```
+   # cuda 12.1
+   # export PATH="/usr/local/cuda-12.1/bin:$PATH"
+   # export LD_LIBRARY_PATH="/usr/local/cuda-12.1/lib64:$LD_LIBRARY_PATH"
+   # export CUDA_HOME=/usr/local/cuda-12.1
+   
+   # cuda 11.8
+   export PATH="/usr/local/cuda-11.8/bin:$PATH"
+   export LD_LIBRARY_PATH="/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH"
+   export CUDA_HOME=/usr/local/cuda-11.8
+   ```
+
+   
