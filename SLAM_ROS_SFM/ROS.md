@@ -1,3 +1,31 @@
+# 零、ROS编程环境设置
+
+- VS-Code找不到头文件：
+
+  workspace目录下创建 .vscode/c_cpp_properties.json ,然后填入:
+
+  ```json
+  {
+      "configurations": [
+          {
+              "name": "Linux",
+              "includePath": [
+                  "${workspaceFolder}/**",
+                  "/opt/ros/noetic/include"	//主要是填入头文件所在的位置
+              ],
+              "defines": [],
+              "compilerPath": "/usr/bin/gcc",
+              "cStandard": "c17",
+              "cppStandard": "gnu++14",
+              "intelliSenseMode": "linux-gcc-x64"
+          }
+      ],
+      "version": 4
+  }
+  ```
+
+   
+
 # 一、ROS基础
 
 ## *一些使用技巧
