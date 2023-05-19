@@ -23,8 +23,16 @@
       "version": 4
   }
   ```
+  
+- CMakeLists.txt必须确保如下顺序：
 
-   
+  ```cmake
+  find_package()
+  catkin_package()
+  include_directories()
+  add_executable()
+  target_link_libraries()
+  ```
 
 # 一、ROS基础
 
