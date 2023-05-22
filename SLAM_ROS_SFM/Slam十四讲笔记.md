@@ -4532,7 +4532,7 @@ ICP存在唯一解和无穷多解的情况，唯一解时，只要能找到极�
   1. **预测**：
      $$
      \check{\mathbf{x}}_k=f(\hat{\mathbf{x}}_{k-1},\mathbf{u}_k)\\
-     \check{\mathbf{P}}_k=\mathbf{F}\hat{\mathbf{P}}_{k-1}\mathbf{F}^T+\mathbf{R}_k \tag{9} 
+     \check{\mathbf{P}}_k=\mathbf{F}\hat{\mathbf{P}}_{k-1}\mathbf{F}^T+\mathbf{R}_k \tag{9}
      $$
 
   2. **更新**：
@@ -4545,7 +4545,7 @@ ICP存在唯一解和无穷多解的情况，唯一解时，只要能找到极�
      - 然后计算后验概率分布：
        $$
        \hat{\mathbf{x}}_k=\check{\mathbf{x}}_k+\mathbf{K}_k(\mathbf{z}_k-h(\check{\mathbf{x}}_k))\\
-       \hat{\mathbf{P}}_k=(\mathbf{I}-\mathbf{K}_k\mathbf{H})\check{\mathbf{P}}_k \tag{8}
+       \hat{\mathbf{P}}_k=(\mathbf{I}-\mathbf{K}_k\mathbf{H})\check{\mathbf{P}}_k \tag{11}
        $$
        
 
@@ -4565,6 +4565,54 @@ EKF有着如下局限性：
 
 
 ## 2. BA与图优化
+
+- 什么是Bundle Adjustment（光束法平差/捆绑调整）：
+
+  - 从视觉图像中提炼出最优的3D模型和相机参数(内外参)。
+
+  - 考虑从任意特征点发射出来的几束光线(Bundles of light rays)，他们会在几个相机的成像平面上变成像素或是检测到的特征点。
+
+    如果我们调整(adjustment)各相机姿态和各特征点的空间位置，使得这些光线最终收束到相机的光心，就称为BA。
+
+### 2.1 投影模型和BA代价函数
+
+- 从一个世界坐标系中的点$p$出发，把相机内外参数和畸变都考虑近来，最后投影成像素坐标的示意图：
+
+  ![](https://cdn.jsdelivr.net/gh/Fernweh-yang/ImageHosting@main/img/%E6%8A%95%E5%BD%B1%E5%9D%90%E6%A0%87%E8%AE%A1%E7%AE%97.png)
+
+  - 步骤：
+
+    1. 由外参$\mathbf{R},\mathbf{t}$将世界坐标$p$转为相机坐标$p'$
+
+    2. 将$p'$投至归一化平面，得到归一化坐标$p_c=[u_c,v_c,1]$
+
+    3. 去除由于归一化引起的畸变，得到$u'_c,v'_c$
+
+    4. 根据内参$f_x,f_y,c_x,c_y$计算得到像素坐标$u_s,v_s$
+
+  - 这个过程也就是前面说的**观测方程**$z=h(x,y)$
+  
+    位置x在这里指的是相机的位姿，即外参$\mathbf{R,t}$,李群为$\mathbf{T}$。
+  
+    路标y即三维点$p$。
+  
+    观测数据z是像素坐标$z=[u_s,v_s]^T$
+  
+- 从最小二乘法的角度来考虑，此次观测的**误差**为：
+  $$
+  \mathbf{e}=\mathbf{z}-h(\mathbf{T},\mathbf{p}) \tag{1}
+  $$
+
+- 整体的**代价函数**为：
+  $$
+  \frac{1}{2}\sum_{i=1}^m\sum_{j=1}^n||\mathbf{e}_{ij}||^2=\frac{1}{2}\sum_{i=1}^m\sum_{j=1}^n||\mathbf{z}_{ij}-h(\mathbf{T}_i,\mathbf{p}_j)||^2 \tag{2}
+  $$
+
+  - $\mathbf{z}_{ij}$为在位姿$\mathbf{T}_i$处观察路标$\mathbf{p}_j$产生的数据。
+
+  **对2式这个最小二乘问题进行求解，相当于对位姿和路标同时做了调整，也就是所诶的BA**
+
+### 2.2 BA的求解
 
 # 十、后端优化：位姿图
 
