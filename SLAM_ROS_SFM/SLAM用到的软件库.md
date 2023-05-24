@@ -315,7 +315,20 @@ int main(int argc, char** argv){
 }
 ```
 
+## 4. EigenPy安装:
 
+Eigen的python版本：[官网](https://github.com/stack-of-tasks/eigenpy)
+
+```shell
+# 1. Add robotpkg as source repository to apt:
+sudo sh -c "echo 'deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -cs) robotpkg' >> /etc/apt/sources.list.d/robotpkg.list"
+# 2. Register the authentication certificate of robotpkg:
+curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key | sudo apt-key add -
+# 3. fetch the package descriptions:
+sudo apt-get update
+# 4. Install
+sudo apt install robotpkg-py35-eigenpy
+```
 
 # Sophus库
 
@@ -1332,3 +1345,64 @@ doxygen doxy.config
 ```
 
 然后生成的html文件夹中找到index.html，就是文档了。
+
+# Boost库
+
+Boost是一个功能强大、构造精巧、跨平台、开源并且完全免费的C++程序库，在1998年由Beman G.Dawes发起倡议并建立。使用了许多现代C++编程技术，内容涵盖字符串处理、正则表达式、容器与数据结构、并发编程、函数式编程、泛型编程、设计模式实现等许多领域，极大地丰富了C++的功能和表现力，能够使C++软件开发更加简洁、优雅、灵活和高效。
+
+Boost库可以与C++标准库完美共同工作，并且为其提供扩展功能。大部分Boost库功能的使用之需要包括相应的头文件即可，少数需要连接库。
+
+[官方文档](https://www.boost.org/doc/libs/1_82_0/)
+
+## 1. 安装
+
+1. 从[官网](https://www.boost.org/users/download/)下载源代码
+
+2. 安装所有的库：
+
+   ```
+   tar xvf boost_1_82_0.tar.gz
+   
+   cd boost_1_82_0
+   
+   ./boostrap.sh
+   ./b2 --buildtype=complete install
+   ```
+
+3. 安装特定的库
+
+   ```shell
+   ./b2 --show-libraries 	# 看看boost都有哪些库
+   sudo ./b2 --with-filesystem --with-python --buildtype=complete install	#因为pinocchio源码依赖于python和filesystems，所以我只安装这2个
+   ```
+
+   - 但在安装pinocchio时，说缺xx boost库，所以还是直接全部安装吧。。
+
+## 2. 使用:
+
+在安装环境后，使用大部分的Boost库只需要在自己的源代码里包含对应库的头文件即可。如：
+
+```c++
+#include <boost/python.hpp>
+#include <boost/python/list.hpp>
+#include <boost/python/module.hpp>
+#include <boost/assert.hpp>
+```
+
+
+
+# Pinocchio库
+
+Pinocchio 是一个 C++ 库，用于动力学建模和仿真机器人系统。它提供了一个灵活而强大的框架，用于描述和模拟复杂的多体动力学系统，特别适用于机器人、机械系统和生物力学模型。可以1.动力学建模 2.运动学计算 3.动力学计算 4.优化和控制 5.ROS集成
+
+
+
+## 1. 源码安装
+
+[官网教程](https://stack-of-tasks.github.io/pinocchio/download.html)
+
+依赖过于复杂，放弃（或许放弃后面那些可选依赖会容易很多）
+
+## 2. 用robotpkg安装
+
+[官网教程](https://stack-of-tasks.github.io/pinocchio/download.html)
