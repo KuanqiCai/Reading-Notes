@@ -1761,9 +1761,11 @@ $$
 
 - 求7式右侧关于$\Delta x$的导数并令其为0,得到**增量方程**如下：
   $$
-  \mathbf{J}(x)f(x)+\mathbf{J}(x)\mathbf{J}^T(x)\Delta x=0\\
-  \underbrace{\mathbf{J}(x)\mathbf{J}^T(x)}_{H(x)}\Delta x=\underbrace{-\mathbf{J}(x)f(x)}_{g(x)} \tag{8}\\
-  H\Delta x=g
+  \begin{aligned}
+  \mathbf{J}(x)f(x)+\mathbf{J}(x)\mathbf{J}^T(x)\Delta x&=0\\
+  \underbrace{\mathbf{J}(x)\mathbf{J}^T(x)}_{H(x)}\Delta x&=\underbrace{-\mathbf{J}(x)f(x)}_{g(x)} \\
+  H\Delta x&=g
+  \end{aligned}\tag{8}
   $$
 
   - 增量方程是关于$\Delta x$的线性方程组
@@ -4613,6 +4615,210 @@ EKF有着如下局限性：
   **对2式这个最小二乘问题进行求解，相当于对位姿和路标同时做了调整，也就是所诶的BA**
 
 ### 2.2 BA的求解
+
+2.1的2式显然是一个非线性方程，需要用第六章中的非线性优化方法来优化它。
+
+- 根据非线性优化的思想，我们需要从某个初始值开始，不断地寻找下降方向$\Delta x$，来找到目标函数的最优解，即不断求解增量方程（第六章2.2的8式[[Slam十四讲笔记#2.2 高斯牛顿法：]]）:
+  $$
+  \mathbf{H}\Delta x=g \tag{1}
+  $$
+  
+- 尽管误差项(2.1的1式)都是针对单个位姿和路标的，但在整体BA目标函数上，自变量应该定义成所有待优化的变量:
+  $$
+  \mathbf{x}=[\mathbf{T}_1,\cdots,\mathbf{T}_m,\mathbf{p}_1,\cdots,\mathbf{p}_n]^T\tag{2}
+  $$
+  
+- 因此这里的增量方程$\Delta x$也是对整体自变量的增量，从而最小二乘法(第六章 2)的目标函数为：
+  $$
+  \frac{1}{2}||f(x+\Delta x)||^2\approx\frac{1}{2}\sum_{i=1}^m\sum_{j=1}^n||e_{ij}+\mathbf{F}_{ij}\Delta \xi_i+\mathbf{E}_{ij}\Delta p_j||^2 \tag{3}
+  $$
+
+  - $\mathbf{F}_{ij}$：整个代价函数(2.1的2式)在当前状态下对相机姿态的偏导，具体展开式见[[Slam十四讲笔记#七、视觉里程计：特征点法#6.3 最小化重投影误差(BA,非线性优化法)|第七章6.3的4式]]
+  - $\mathbf{E}_{ij}$：整个代价函数(2.1的2式)对路标点位置的偏导，具体展开式见[[Slam十四讲笔记#七、视觉里程计：特征点法#6.3 最小化重投影误差(BA,非线性优化法)|第七章6.3的5式]]
+  
+- 将相机位姿变量放在一起:$x_c=[\xi_1,\xi_2,\cdots,\xi_m]^T\in\mathbb{R}^{6m}$。空间点(路标点)变量放一起$x_p=[p_1,p_2,\cdots,p_n]^T\in\mathbb{R}^{3n}$。s
+
+  3式由此从多个小型二次项和简化为矩阵形式：
+  $$
+  \frac{1}{2}||f(x+\Delta x)||^2=\frac{1}{2}||\mathbf{e}+\mathbf{F}\Delta \mathbf{x}_c+\mathbf{E}\Delta \mathbf{x}_p||^2 \tag{4}
+  $$
+
+  - 雅可比矩阵$\mathbf{E/F}$是整体目标函数对整体变量的导数，是一个很大的矩阵，这个矩阵又由每个误差项的导数矩阵$\mathbf{E}_{ij}，\mathbf{F}_{ij}$组合而成。
+
+- 4式也即[[Slam十四讲笔记#六、非线性优化#2.2 高斯牛顿法：|第六章2.2的6式]]
+
+  由于我们在3式中，将变量归类成了位姿和空间点两种，所以雅可比矩阵也被分块为：
+  $$
+  \mathbf{J}=[\mathbf{F}\ \mathbf{E}] \tag{5}
+  $$
+  从而高斯牛顿法的海塞矩阵H为：
+  $$
+  \mathbf{H}=\mathbf{J}^T\mathbf{J}=\left [\begin{array}{cccc}
+  \mathbf{F}^T\mathbf{F} & \mathbf{F}^T\mathbf{E} \\
+  \mathbf{E}^T\mathbf{F} & \mathbf{E}^T\mathbf{E}   \\
+  \end{array}\right] \tag{6}
+  $$
+  如果是L-M方法，$\mathbf{H}=\mathbf{J}^T\mathbf{J}+\lambda\mathbf{I}$
+
+### 2.3 稀疏性和边缘化
+
+计算2.2的6式的逆需要大量的计算资源，幸好矩阵$\mathbf{H}$具有稀疏结构，这个结构可以自然地、显示地用图优化来表示。
+
+- $\mathbf{H}$矩阵地稀疏性由雅可比矩阵$\mathbf{J}(x)引起$：代价函数中的某一个误差项$\mathbf{e}_{ij}$只描述了在$\mathbf{T}_i$看到$\mathbf{p}_j$这件事，因此只涉及第i个相机位姿和第j个路标点，对其余部分的变量的导数自然就是0了，因此该项的雅可比矩阵可以写成：
+  $$
+  \mathbf{J}_{ij}(\mathbf{x})=(\mathbf{0}_{2\times6},\cdots,\mathbf{0}_{2\times6},\frac{\partial\mathbf{e}_{ij}}{\partial\mathbf{T}_i},\mathbf{0}_{2\times6},\cdots,\mathbf{0}_{2\times3},\cdots,\mathbf{0}_{2\times3},\frac{\partial\mathbf{e}_{ij}}{\partial\mathbf{p}_j},\mathbf{0}_{2\times3},\cdots,\mathbf{0}_{2\times3})\tag{1}
+  $$
+
+  - $\mathbf{0}_{2\times6},\mathbf{0}_{2\times3}$分别表示维度为2x6和2x3的零矩阵。
+  - $\frac{\partial\mathbf{e}_{ij}}{\partial\mathbf{T}_i}$：该误差项对位姿的偏导维度为2x6
+  - $\frac{\partial\mathbf{e}_{ij}}{\partial\mathbf{p}_j}$：该误差项对路标点的偏导维度为2x3
+
+  - 除了上面这2个地方，其他地方都是零。这体现了该误差项与其他路标和轨迹无关的特性。
+  - 从图优化的角度来说，这条观测边(误差项)只和这两个顶点(优化变量)有关。
+
+- 每个误差项的雅可比矩阵$\mathbf{J}_{ij}(\mathbf{x})$对$\mathbf{H}$的贡献如图所示：
+
+  ![](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/202305260158513.png)
+
+  <center style="color:#C125C0C0">图1</center>
+
+  - 当某个误差项$\mathbf{J}$具有稀疏性时(只在i,j处非0)，它对$\mathbf{H}=\sum_{i.j}\mathbf{J}_{ij}^T\mathbf{J}_{ij}$的贡献同样也具有稀疏性(在ii,ij,ji,jj四个地方非0)
+
+    注意：i在所有相机位姿中取值，j在所有路标点中取值
+
+  - $\mathbf{H}$因此可以分成四块：
+    $$
+    \mathbf{H}=\left [\begin{array}{cccc}
+    \mathbf{H}_{11} & \mathbf{H}_{12}    \\
+    \mathbf{H}_{21} & \mathbf{H}_{22}   \\
+    \end{array}\right] \tag{2}
+    $$
+
+    - $\mathbf{H}_{11}$：不管i,j怎么变，都是对角阵，只在$\mathbf{H}_{ii}$处有非零块。
+    - $\mathbf{H}_{22}$：同样是对角阵，只在$\mathbf{H}_{jj}$处有非零块
+    - $\mathbf{H}_{12}$和$\mathbf{H}_{21}$可能是西苏的也可能是稠密的，由具体的观测数据确定
+
+- 考虑一个场景：2个相机位姿$(C_1,C_2)$和6个路标点$(P_1,P_2,P_3,P_4,P_5,P_6)$，$C_1$可以观测到$P_1,P_2,P_3,P_4$。$C_2$可以观测到$P_3,P_4,P_5,P_6$。
+
+  相机$C_1$对路标点$P_1$的误差$e_{11}$的雅可比矩阵$J_{11}$的稀疏矩阵为：
+  $$
+  \mathbf{J}_{11}=\frac{\partial\mathbf{e}_{11}}{\partial\mathbf{x}}=(\frac{\partial\mathbf{e}_{11}}{\partial\mathbf{\xi}_1},\mathbf{0}_{2\times6},\frac{\partial\mathbf{e}_{11}}{\partial\mathbf{p}_1},\mathbf{0}_{2\times3},\mathbf{0}_{2\times3},\mathbf{0}_{2\times3},\mathbf{0}_{2\times3},\mathbf{0}_{2\times3}) \tag{3}
+  $$
+  它的稀疏图案可以表达为：
+
+  ![image-20230526030111834](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/202305260301935.png)
+
+  <center style="color:#C125C0C0">图2</center>
+
+  它对应的H矩阵稀疏情况可以得到下图所示：
+
+  ![image-20230526025558601](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/202305260255713.png)
+
+  <center style="color:#C125C0C0">图3</center>
+
+  可以发现：
+
+  - 矩阵$\mathbf{H}$有8x8个矩阵块
+
+  - 非对角线上的矩阵块如果非0，就在对应的变量之间存在一条边，如上图的红色块。
+
+    所以非对角线的非零块可以理解为：对应的两个变量之间存在约束。
+
+- 更一般的，如果有m个相机位姿，n个路标点，我们可以发现的$\mathbf{H}$矩阵都具有下面这种**稀疏结构**
+
+  ![image-20230526030721552](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/202305260307657.png)
+
+  <center style="color:#C125C0C0">图4</center>
+
+  - 它的形状和图3一致，因为路标点n通常远大于位姿点m而右下角远比左上角大得多。非对角线部分分布着散乱的观测数据。
+  - $B$区域的对角块矩阵，每个矩阵都是方阵，维度即相机位姿的参数6x6，矩阵个数是相机位姿的个数。
+  - $C$区域的对角块矩阵，每个矩阵都是方阵，维度即路标点的参数3x3，矩阵个数是相路标点的个数。
+
+- **Schur消元**可以利用$\mathbf{H}$矩阵的这种稀疏结构加速计算
+
+  1. 首先$\mathbf{H}$矩阵按照图4划分成这4个区域后，增量方程$H\Delta x=g$也就变成了如下线性方程组：
+     $$
+     \left [\begin{array}{cccc}
+     \mathbf{B} & \mathbf{E}  \\
+     \mathbf{E}^T & \mathbf{C}   \\
+     \end{array}\right]\left [\begin{array}{cccc}
+     \Delta x_c \\
+     \Delta x_p
+     \end{array}\right]=\left [\begin{array}{cccc}
+     \mathbf{v} \\
+     \mathbf{w} 
+     \end{array}\right]\tag{4}
+     $$
+
+  2. 由于B,C区域的矩阵是方阵，而方阵求逆比普通矩阵方便很多，所以我们对4式进行高斯消元，来消去普通矩阵的区域E
+     $$
+     \left [\begin{array}{cccc}
+     \mathbf{I} & -\mathbf{EC}^{-1}  \\
+     \mathbf{0} & \mathbf{I}   \\
+     \end{array}\right]\left [\begin{array}{cccc}
+     \mathbf{B} & \mathbf{E}  \\
+     \mathbf{E}^T & \mathbf{C}   \\
+     \end{array}\right]\left [\begin{array}{cccc}
+     \Delta x_c \\
+     \Delta x_p
+     \end{array}\right]=\left [\begin{array}{cccc}
+     \mathbf{I} & -\mathbf{EC}^{-1}  \\
+     \mathbf{0} & \mathbf{I}   \\
+     \end{array}\right]\left [\begin{array}{cccc}
+     \mathbf{v} \\
+     \mathbf{w} 
+     \end{array}\right]\tag{4}
+     $$
+     整理后，得到：
+     $$
+     \left [\begin{array}{cccc}
+     \mathbf{B}-\mathbf{EC}^{-1}\mathbf{E}^T & \mathbf{0}  \\
+     \mathbf{E}^T & \mathbf{C}   \\
+     \end{array}\right]\left [\begin{array}{cccc}
+     \Delta x_c \\
+     \Delta x_p
+     \end{array}\right]=\left [\begin{array}{cccc}
+     \mathbf{v}-\mathbf{E}\mathbf{C}^{-1}\mathbf{w} \\
+     \mathbf{w}
+     \end{array}\right]\tag{5}
+     $$
+
+  3. 得到5式第一部分展开后可以直接求出$\Delta x_c$:
+     $$
+     \left [\begin{array}{cccc}
+     \mathbf{B}-\mathbf{EC}^{-1}\mathbf{E}^T 
+     \end{array}\right]\Delta x_c=\mathbf{v}-\mathbf{E}\mathbf{C}^{-1}\mathbf{w}\tag{6}
+     $$
+
+  4. 最后将$\Delta x_c$代回5式，即可求出$\Delta x_p$
+     $$
+     \Delta x_p=\mathbf{C}^{-1}(\mathbf{w}-\mathbf{E}^T)\Delta x_c\tag{7}
+     $$
+
+  5. 
+
+  相比直接求解线性方程组4式，schur消元的优势在于：
+
+  - 在消元过程中C区域的矩阵由于是方阵，他们的逆也更容易求出来
+  - 6，7式要求的逆也都是C，所以很容易求解
+
+- 对$\mathbf{H}$矩阵进行Schur消元后，得到$\mathbf{S}$矩阵，它的稀疏状态为：
+
+  ![image-20230526034959336](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/202305260349451.png)
+
+  <center style="color:#C125C0C0">图5</center>
+
+  S矩阵和H矩阵一样同样具有物理意义
+
+  - S矩阵的非对角线上的非零矩阵块，表示了该处对应的两个相机变量之间存在共同观测的路标点，反之则表示两相机位姿之间没有共同观测的路标点
+
+    比如图5的$S_{14},S_{24}$不为0，表示相机在位姿$C_1和C_4$，$C_2和C_4$之间有共同观测点
+
+    而$S_{34}=0$，表示位姿$C_3和C_4$之间没有共同的观测点
+
+  - 在ORB-SLAM中的Loacl Mapping环节，做BA时，会特意选择具有共同观测的帧作为关键帧。这时schur消元后的S矩阵式稠密矩阵。
+
+  - 但在其他一些方法如DSO,OKVIS等使用滑动窗口(Sliding Windows)方法，就要每一帧都做BA，这时S矩阵就要求用一些特殊手段保证稀疏性了。
 
 # 十、后端优化：位姿图
 
