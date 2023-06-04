@@ -1,3 +1,25 @@
+# 如何卸载库
+
+## 1. 对于make install
+
+- 方法一：
+
+  **build目录下，执行`make uninstall`。**
+
+  make的原理是执行Makefile文件里的指令，make的基本用处是自动根据makefile里的指令来编译源文件。它还可以用来做比如安装软件，卸载软件等事情，但前提是作者在makefile里写了。
+
+  然后用make install的话，make程序就会按照上面install：后面的指令< commands >执行安装，uninstall也是一样的道理，大部分的作者会写有卸载的部分，这时只要简单地执行make unistall就可以；如果作者懒没有写，可参考方法二，自动查找删除已安装文件。
+
+- 方法二：
+
+  **build目录下，执行` xargs rm < install_manifest.txt`**
+
+  make install之后，build目录下会有一个install_mainfest.txt的文件, 记录了安装的所有内容及路径，
+
+  执行 xargs rm < install_manifest.txt 就可以了。
+
+  如果没有这个文件，可以自己重新make install，从log中过滤出install的安装路径信息，保存到unistall.txt中，再执行xargs rm < unistall.txt即可。
+
 # Eigen库
 
 [官方教程](https://eigen.tuxfamily.org/dox/GettingStarted.html)
@@ -341,19 +363,14 @@ sudo apt install robotpkg-py35-eigenpy
 1. 安装依赖库fmt
 
    ```shell
-   # 最新版的fmt会导致Sophus编译报错，所以安装8.0.0版本
-   # 首先删除之前安装的版本，make install完了目录下会有一个install_manifest.txt的文件记录安装的所有内容和他们的地址，通过如下命令来删除：
-   # 最新版本的sophus已支持最新版本的fmt，所以不是必须下载8.0的fmt了
-   cd build
-   sudo xargs rm < install_manifest.txt
-   git clone -b 8.0.0 git@github.com:fmtlib/fmt.git
+   #从git下载最新版本fmt
    cd fmt
    mkdir build 
    cd build
    cmake ..
    sudo make install
    ```
-
+   
 2. 安装Sophus库
 
    ```shell
@@ -1230,7 +1247,7 @@ target_link_libraries( visualizeGeometry ${Pangolin_LIBRARIES} )
 
 [教程](http://ceres-solver.org/tutorial.html)
 
-书上代码见3.2.1
+书上代码见十四讲笔记第六章3.2.1
 
 Ceres Solver是一个开源C++库，用于建模和解决大型复杂的优化问题。它可以用于解决具有边界约束和一般无约束优化问题的非线性最小二乘问题。
 
@@ -1280,7 +1297,7 @@ Ceres Solver是一个开源C++库，用于建模和解决大型复杂的优化�
 
 # g2o库
 
-书上代码见3.3.1
+书上代码见十四讲笔记第六章3.3.1
 
 g2o(General Graphic Optimization)是一个基于图优化的优化库，图优化是一种将非线性优化与图论结合起来的理论。
 
