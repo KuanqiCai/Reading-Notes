@@ -3541,7 +3541,7 @@ P3P使用3对匹配点，来解PnP问题。这里的3D点是世界坐标系下�
   $$
   \mathbf{T}^*=arg\ \mathop{min}_{\mathbf{T}}\frac{1}{2}\sum_{i=1}^n|| \mathbf{u}_i-\frac{1}{s_i}\mathbf{KTP}_i ||_2^2 \tag{2}
   $$
-  3式中的误差项称为**重投影误差(Reprojection error) e**：3D点的投影位置与观测位置的差
+  2式中的误差项称为**重投影误差(Reprojection error) e**：3D点的投影位置与观测位置的差
   $$
   \mathbf{e} = \mathbf{u}_i-\frac{1}{s_i}\mathbf{KTP}_i \tag{3}
   $$
@@ -4877,12 +4877,12 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    BALProblem bal_problem(argv[1]);
-    bal_problem.Normalize();
-    bal_problem.Perturb(0.1, 0.5, 0.5);
-    bal_problem.WriteToPLYFile("initial.ply");
-    SolveBA(bal_problem);
-    bal_problem.WriteToPLYFile("final.ply");
+    BALProblem bal_problem(argv[1]);			// 读入数据
+    bal_problem.Normalize();					// 归一化数据
+    bal_problem.Perturb(0.1, 0.5, 0.5);			// perturb函数加入噪声
+    bal_problem.WriteToPLYFile("initial.ply");	// 将优化前的数据（相机和3d点） 保存在initial.ply文件中
+    SolveBA(bal_problem);						// 求解最小二乘问题
+    bal_problem.WriteToPLYFile("final.ply");	// 将优化后的数据（相机和3d点） 保存在final.ply文件中
 
     return 0;
 }
@@ -4890,31 +4890,35 @@ int main(int argc, char **argv) {
 void SolveBA(BALProblem &bal_problem) {
     const int point_block_size = bal_problem.point_block_size();
     const int camera_block_size = bal_problem.camera_block_size();
-    double *points = bal_problem.mutable_points();
-    double *cameras = bal_problem.mutable_cameras();
+    //注意这里获得待优化系数首地址的时候要用mutable_points()和mutable_cameras()
+    // 因为这两个函数指向的地址的内容是允许改变的（优化系数肯定要变的啦）
+    double *points = bal_problem.mutable_points();		//获得待优化系数3d点 points指向3d点的首地址
+    double *cameras = bal_problem.mutable_cameras();	//获得待优化系数相机 cameras指向相机的首地址
 
     // Observations is 2 * num_observations long array observations
     // [u_1, u_2, ... u_n], where each u_i is two dimensional, the x
     // and y position of the observation.
-    const double *observations = bal_problem.observations();
-    ceres::Problem problem;
+    const double *observations = bal_problem.observations();	//获得观测数据 observations指向观测数据的首地址
+    
+    ceres::Problem problem; // ceres的使用：构建最小二乘问题
 
     for (int i = 0; i < bal_problem.num_observations(); ++i) {
         ceres::CostFunction *cost_function;
 
         // Each Residual block takes a point and a camera as input
         // and outputs a 2 dimensional Residual
+        // 将重投影误差作为代价函数
         cost_function = SnavelyReprojectionError::Create(observations[2 * i + 0], observations[2 * i + 1]);
 
         // If enabled use Huber's loss function.
-        ceres::LossFunction *loss_function = new ceres::HuberLoss(1.0);
+        ceres::LossFunction *loss_function = new ceres::HuberLoss(1.0);	//第九章2.4提到的huber核函数
 
-        // Each observation corresponds to a pair of a camera and a point
-        // which are identified by camera_index()[i] and point_index()[i]
-        // respectively.
-        double *camera = cameras + camera_block_size * bal_problem.camera_index()[i];
-        double *point = points + point_block_size * bal_problem.point_index()[i];
-
+        // Each observation corresponds to a pair of a camera and a point which are identified by camera_index()[i] and point_index()[i] respectively.
+        //bal_Problem.point_index()这返回的是一个地址指向索引号的首地址
+        double *camera = cameras + camera_block_size * bal_problem.camera_index()[i];	// 待优化的相机位姿
+        double *point = points + point_block_size * bal_problem.point_index()[i];		// 待优化的3D点坐标
+		
+        // 完成最小二乘问题的构建
         problem.AddResidualBlock(cost_function, loss_function, camera, point);
     }
 
@@ -4925,9 +4929,9 @@ void SolveBA(BALProblem &bal_problem) {
     std::cout << "Forming " << bal_problem.num_observations() << " observations. " << std::endl;
 
     std::cout << "Solving ceres BA ... " << endl;
-    ceres::Solver::Options options;
-    options.linear_solver_type = ceres::LinearSolverType::SPARSE_SCHUR;
-    options.minimizer_progress_to_stdout = true;
+    ceres::Solver::Options options;	//配置ceres求解器，通过改options有很多配置可以调整
+    options.linear_solver_type = ceres::LinearSolverType::SPARSE_SCHUR;//配置第九章2.3提到的schur消元
+    options.minimizer_progress_to_stdout = true;//配置，是否输出
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     std::cout << summary.FullReport() << "\n";
@@ -4935,6 +4939,10 @@ void SolveBA(BALProblem &bal_problem) {
 ```
 
 #### 4.1.2 SnavelyReprojectionError.h
+
+重投影误差，理论见第七讲6.3
+
+畸变公式，见第五讲1.2
 
 ```cpp
 #ifndef SnavelyReprojection_H
@@ -4956,7 +4964,7 @@ public:
                     T *residuals) const {
         // camera[0,1,2] are the angle-axis rotation
         T predictions[2];	//创建一个包含2个T类型量的数组
-        CamProjectionWithDistortion(camera, point, predictions);
+        CamProjectionWithDistortion(camera, point, predictions);	//实际的计算规则定义在在CamProjectionWithDistortion函数
         residuals[0] = predictions[0] - T(observed_x);
         residuals[1] = predictions[1] - T(observed_y);
 
@@ -4980,23 +4988,36 @@ public:
         p[2] += camera[5];
 
         // Compute the center fo distortion
+        // 1. 归一化点的坐标
         T xp = -p[0] / p[2];
         T yp = -p[1] / p[2];
 
-        // Apply second and fourth order radial distortion
-        const T &l1 = camera[7];
-        const T &l2 = camera[8];
+        // Apply second and fourth order radial distortion畸变
+        const T &l1 = camera[7]; // 二阶径向畸变（second order radial distortion）是指通过二次多项式模型来描述径向畸变的效应。
+        const T &l2 = camera[8]; // 四阶径向畸变（fourth order radial distortion）是指使用四次多项式模型来描述径向畸变的效应
 
         T r2 = xp * xp + yp * yp;
         T distortion = T(1.0) + r2 * (l1 + l2 * r2);
 
-        const T &focal = camera[6];
+        const T &focal = camera[6];	//焦距
+        // 2. 计算得到发生畸变后的坐标
         predictions[0] = focal * distortion * xp;
         predictions[1] = focal * distortion * yp;
 
         return true;
     }
-
+	
+    /*
+      优化的梯度计算ceres提供3种选择
+      1. 自动求导:AuoDiff
+      2. 数值求导:NumericDiff
+      3. 我们自己推导解析的倒数形式
+      这里使用第一种：AutoDiffCostFunction。
+      
+      注意ceres中必须用double数组形式存储优化变量
+      
+      create静态函数作为外部调用的接口，直接返回一个可自动求导的ceres代价函数，来求解重投影误差的最小二乘问题最小化。
+    */
     static ceres::CostFunction *Create(const double observed_x, const double observed_y) {
         return (new ceres::AutoDiffCostFunction<SnavelyReprojectionError, 2, 9, 3>(
             new SnavelyReprojectionError(observed_x, observed_y)));
