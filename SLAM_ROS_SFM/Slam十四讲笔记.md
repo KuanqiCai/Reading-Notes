@@ -4844,16 +4844,200 @@ EKF有着如下局限性：
 
   - 当误差e大于阈值$\delta$后，函数增长由二次形式变成了一次形式，想打渔限制了梯度的最大值
 
-## 3. 实践: Ceres求解BA
 
-### 3.1 数据集：BAL
+
+## 3. 数据集：BAL
 
 使用[problem-16-22106-pre.txt](https://github.com/gaoxiang12/slambook2/blob/master/ch9/problem-16-22106-pre.txt)文件作为例子，该文件以行的形式存储BA问题的信息，详细格式说明见[BAL官网](https://grail.cs.washington.edu/projects/bal/)
 
 - BAL的相机内参模型由焦距$f$和畸变参数$k_1,k_2$给出。$f$ 即$f_x$,$f_y$，视为一个值。
 - BAL数据在投影时假设投影平面在相机光心之后，所以需要在投影之后乘以-1
 
-## 4. 实践: g2o求解BA
+下面使用[common.h](https://github.com/gaoxiang12/slambook2/blob/master/ch9/common.h)中定义的BALProblem类来读取BAL数据集的数据
+
+## 4. 实践: Ceres求解BA
+
+### 4.1 代码
+
+#### 4.1.1 bundle_adjustment_ceres.cpp
+
+```c++
+#include <iostream>
+#include <ceres/ceres.h>
+#include "common.h"	// 定义了BALProblem类，用于读取BAL数据集的数据，代码见3中的超链接
+#include "SnavelyReprojectionError.h" // 定义了投影误差模型，代码见4.1.2
+
+using namespace std;
+
+void SolveBA(BALProblem &bal_problem);
+
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        cout << "usage: bundle_adjustment_ceres bal_data.txt" << endl;
+        return 1;
+    }
+
+    BALProblem bal_problem(argv[1]);
+    bal_problem.Normalize();
+    bal_problem.Perturb(0.1, 0.5, 0.5);
+    bal_problem.WriteToPLYFile("initial.ply");
+    SolveBA(bal_problem);
+    bal_problem.WriteToPLYFile("final.ply");
+
+    return 0;
+}
+
+void SolveBA(BALProblem &bal_problem) {
+    const int point_block_size = bal_problem.point_block_size();
+    const int camera_block_size = bal_problem.camera_block_size();
+    double *points = bal_problem.mutable_points();
+    double *cameras = bal_problem.mutable_cameras();
+
+    // Observations is 2 * num_observations long array observations
+    // [u_1, u_2, ... u_n], where each u_i is two dimensional, the x
+    // and y position of the observation.
+    const double *observations = bal_problem.observations();
+    ceres::Problem problem;
+
+    for (int i = 0; i < bal_problem.num_observations(); ++i) {
+        ceres::CostFunction *cost_function;
+
+        // Each Residual block takes a point and a camera as input
+        // and outputs a 2 dimensional Residual
+        cost_function = SnavelyReprojectionError::Create(observations[2 * i + 0], observations[2 * i + 1]);
+
+        // If enabled use Huber's loss function.
+        ceres::LossFunction *loss_function = new ceres::HuberLoss(1.0);
+
+        // Each observation corresponds to a pair of a camera and a point
+        // which are identified by camera_index()[i] and point_index()[i]
+        // respectively.
+        double *camera = cameras + camera_block_size * bal_problem.camera_index()[i];
+        double *point = points + point_block_size * bal_problem.point_index()[i];
+
+        problem.AddResidualBlock(cost_function, loss_function, camera, point);
+    }
+
+    // show some information here ...
+    std::cout << "bal problem file loaded..." << std::endl;
+    std::cout << "bal problem have " << bal_problem.num_cameras() << " cameras and "
+              << bal_problem.num_points() << " points. " << std::endl;
+    std::cout << "Forming " << bal_problem.num_observations() << " observations. " << std::endl;
+
+    std::cout << "Solving ceres BA ... " << endl;
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::LinearSolverType::SPARSE_SCHUR;
+    options.minimizer_progress_to_stdout = true;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    std::cout << summary.FullReport() << "\n";
+}
+```
+
+#### 4.1.2 SnavelyReprojectionError.h
+
+```cpp
+#ifndef SnavelyReprojection_H
+#define SnavelyReprojection_H
+
+#include <iostream>
+#include "ceres/ceres.h"
+#include "rotation.h"
+
+class SnavelyReprojectionError {
+public:
+    //构造函数后不需要加分号
+    SnavelyReprojectionError(double observation_x, double observation_y) : observed_x(observation_x),
+                                                                           observed_y(observation_y) {}
+	// operator 是C++中用于运算符重载的关键字,这里给了括号一个运算规则
+    template<typename T>
+    bool operator()(const T *const camera,
+                    const T *const point,
+                    T *residuals) const {
+        // camera[0,1,2] are the angle-axis rotation
+        T predictions[2];	//创建一个包含2个T类型量的数组
+        CamProjectionWithDistortion(camera, point, predictions);
+        residuals[0] = predictions[0] - T(observed_x);
+        residuals[1] = predictions[1] - T(observed_y);
+
+        return true;
+    }
+
+    // camera : 9 dims array
+    // [0-2] : angle-axis rotation
+    // [3-5] : translateion
+    // [6-8] : camera parameter, [6] focal length, [7-8] second and forth order radial distortion
+    // point : 3D location.
+    // predictions : 2D predictions with center of the image plane.
+    template<typename T>
+    static inline bool CamProjectionWithDistortion(const T *camera, const T *point, T *predictions) {
+        // Rodrigues' formula
+        T p[3];
+        AngleAxisRotatePoint(camera, point, p);
+        // camera[3,4,5] are the translation
+        p[0] += camera[3];
+        p[1] += camera[4];
+        p[2] += camera[5];
+
+        // Compute the center fo distortion
+        T xp = -p[0] / p[2];
+        T yp = -p[1] / p[2];
+
+        // Apply second and fourth order radial distortion
+        const T &l1 = camera[7];
+        const T &l2 = camera[8];
+
+        T r2 = xp * xp + yp * yp;
+        T distortion = T(1.0) + r2 * (l1 + l2 * r2);
+
+        const T &focal = camera[6];
+        predictions[0] = focal * distortion * xp;
+        predictions[1] = focal * distortion * yp;
+
+        return true;
+    }
+
+    static ceres::CostFunction *Create(const double observed_x, const double observed_y) {
+        return (new ceres::AutoDiffCostFunction<SnavelyReprojectionError, 2, 9, 3>(
+            new SnavelyReprojectionError(observed_x, observed_y)));
+    }
+
+private:
+    double observed_x;
+    double observed_y;
+};
+
+#endif // SnavelyReprojection.h
+
+
+```
+
+### 4.2 编译
+
+```cmake
+cmake_minimum_required(VERSION 2.8)
+
+project(bundle_adjustment)
+set(CMAKE_BUILD_TYPE "Release")
+#set(CMAKE_CXX_FLAGS "-O3 -std=c++11")
+set(CMAKE_CXX_FLAGS "-std=c++14 -O2 ${SSE_FLAGS} -msse4")
+
+LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+Find_Package(Ceres REQUIRED)
+
+include_directories("/usr/include/eigen3")
+include_directories(${PROJECT_SOURCE_DIR})
+
+add_library(bal_common common.cpp)
+add_executable(bundle_adjustment_ceres bundle_adjustment_ceres.cpp)
+
+target_link_libraries(bundle_adjustment_ceres ${CERES_LIBRARIES} bal_common fmt)
+```
+
+
+
+## 5. 实践: g2o求解BA
 
 # 十、后端优化：位姿图
 
