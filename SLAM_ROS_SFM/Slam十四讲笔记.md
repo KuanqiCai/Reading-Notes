@@ -5060,6 +5060,266 @@ target_link_libraries(bundle_adjustment_ceres ${CERES_LIBRARIES} bal_common fmt)
 
 ## 5. 实践: g2o求解BA
 
+g2o使用图模型来描述问题，
+
+- 节点：相机和路标
+- 边：他们之间的观测
+
+### 5.1 代码
+
+```c++
+#include <g2o/core/base_vertex.h>
+#include <g2o/core/base_binary_edge.h>
+#include <g2o/core/block_solver.h>
+#include <g2o/core/optimization_algorithm_levenberg.h>
+#include <g2o/solvers/csparse/linear_solver_csparse.h>
+#include <g2o/core/robust_kernel_impl.h>
+#include <iostream>
+
+#include "common.h"
+#include "sophus/se3.hpp"
+
+using namespace Sophus;
+using namespace Eigen;
+using namespace std;
+
+/// 姿态和内参的结构,定义一个结构体表示相机 相机9维
+// [0-2] : angle-axis rotation
+// [3-5] : translateion
+// [6-8] : camera parameter, [6] focal length, [7-8] second and forth order radial distortion
+// point : 3D location.
+// predictions : 2D predictions with center of the image plane.
+struct PoseAndIntrinsics {
+    PoseAndIntrinsics() {}
+	
+    /// set from given data address
+    //显示构造进行赋值，把数据集的内容赋值过去
+    explicit PoseAndIntrinsics(double *data_addr) {
+        rotation = SO3d::exp(Vector3d(data_addr[0], data_addr[1], data_addr[2]));	// 旋转
+        translation = Vector3d(data_addr[3], data_addr[4], data_addr[5]);	// 位移
+        focal = data_addr[6]; // 焦距
+        k1 = data_addr[7];	// 二阶径向畸变（second order radial distortion）是指通过二次多项式模型来描述径向畸变的效应。
+        k2 = data_addr[8];	// 四阶径向畸变（fourth order radial distortion）是指使用四次多项式模型来描述径向畸变的效应
+    }
+
+    /// 将估计值放入内存，即将优化的系数放进内存
+    void set_to(double *data_addr) {
+        auto r = rotation.log();
+        for (int i = 0; i < 3; ++i) data_addr[i] = r[i];
+        for (int i = 0; i < 3; ++i) data_addr[i + 3] = translation[i];
+        data_addr[6] = focal;
+        data_addr[7] = k1;
+        data_addr[8] = k2;
+    }
+
+    SO3d rotation;	// 李群，旋转
+    Vector3d translation = Vector3d::Zero(); // 平移
+    double focal = 0;	//焦距
+    double k1 = 0, k2 = 0;	//畸变系数
+};
+
+/// 位姿加相机内参的顶点，9维，前三维为so3，接下去为t, f, k1, k2
+//定义两个顶点 一个是 相机（PoseAndIntrinsics） 一个是路标点（3d点）
+//顶点 ：相机（PoseAndIntrinsics）
+class VertexPoseAndIntrinsics : public g2o::BaseVertex<9, PoseAndIntrinsics> {
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
+    VertexPoseAndIntrinsics() {}
+    // override关键字表示对基类函数的覆盖
+    //重置
+    virtual void setToOriginImpl() override {
+        _estimate = PoseAndIntrinsics();	//给待优化系数赋上初始值
+    }
+    //更新
+    virtual void oplusImpl(const double *update) override {
+        _estimate.rotation = SO3d::exp(Vector3d(update[0], update[1], update[2])) * _estimate.rotation;
+        _estimate.translation += Vector3d(update[3], update[4], update[5]);
+        _estimate.focal += update[6];
+        _estimate.k1 += update[7];
+        _estimate.k2 += update[8];
+    }
+
+    /// 根据估计值投影一个点
+    Vector2d project(const Vector3d &point) {
+        Vector3d pc = _estimate.rotation * point + _estimate.translation;
+        pc = -pc / pc[2];				//把相机坐标归一化
+        double r2 = pc.squaredNorm();	//相机坐标归一化后的模的平方
+        double distortion = 1.0 + r2 * (_estimate.k1 + _estimate.k2 * r2);
+        return Vector2d(_estimate.focal * distortion * pc[0],
+                        _estimate.focal * distortion * pc[1]);
+    }
+    //存盘和读盘 ： 留空
+    virtual bool read(istream &in) {}
+    virtual bool write(ostream &out) const {}
+};
+
+//顶点 ：路标点（3d点）
+class VertexPoint : public g2o::BaseVertex<3, Vector3d> {
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
+    VertexPoint() {}
+	//重置
+    virtual void setToOriginImpl() override {
+        _estimate = Vector3d(0, 0, 0);	//待优化系数的初始化
+    }
+	//更新
+    virtual void oplusImpl(const double *update) override {
+        _estimate += Vector3d(update[0], update[1], update[2]);
+    }
+	//存盘和读盘 ： 留空
+    virtual bool read(istream &in) {}
+    virtual bool write(ostream &out) const {}
+};
+//定义边 这里面边的定义比前几章的要简单很多
+class EdgeProjection :
+    public g2o::BaseBinaryEdge<2, Vector2d, VertexPoseAndIntrinsics, VertexPoint> {
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+	//计算残差
+    virtual void computeError() override {
+        auto v0 = (VertexPoseAndIntrinsics *) _vertices[0];
+        auto v1 = (VertexPoint *) _vertices[1];
+        auto proj = v0->project(v1->estimate());
+        _error = proj - _measurement;
+    }
+
+    // use numeric derivatives
+    //存盘和读盘 ： 留空
+    virtual bool read(istream &in) {}
+    virtual bool write(ostream &out) const {}
+
+};
+
+void SolveBA(BALProblem &bal_problem);
+
+int main(int argc, char **argv) {
+
+    if (argc != 2) {
+        cout << "usage: bundle_adjustment_g2o bal_data.txt" << endl;
+        return 1;
+    }
+
+    BALProblem bal_problem(argv[1]);			// 传入数据
+    bal_problem.Normalize();					// 归一化
+    bal_problem.Perturb(0.1, 0.5, 0.5);			// 给数据加上噪声（相机旋转、相机平移、路标点）
+    bal_problem.WriteToPLYFile("initial.ply");  // 优化前的数据写入initial
+    SolveBA(bal_problem);						// 求解BA
+    bal_problem.WriteToPLYFile("final.ply");    // 优化后的数据写入final
+
+    return 0;
+}
+
+void SolveBA(BALProblem &bal_problem) {
+    // 获得 相机和点的维度
+    const int point_block_size = bal_problem.point_block_size();
+    const int camera_block_size = bal_problem.camera_block_size();
+    //获得相机和点各自参数的首地址
+    double *points = bal_problem.mutable_points();
+    double *cameras = bal_problem.mutable_cameras();
+
+    // pose dimension 9, landmark is 3
+    //构建图优化
+    typedef g2o::BlockSolver<g2o::BlockSolverTraits<9, 3>> BlockSolverType;	//两个顶点的维度
+    typedef g2o::LinearSolverCSparse<BlockSolverType::PoseMatrixType> LinearSolverType;
+    // use LM
+    auto solver = new g2o::OptimizationAlgorithmLevenberg(
+        g2o::make_unique<BlockSolverType>(g2o::make_unique<LinearSolverType>()));
+    g2o::SparseOptimizer optimizer;
+    optimizer.setAlgorithm(solver);	//设置求解器
+    optimizer.setVerbose(true);		//打开调试输出
+
+    /// build g2o problem
+    //获得观测值的首地址
+    const double *observations = bal_problem.observations();
+    // vertex
+    //加入顶点
+    //因为顶点有很多个，所以需要容器
+    //容器 vertex_pose_intrinsics 和 vertex_points存放两顶点的地址
+    vector<VertexPoseAndIntrinsics *> vertex_pose_intrinsics;
+    vector<VertexPoint *> vertex_points;
+    for (int i = 0; i < bal_problem.num_cameras(); ++i) {
+        VertexPoseAndIntrinsics *v = new VertexPoseAndIntrinsics();
+        double *camera = cameras + camera_block_size * i;	//获得每个相机的首地址
+        v->setId(i); //设置编号
+        v->setEstimate(PoseAndIntrinsics(camera)); //传入待优化的系数 此处为相机
+        optimizer.addVertex(v); //加入顶点
+        vertex_pose_intrinsics.push_back(v);
+    }
+    for (int i = 0; i < bal_problem.num_points(); ++i) {
+        VertexPoint *v = new VertexPoint();	//获得每个路标点的首地址
+        double *point = points + point_block_size * i;
+        v->setId(i + bal_problem.num_cameras());
+        v->setEstimate(Vector3d(point[0], point[1], point[2]));	//传入待优化的系数 此处为路标点
+        // g2o在BA中需要手动设置待Marg的顶点
+        v->setMarginalized(true);	//设置边缘化
+        optimizer.addVertex(v);		//加入顶点
+        vertex_points.push_back(v); //将顶点一个一个放回到容器里面
+    }
+
+    // edge
+    for (int i = 0; i < bal_problem.num_observations(); ++i) {
+        EdgeProjection *edge = new EdgeProjection;
+        edge->setVertex(0, vertex_pose_intrinsics[bal_problem.camera_index()[i]]); //加入顶点
+        edge->setVertex(1, vertex_points[bal_problem.point_index()[i]]); //加入顶点
+        edge->setMeasurement(Vector2d(observations[2 * i + 0], observations[2 * i + 1])); //设置观测数据
+        edge->setInformation(Matrix2d::Identity()); //设置信息矩阵
+        edge->setRobustKernel(new g2o::RobustKernelHuber()); //设置核函数
+        optimizer.addEdge(edge); //加入边
+    }
+
+    optimizer.initializeOptimization();
+    optimizer.optimize(40);
+
+    // set to bal problem
+    //优化后在存到内从中去
+    for (int i = 0; i < bal_problem.num_cameras(); ++i) {
+        double *camera = cameras + camera_block_size * i;
+        auto vertex = vertex_pose_intrinsics[i];	//把优化后的顶点地址给vertex
+        auto estimate = vertex->estimate();			//这样estimate就指向了优化后的相机结构体 此时estimate本质上指向了 相机结构体
+        estimate.set_to(camera);					//这样camera就指向了优化后的相机（利用了相机结构体的set_to()函数）
+    }
+    for (int i = 0; i < bal_problem.num_points(); ++i) {
+        double *point = points + point_block_size * i;
+        auto vertex = vertex_points[i];
+        for (int k = 0; k < 3; ++k) point[k] = vertex->estimate()[k];
+    }
+    //经过上面的两个循环后，原来待优化的系数就被优化完毕了，并且优化后的系数 还是存放在 bal_problem.mutable_cameras()和 bal_problem.mutable_points() 所对应的地址中
+
+}
+
+```
+
+### 5.2 编译
+
+```cmake
+cmake_minimum_required(VERSION 2.8)
+
+project(bundle_adjustment)
+set(CMAKE_BUILD_TYPE "Release")
+#set(CMAKE_CXX_FLAGS "-O3 -std=c++11")
+set(CMAKE_CXX_FLAGS "-std=c++14 -O2 ${SSE_FLAGS} -msse4")
+
+# g2o提供的一系列找g2o库的cmake文件https://github.com/RainerKuemmerle/g2o/tree/master/cmake_modules
+LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake) 
+list(APPEND CMAKE_MODULE_PATH /home/yang/3rdLibrary/g2o-20230223_git/cmake_modules)
+Find_Package(G2O REQUIRED)
+Find_Package(Eigen3 REQUIRED)
+Find_Package(Sophus REQUIRED)
+Find_Package(CSparse REQUIRED)
+find_package(FMT REQUIRED)
+
+# 用到了g2o什么模块，这里就要添加相应的模块，比如这里用到的g2o_solver_csparse 
+SET(G2O_LIBS g2o_csparse_extension g2o_stuff g2o_core cxsparse g2o_solver_csparse )
+include_directories(${PROJECT_SOURCE_DIR} ${EIGEN3_INCLUDE_DIR} ${CSPARSE_INCLUDE_DIR})
+
+add_library(bal_common common.cpp)
+add_executable(bundle_adjustment_g2o bundle_adjustment_g2o.cpp)
+
+target_link_libraries(bundle_adjustment_g2o bal_common fmt ${G2O_LIBS})
+```
+
 # 十、后端优化：位姿图
 
 BA能精确的优化每个相机位姿和特征点位置，但在大场景中，大量特征点的存在会严重降低计算效率。所以需要用到一种简化的BA：位姿图
