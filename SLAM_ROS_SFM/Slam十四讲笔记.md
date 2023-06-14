@@ -5577,6 +5577,410 @@ BA能精确的优化每个相机位姿和特征点位置，但在大场景中，
 
 ## 3. 实践：位姿图的优化
 
+### 3.1 g2o原声位姿图
+
+位姿图xx.g2o可以由g2o自带的create spehere程序仿真生成。他的轨迹是一个球，由多层组成，每层都是一个圆形，共包含2500个位姿节点，可以看成是一个转圈上升的过程。在层上的t-1到t时刻节点之间的边是里程计边，层与层之间的边是里程计边。
+
+可以用`g2o_viewer xx.g2o`命令来打开这个文件：
+
+![image-20230614010234236](https://cdn.jsdelivr.net/gh/Fernweh-yang/ImageHosting@main/img/image-20230614010234236.png)
+
+上面这个位姿图是增加了噪声的，可以点击optimize来优化它，就可以得到正确的轨迹（一个球）了。
+
+这个文件由顶点和边两部分组成：
+
+```
+VERTEX_SE3:QUAT 0 -0.125664 -1.53894e-17 99.9999 0.706662 4.32706e-17 0.707551 -4.3325e-17 
+...
+EDGE_SE3:QUAT 590 640 -0.177202 0.0164101 -6.27791 0.00404296 0.0255702 0.00743393 0.999637 10000 0 0 0 0 0 10000 0 0 0 0 10000 0 0 0 40000 0 0 40000 0 40000 
+```
+
+- 顶点：类型为VERTEX_SE3，并用平移向量(前3个)+四元数(后4个) 来表示位姿
+- 边：类型为EDGE_SE3，由2个顶点的值(上面那7个值) + 信息矩阵（即稀疏矩阵）的右上角组成
+
+### 3.2 优化g2o默认的顶点和边
+
+#### 代码
+
+```c++
+#include <iostream>
+#include <fstream>
+#include <string>
+
+#include <g2o/types/slam3d/types_slam3d.h>
+#include <g2o/core/block_solver.h>
+#include <g2o/core/optimization_algorithm_levenberg.h>
+#include <g2o/solvers/eigen/linear_solver_eigen.h>
+
+using namespace std;
+
+/************************************************
+ * 本程序演示如何用g2o solver进行位姿图优化
+ * sphere.g2o是人工生成的一个Pose graph，我们来优化它。
+ * 尽管可以直接通过load函数读取整个图，但我们还是自己来实现读取代码，以期获得更深刻的理解
+ * 这里使用g2o/types/slam3d/中的SE3表示位姿，它实质上是四元数而非李代数.
+ * **********************************************/
+
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        cout << "Usage: pose_graph_g2o_SE3 sphere.g2o" << endl;
+        return 1;
+    }
+     // 打开文件流
+    ifstream fin(argv[1]);
+    if (!fin) {
+        cout << "file " << argv[1] << " does not exist." << endl;
+        return 1;
+    }
+
+    // 选择 6x6 的块求解器
+    typedef g2o::BlockSolver<g2o::BlockSolverTraits<6, 6>> BlockSolverType;
+    typedef g2o::LinearSolverEigen<BlockSolverType::PoseMatrixType> LinearSolverType;
+    // 创建稀疏优化器，采用LM算法，线性求解器
+    auto solver = new g2o::OptimizationAlgorithmLevenberg(
+        g2o::make_unique<BlockSolverType>(g2o::make_unique<LinearSolverType>()));
+    g2o::SparseOptimizer optimizer;     // 图模型
+    optimizer.setAlgorithm(solver);   // 设置求解器
+    optimizer.setVerbose(true);       // 打开调试输出
+
+    int vertexCnt = 0, edgeCnt = 0; // 顶点和边的数量
+    // 读取sphere.g2o文件内容
+    while (!fin.eof()) {
+        string name;
+        fin >> name;    // 文件流读取第一个字符串
+        // 判断该字符串是顶点还是边
+        if (name == "VERTEX_SE3:QUAT") {
+            // SE3 顶点
+            g2o::VertexSE3 *v = new g2o::VertexSE3();
+            int index = 0;
+            fin >> index;       // 读取该行的第二个字符，作为顶点的序号
+            v->setId(index);    // 设置位姿顶点的在图优化器中的索引号
+            v->read(fin);       // 继续从fin文件流中读取剩余字符串，tx,ty,tz,qx,qy,qz,qw
+            optimizer.addVertex(v); // 往优化器中添加位姿顶点
+            vertexCnt++;        // 统计位姿顶点数目
+            // 固定第一个位姿顶点，不参与优化
+            if (index == 0)
+                v->setFixed(true);
+        } else if (name == "EDGE_SE3:QUAT") {
+            // SE3-SE3 边
+            g2o::EdgeSE3 *e = new g2o::EdgeSE3();
+            int idx1, idx2;     // 关联的两个顶点
+            fin >> idx1 >> idx2;    // 连续读取两个字符串，作为边关联的两个位姿顶点
+            e->setId(edgeCnt++);    // 设置边在图优化器中的索引号
+            e->setVertex(0, optimizer.vertices()[idx1]);    // 设置边连接的第一个位姿顶点的索引号
+            e->setVertex(1, optimizer.vertices()[idx2]);    // 设置边连接的第二个位姿顶点的索引号
+            e->read(fin);                                   // 继续从fin文件流中读取剩余字符串，tx,ty,tz,qx,qy,qz,qw以及信息矩阵对角矩阵的右上角
+            optimizer.addEdge(e);   // 往优化器中添加误差边
+        }
+        if (!fin.good()) break;
+    }
+
+    cout << "read total " << vertexCnt << " vertices, " << edgeCnt << " edges." << endl;
+
+    cout << "optimizing ..." << endl;
+    optimizer.initializeOptimization(); // 优化器初始化
+    optimizer.optimize(30);             // LM迭代优化30次
+
+    cout << "saving optimization results ..." << endl;
+    optimizer.save("result.g2o");       // 优化器结果保存成.g2o文件
+
+    return 0;
+}
+```
+
+#### 编译
+
+```cmake
+cmake_minimum_required(VERSION 2.8)
+project(pose_graph)
+
+set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_CXX_FLAGS "-std=c++14 -O2")
+
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)	#FindG2O.cmake
+
+# g2o 
+find_package(G2O REQUIRED)
+include_directories(${G2O_INCLUDE_DIRS})
+
+add_executable(pose_graph_g2o_SE3 pose_graph_g2o_SE3.cpp)
+target_link_libraries(pose_graph_g2o_SE3
+        g2o_core g2o_stuff g2o_types_slam3d ${CHOLMOD_LIBRARIES} fmt
+        )
+
+```
+
+### 3.3 优化sophus定义的顶点和边
+
+#### 代码
+
+```c++
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <Eigen/Core>
+
+#include <g2o/core/base_vertex.h>
+#include <g2o/core/base_binary_edge.h>
+#include <g2o/core/block_solver.h>
+#include <g2o/core/optimization_algorithm_levenberg.h>
+#include <g2o/solvers/eigen/linear_solver_eigen.h>
+
+#include <sophus/se3.hpp>
+
+using namespace std;
+using namespace Eigen;
+using Sophus::SE3d;
+using Sophus::SO3d;
+
+/************************************************
+ * 本程序演示如何用g2o solver进行位姿图优化
+ * sphere.g2o是人工生成的一个Pose graph，我们来优化它。
+ * 尽管可以直接通过load函数读取整个图，但我们还是自己来实现读取代码，以期获得更深刻的理解
+ * 本节使用李代数表达位姿图，节点和边的方式为自定义
+  
+ * 用g2o的话 需要定义顶点和边
+ * 位姿图优化就是只优化位姿 不优化路标点
+ * 顶点应该相机的位姿
+ * 边是相邻两个位姿的变换
+ * error误差是观测的相邻相机的位姿变换的逆 
+ * 待优化的相邻相机的位姿变换
+ * 我们希望这个误差接近I矩阵 给误差取ln后 误差接近 0 
+ * 该程序用李代数描述误差
+ 
+ * 这里把J矩阵的计算放在JRInv(const SE3d & e)函数里
+ * 这里的J矩阵还不是雅克比矩阵 具体雅克比见书上公式 p272页 公式10.9 10.10
+ * 李代数应该是向量形式 
+ * 李代数的hat 也就是李代数向量变为反对称矩阵
+ * **********************************************/
+
+typedef Matrix<double, 6, 6> Matrix6d;
+
+// 给定误差求J_R^{-1}的近似
+Matrix6d JRInv(const SE3d &e) {
+    Matrix6d J;
+    // 对应公式（2.3中的10.3式）
+    J.block(0, 0, 3, 3) = SO3d::hat(e.so3().log());
+    J.block(0, 3, 3, 3) = SO3d::hat(e.translation());
+    J.block(3, 0, 3, 3) = Matrix3d::Zero(3, 3);
+    J.block(3, 3, 3, 3) = SO3d::hat(e.so3().log());
+    // 通常se(3)上的左右雅可比J_r形式过于复杂，如果误差接近于零，可以设他们近似于单位矩阵I或者I + 1/2 * J
+    // J = J * 0.5 + Matrix6d::Identity();
+    // 这里直接设置成了单位矩阵I，也可以将这里注释掉，打开上面的近似公式，看看效果的区别 
+    J = Matrix6d::Identity();    
+    return J;
+}
+
+// 李代数顶点
+// 通过read和write函数，将xx.g2o中读取到的数字，存储为sophus的格式，并伪装成g2o内置的SE3顶点
+// 如此g2o_viewer也可以识别并渲染他们，事实上除了内部使用Sophus的李代数表示，从外部看起来没有区别。
+typedef Matrix<double, 6, 1> Vector6d;
+
+class VertexSE3LieAlgebra : public g2o::BaseVertex<6, SE3d> {
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    //读取数据
+    virtual bool read(istream &is) override {
+        double data[7]; //平移加四元数
+        for (int i = 0; i < 7; i++)
+            is >> data[i];
+        setEstimate(SE3d(
+            Quaterniond(data[6], data[3], data[4], data[5]),
+            Vector3d(data[0], data[1], data[2])
+        ));
+        return true;
+    }
+    //将优化的位姿存入内存 
+    virtual bool write(ostream &os) const override {
+        os << id() << " ";
+        Quaterniond q = _estimate.unit_quaternion();
+        os << _estimate.translation().transpose() << " ";
+        //coeffs顺序是 x y z w ,w是实部
+        os << q.coeffs()[0] << " " << q.coeffs()[1] << " " << q.coeffs()[2] << " " << q.coeffs()[3] << endl;
+        return true;
+    }
+
+    virtual void setToOriginImpl() override {
+        _estimate = SE3d(); //李代数
+    }
+
+    // 左乘更新
+    virtual void oplusImpl(const double *update) override {
+        Vector6d upd;   //六维向量 upd接收 update
+        upd << update[0], update[1], update[2], update[3], update[4], update[5];
+        _estimate = SE3d::exp(upd) * _estimate; //更新位姿
+    }
+};
+
+// 两个李代数节点之边
+// 定义边  两个李代数顶点的边 边就是两个顶点之间的变换 即位姿之间的变换
+class EdgeSE3LieAlgebra : public g2o::BaseBinaryEdge<6, SE3d, VertexSE3LieAlgebra, VertexSE3LieAlgebra> {
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    //读取观测值和构造信息矩阵
+    virtual bool read(istream &is) override {
+        double data[7];     //平移加四元数
+        for (int i = 0; i < 7; i++)
+            is >> data[i];
+        Quaterniond q(data[6], data[3], data[4], data[5]);
+        q.normalize();
+        setMeasurement(SE3d(q, Vector3d(data[0], data[1], data[2])));
+        for (int i = 0; i < information().rows() && is.good(); i++)
+            for (int j = i; j < information().cols() && is.good(); j++) {
+                is >> information()(i, j);
+                if (i != j) //不是对角线的地方
+                    information()(j, i) = information()(i, j);
+            }
+        return true;
+    }
+    //这个函数就是为了把优化好的相机位姿放进指定文件中去
+    virtual bool write(ostream &os) const override {
+        //v1,V2分别指向两个顶点
+        VertexSE3LieAlgebra *v1 = static_cast<VertexSE3LieAlgebra *> (_vertices[0]);
+        VertexSE3LieAlgebra *v2 = static_cast<VertexSE3LieAlgebra *> (_vertices[1]);
+        os << v1->id() << " " << v2->id() << " ";
+        SE3d m = _measurement;
+        Eigen::Quaterniond q = m.unit_quaternion(); //获取单位四元
+        os << m.translation().transpose() << " ";   //传入平移
+        os << q.coeffs()[0] << " " << q.coeffs()[1] << " " << q.coeffs()[2] << " " << q.coeffs()[3] << " "; //传入四元数
+
+        // information matrix  信息矩阵
+        for (int i = 0; i < information().rows(); i++)
+            for (int j = i; j < information().cols(); j++) {
+                os << information()(i, j) << " ";
+            }
+        os << endl;
+        return true;
+    }
+
+    // 误差计算与书中推导一致
+    virtual void computeError() override {
+        SE3d v1 = (static_cast<VertexSE3LieAlgebra *> (_vertices[0]))->estimate();
+        SE3d v2 = (static_cast<VertexSE3LieAlgebra *> (_vertices[1]))->estimate();
+        _error = (_measurement.inverse() * v1.inverse() * v2).log();
+    }
+
+    // 雅可比计算
+    virtual void linearizeOplus() override {
+        SE3d v1 = (static_cast<VertexSE3LieAlgebra *> (_vertices[0]))->estimate();
+        SE3d v2 = (static_cast<VertexSE3LieAlgebra *> (_vertices[1]))->estimate();
+        Matrix6d J = JRInv(SE3d::exp(_error));  // JRInv()函数，提供近似的雅可比计算
+        // 尝试把J近似为I？
+        //雅克比有两个,一个是误差对相机i位姿的雅克比,另一个是误差对相机j位姿的雅克比
+        _jacobianOplusXi = -J * v2.inverse().Adj();
+        _jacobianOplusXj = J * v2.inverse().Adj();
+    }
+};
+
+// 用sophus表达完边和节点后，下面优化步骤和上面例子一样
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        cout << "Usage: pose_graph_g2o_SE3_lie sphere.g2o" << endl;
+        return 1;
+    }
+    ifstream fin(argv[1]);
+    if (!fin) {
+        cout << "file " << argv[1] << " does not exist." << endl;
+        return 1;
+    }
+
+    // 设定g2o
+    typedef g2o::BlockSolver<g2o::BlockSolverTraits<6, 6>> BlockSolverType;
+    typedef g2o::LinearSolverEigen<BlockSolverType::PoseMatrixType> LinearSolverType;
+    auto solver = new g2o::OptimizationAlgorithmLevenberg(
+        g2o::make_unique<BlockSolverType>(g2o::make_unique<LinearSolverType>()));
+    g2o::SparseOptimizer optimizer;     // 图模型
+    optimizer.setAlgorithm(solver);   // 设置求解器
+    optimizer.setVerbose(true);       // 打开调试输出
+
+    int vertexCnt = 0, edgeCnt = 0; // 顶点和边的数量
+    //容器 vectices 和edges 存放各个顶点和边
+    vector<VertexSE3LieAlgebra *> vectices;
+    vector<EdgeSE3LieAlgebra *> edges;
+    while (!fin.eof()) {
+        string name;
+        fin >> name;
+        if (name == "VERTEX_SE3:QUAT") {
+            // 顶点
+            VertexSE3LieAlgebra *v = new VertexSE3LieAlgebra();
+            int index = 0;
+            fin >> index;
+            v->setId(index);
+            v->read(fin);
+            optimizer.addVertex(v);
+            vertexCnt++;
+            vectices.push_back(v);
+            if (index == 0)
+                v->setFixed(true);
+        } else if (name == "EDGE_SE3:QUAT") {
+            // SE3-SE3 边
+            EdgeSE3LieAlgebra *e = new EdgeSE3LieAlgebra();
+            int idx1, idx2;     // 关联的两个顶点
+            fin >> idx1 >> idx2;
+            e->setId(edgeCnt++);
+            e->setVertex(0, optimizer.vertices()[idx1]);
+            e->setVertex(1, optimizer.vertices()[idx2]);
+            e->read(fin);
+            optimizer.addEdge(e);
+            edges.push_back(e);
+        }
+        if (!fin.good()) break;
+    }
+
+    cout << "read total " << vertexCnt << " vertices, " << edgeCnt << " edges." << endl;
+
+    cout << "optimizing ..." << endl;
+    optimizer.initializeOptimization();
+    optimizer.optimize(30);
+
+    cout << "saving optimization results ..." << endl;
+
+    // 因为用了自定义顶点且没有向g2o注册，这里保存自己来实现
+    // 伪装成 SE3 顶点和边，让 g2o_viewer 可以认出
+    ofstream fout("result_lie.g2o");
+    for (VertexSE3LieAlgebra *v:vectices) {
+        fout << "VERTEX_SE3:QUAT ";
+        v->write(fout); //把优化的顶点放进 result_lie.g2o
+    }
+    for (EdgeSE3LieAlgebra *e:edges) {
+        fout << "EDGE_SE3:QUAT ";
+        e->write(fout); //把优化的边放进 result_lie.g2o
+    }
+    fout.close();
+    return 0;
+}
+```
+
+#### 编译
+
+```cmake
+cmake_minimum_required(VERSION 2.8)
+project(pose_graph)
+
+set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_CXX_FLAGS "-std=c++14 -O2")
+
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
+
+# Eigen
+include_directories("/usr/include/eigen3")
+
+# sophus 
+find_package(Sophus REQUIRED)
+include_directories(${Sophus_INCLUDE_DIRS})
+
+# g2o 
+find_package(G2O REQUIRED)
+include_directories(${G2O_INCLUDE_DIRS})
+
+add_executable(pose_graph_g2o_lie pose_graph_g2o_lie_algebra.cpp)
+target_link_libraries(pose_graph_g2o_lie
+        g2o_core g2o_stuff
+        ${CHOLMOD_LIBRARIES}
+        ${Sophus_LIBRARIES} fmt
+        )
+```
+
 # 十一、回环检测
 
 # 十二、建图
