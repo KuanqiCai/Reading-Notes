@@ -1505,3 +1505,92 @@ int main(int  argc , char **  argv )
 
 
 
+# Theseus库
+
+Facebook开发的，下面的几个库也都是fb的。用于在pytorch中设立非线性优化层，来解决非线性优化问题
+
+可以解决：
+
+- [Linear solvers](https://github.com/facebookresearch/theseus/tree/main/theseus/optimizer/linear)
+  - Gauss-Newton, Levenberg–Marquardt
+- [Linear solvers](https://github.com/facebookresearch/theseus/tree/main/theseus/optimizer/linear)
+  - Dense: Cholesky, LU; Sparse: CHOLMOD, LU (GPU-only), [BaSpaCho](https://github.com/facebookresearch/baspacho)
+- [Commonly used costs](https://github.com/facebookresearch/theseus/tree/main/theseus/embodied), [AutoDiffCostFunction](https://github.com/facebookresearch/theseus/blob/main/theseus/core/cost_function.py), [RobustCostFunction](https://github.com/facebookresearch/theseus/blob/main/theseus/core/robust_cost_function.py)
+- [Lie groups](https://github.com/facebookresearch/theseus/tree/main/theseus/geometry)
+- [Robot kinematics](https://github.com/facebookresearch/theseus/blob/main/theseus/embodied/kinematics/kinematics_model.py)
+
+## 1. Dispenso库安装
+
+[dispebnso](https://github.com/facebookincubator/dispenso)是一个c++的多线程库
+
+### 1.1 源码安装
+
+```cmake
+#从git上release下载最新版本
+mkdir build && cd build
+cmake ..
+make -j
+sudo make install
+```
+
+## 2. OpenBLAS
+
+[OpenBLAS](https://github.com/xianyi/OpenBLAS)是一个优化过的BLAS库(Basic Linear Algebra Subprograms) 
+
+### 2.1 源码安装
+
+```shell
+git clone git@github.com:xianyi/OpenBLAS.git
+cd OpenBLAS
+mkdir build && cd build 
+cmake ..
+make
+sudo make install
+```
+
+## 3. BaSpaCho库安装
+
+[BaSpaCho(**Ba**tched **Spa**rse **Cho**lesky) ](https://github.com/facebookresearch/baspacho)是一个对称正定稀疏矩阵求解器
+
+### 3.1 源码安装
+
+```shell
+git clone git@github.com:facebookresearch/baspacho.git
+cd baspacho
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DBLA_STATIC=ON -DBUILD_SHARED_LIBS=OFF
+make -j16
+ctest # 测试是否安装成功
+sudo make install
+```
+
+## 4. Theseus源码安装
+
+```
+git clone https://github.com/facebookresearch/theseus.git && cd theseus
+BASPACHO_ROOT_DIR=/home/yang/3rdLibrary/baspacho pip install -e .
+```
+
+
+
+# Google Test
+
+Google Test是Google的开源C++单元测试框架。旨在帮助开发人员编写可靠和可重复的单元测试，用于验证代码的正确性。
+
+## 1. 源码安装
+
+```shell
+git clone https://github.com/google/googletest.git -b v1.13.0
+cd googletest        # Main directory of the cloned repository.
+mkdir build          # Create a directory to hold the build output.
+cd build
+cmake ..             # Generate native build scripts for GoogleTest.
+make
+sudo make install    # Install in /usr/local/ by default
+```
+
+## 2. 学习资源汇总
+
+[官方git](https://github.com/google/googletest/tree/main)
+
+[文档教程](https://google.github.io/googletest/quickstart-cmake.html)
