@@ -2935,6 +2935,19 @@ int main(int argc, char** argv){
     rostopic pub -r 10 /cmd_vel geometry_msgs/Twist '{linear: {x: 0.2, y: 0, z: 0}, angular: {x: 0, y: 0, z: 0.5}}'
     ```
 
+## 3. 建立自己的controller
+
+[参考](https://zhuanlan.zhihu.com/p/433214417)
+
+- 步骤：
+  1. 编写控制器的c++代码以及头文件
+  2. 将c++类注册发布为一个插件
+  3. 在XML文件中定义插件
+  4. 更新package xml发布插件
+  5. 编写CMakeLists.txt
+  6. 编译代码
+  7. 为参数编写配置文件
+
 # 五、URDF，SRDF和 Xacro
 
 ## 1 URDF
