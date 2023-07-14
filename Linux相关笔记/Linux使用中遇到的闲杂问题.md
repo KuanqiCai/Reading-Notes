@@ -53,6 +53,12 @@ https://blog.csdn.net/qq_43310597/article/details/105782722
 
 https://zhuanlan.zhihu.com/p/363640824
 
+## 3. 安装real time kernel
+
+参考1：https://www.cnblogs.com/Pyrokine/p/16695196.html
+
+参考2：https://frankaemika.github.io/docs/installation_linux.html#setting-up-the-real-time-kernel
+
 # 安装基础软件
 
 ## 1. Terminator
