@@ -80,6 +80,7 @@ matlab/python不需要额外写编译文件，c++需要写CMakeLists.txt
 
 void outputAsMatrix(const Eigen::Quaterniond& q)
 {
+    // 注意只有单位四元数才表示旋转矩阵，所以要先对四元数单位化
     std::cout << "R=" << std::endl << q.normalized().toRotationMatrix() << std::endl;
 }
 
@@ -148,8 +149,6 @@ int main() {
   q_d& = \frac{1}{2}pr
   \end{align} \tag{2}
   $$
-  
-- 
 
 #### 2.2.1 dqrobotics定义对偶四元数
 
