@@ -1,3 +1,8 @@
+# 学习资料汇总
+
+- TUM 课
+- [CMU 课件](http://www.cs.cmu.edu/~16385/s17/)
+
 # 一、Wissenswertes über Bilder
 
 ## 1. Darstellung von Bildern
@@ -2306,6 +2311,159 @@ end
   end
   ```
 
-  
 
-​	
+
+
+
+
+# 五、Optical Flow
+
+学习自：http://www.cs.cmu.edu/~16385/s17/
+
+- 光流问题定义：
+
+  给定两个连续consecutive的图像帧$\{I_t,I_{t+1}\}$，估计每一个像素的运动$\{v(p_i),u(p_i)\}$
+
+- 光流应用场景：
+  - 视频稳定（Video Stabilization）：通过计算光流，可以估计相邻帧之间的相机运动，从而实现视频图像的稳定，消除由于相机抖动引起的图像抖动效应。
+  - 物体跟踪（Tracking）：光流可以用于物体跟踪，帮助定位和追踪图像或视频中的感兴趣物体，通过计算物体的光流来估计其运动轨迹。
+  - 立体匹配（Stereo Matching）：立体视觉中的光流计算可以用于在左右视图之间找到匹配点，从而估计场景中的深度信息。
+  - 图像配准（Registration）：光流也可以用于图像配准，即将多幅图像或图像与模板进行对齐，以便进行进一步的分析或处理。
+
+## 1. Brightness Constancy
+
+### 1.1 两个假设
+
+- Brightness constancy假设：
+
+  ![image-20230720002307204](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/202307200023269.png)
+
+  <center style="color:#C125C0C0">图1</center>
+  
+  scene point在image sequence中保持亮度不变
+  $$
+  I(x(t),y(t)t)=Constant \tag{1}
+  $$
+  
+- Small motion
+
+  ![image-20230720010642707](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/202307200106761.png)
+
+  <center style="color:#C125C0C0">图2</center>
+  
+  对于真正的小空间运动，两个consecutive image frame之间的光强是相同的：
+  $$
+  I(x+u\delta t,y+v\delta t,t+\delta t)=I(x,y,t) \tag{2}
+  $$
+  
+  - $(u,v)$：光流速度 optical flow(velocity)
+  - $(\delta x,\delta y)=(u\delta t,v\delta t)$：变换displacement
+
+### 1.2 亮度不变等式
+
+- 由上面两个假设可以得到Brightness Constancy Equation
+  $$
+  \frac{dI}{dt}=\frac{\partial I}{\partial x}\frac{dx}{dt}+\frac{\partial I}{\partial y}\frac{dy}{dt} +\frac{\partial I}{\partial t}=0 \tag{3}
+  $$
+
+  - 推导公式见：http://www.cs.cmu.edu/~16385/s17/Slides/14.1_Brightness_Constancy.pdf
+
+    是由2式泰勒展开得到的
+
+- 3式的shorthand速记法 noatation：
+  $$
+  I_xu+Iyv+I_t=0\tag{4}
+  $$
+
+  - $u$：x-flow velocity； $v$：y-flow velocity
+    - 光流（Optical Flow）可以理解为场景中像素的运动速度。
+    - 在光流问题中，只有u,v是未知的，其他量可用如下方法得到
+  - $I_x，I_y$：在p点的image gradient
+  
+    - 可以通过Forward difference, Sobel filter，Scharr filter计算
+  - $I_t$：temporal gradient
+
+    - 时间梯度，是计算机视觉中的一个概念，用于描述视频序列中相邻帧之间的变化率
+
+    - 可以通过frame differencing帧差分计算
+
+​      ![image-20230720020348984](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/202307200203050.png)
+
+<center style="color:#C125C0C0">图3：帧差分例子</center>
+
+- 向量形式:
+  $$
+  \nabla I^T\mathbf{V}+I_t=0 \tag{5}
+  $$
+
+  - $\nabla I^T$: 1x2 亮度梯度
+  - $\mathbf{v}$： 2x1光流速度
+
+
+
+## 2. Optical Flow: Constant Flow
+
+下面解决**如何求4式中光流$\{u,v\}$**的问题。
+
+- 既然1个Brightness Constancy Equation（4式）无法求得光流，那就假设该点的surrrounding patch（比如5x5的周围块）是**constant flow**的，即假设：
+
+  - Flow is locally smooth、
+  - Neighboring pixels have same displacement
+
+- 用5x5的image patch，我们可以得到25个Brightness Constancy Equation：
+
+  ![image-20230720022121981](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/202307200221036.png)
+
+  <center style="color:#C125C0C0">图4</center>
+
+- 将上面的25个方程构建为最小二乘问题：
+  $$
+  \hat{x}=\mathop{arg\ min}_x||Ax-b||^2 \tag{6}
+  $$
+
+- 最小二乘问题可以等价为矩阵求解：
+
+  - 正规方程形式：
+    $$
+    A^TA\hat{x}=A^Tb \tag{7}
+    $$
+
+  - 矩阵形式：
+    $$
+    x=(A^TA)^{-1}A^Tb \tag{8}
+    $$
+  
+- 何时7/8式有解？
+  
+  - $A^TA$需要时invertible可逆的
+  
+  - $A^TA$不应该太小
+  
+  - $A^TA$是well conditioned
+  
+    即$\frac{\lambda_1}{\lambda_2}$不能太大，$\lambda_1$是较大的那个特征值
+  
+- btw,在Harris Corner Detector也用到过$A^TA$
+
+  - 当$\lambda_1，\lambda_2$都很大时，是角点。这也是Lucas-Kanade optical flow最有效的地方
+  - 角点是至少有2个不同方向梯度的区域
+  - 角点也是易于计算光流的点
+
+- 与角点相对的，如果取的patch是aperture光圈中的一条线呢？
+
+  - 这时很难判断线是往哪运动的
+
+    所以希望patche是包含不同梯度的，以此来避免aperture problem光圈问题
+
+    > Aperture problem是光流计算中的一个重要挑战，它源自于在计算图像中像素点的运动时，我们只能观察到沿着某个特定方向（光流方向）的运动信息。
+    >
+    > 在存在遮挡和复杂运动的情况下，aperture problem是很难被解决的。
+
+  - 例子：
+
+    在一个垂直条纹图案中，条纹的运动方向可能是水平的。然而，由于只能观察到垂直方向的灰度变化（在每一条垂直条纹上），我们在这个区域内只能得到v方向的运动信息，而无法得知条纹的水平运动。因此，在这种情况下，我们可以恢复v的光流分量，但无法直接恢复u的光流分量。
+## 3. Optical Flow: Horn-Schunck
+
+## 4. Alignment: LucasKanade
+
+## 5. Alignment: BakerMatthews
