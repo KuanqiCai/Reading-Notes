@@ -2407,7 +2407,8 @@ end
 
 - 既然1个Brightness Constancy Equation（4式）无法求得光流，那就假设该点的surrrounding patch（比如5x5的周围块）是**constant flow**的，即假设：
 
-  - Flow is locally smooth、
+  - Flow is locally smooth
+    - 局部平滑：是在假设图像上相邻的像素点的运动方向和速度应该是相似的，或者说局部像素点的运动变化应该是连续和一致的。
   - Neighboring pixels have same displacement
 
 - 用5x5的image patch，我们可以得到25个Brightness Constancy Equation：
@@ -2463,6 +2464,65 @@ end
 
     在一个垂直条纹图案中，条纹的运动方向可能是水平的。然而，由于只能观察到垂直方向的灰度变化（在每一条垂直条纹上），我们在这个区域内只能得到v方向的运动信息，而无法得知条纹的水平运动。因此，在这种情况下，我们可以恢复v的光流分量，但无法直接恢复u的光流分量。
 ## 3. Optical Flow: Horn-Schunck
+
+- Horn-Schunck光流算法基本信息：
+
+  - 基于brightness constancy和small motion两个假设
+  - 使用光流的平滑性smooth约束：flow can vary from pixel to pixel
+    - most objects in the world are rigid or deform elastically有弹性的 moving together coherently前后一致的
+  - 是一种global method/dense的，即考虑了图像上所有的像素点，而不是只计算某些选定的稀疏像素点
+
+- Horn-Schunck光流算法依据下面2个约束来计算光流
+
+  1. Enforce **brightness constancy**，即上面的4式$I_xu+Iyv+I_t=0$
+
+     对于每一个像素(i,j)：
+     $$
+     \mathop{min}_{u,v}[I_xu_{ij}+I_yv_{ij}+I_t]^2 \tag{9}
+     $$
+     对于刚体的一个位移，我们希望找到光流满足：
+
+     ![image-20230721014037311](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/202307210140426.png)
+
+     <center style="color:#C125C0C0">图7</center>
+
+  2. Enforce **smooth flow field**
+
+     比如只考虑横向u：左边的$u_{i,j}$，右边的$u_{i+1,j}$
+
+     约束下：
+     $$
+     \mathop{min}_u(u_{i,j}-u_{i+1,j}) \tag{10}
+     $$
+     
+
+- 将上面两个约束何在一起有公式：
+  $$
+  \mathop{min}_{u,v}\sum_{i,j}\{E_s(i,j)+\lambda E_d(i,j)\} \tag{11}
+  $$
+
+  - Smoothness部分：
+    $$
+    E_e(i,j)=\frac{1}{4}\Big[(u_{ij}-u_{i+1,j})^2+(u_{ij}-u_{i,j+1})^2+(v_{ij}-v_{i+1,j})^2+(v_{ij}-v_{i,j+1})^2\Big] \tag{12}
+    $$
+
+  - Brightness Constancy部分：
+    $$
+    E_d(i,j)=\Big[I_xu_{ij}+I_yv_{ij}+I_t \Big]^2 \tag{13}
+    $$
+
+  - $\lambda$:weight
+
+- 最后的算法就是11式对u,v求偏导得到迭代公式，然后不断迭代至收敛，得到每个像素的光流
+
+  ![image-20230721015956267](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/202307210200412.png)
+
+  <center style="color:#C125C0C0">图6：Horn-Schunck光流算法</center>
+
+  - $\hat{u}_{kl}$：像素(k,l)的新光流值
+  - $\overline{u}_{kl}$：像素(k,l)的旧光流均值
+
+  迭代就是让他们之间的差异越来越小
 
 ## 4. Alignment: LucasKanade
 
