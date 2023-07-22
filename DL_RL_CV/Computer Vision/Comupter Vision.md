@@ -2324,6 +2324,8 @@ end
 
   给定两个连续consecutive的图像帧$\{I_t,I_{t+1}\}$，估计每一个像素的运动$\{v(p_i),u(p_i)\}$
 
+  (u,v)表示像素点在水平和垂直方向上的运动速度分量，所以光流表示了图像中像素点的运动方向和速度
+
 - 光流应用场景：
   - 视频稳定（Video Stabilization）：通过计算光流，可以估计相邻帧之间的相机运动，从而实现视频图像的稳定，消除由于相机抖动引起的图像抖动效应。
   - 物体跟踪（Tracking）：光流可以用于物体跟踪，帮助定位和追踪图像或视频中的感兴趣物体，通过计算物体的光流来估计其运动轨迹。
@@ -2526,4 +2528,200 @@ end
 
 ## 4. Alignment: LucasKanade
 
+Lucas-Kanade 加法对准（Additive Alignment）是 Lucas-Kanade 光流算法的一种变体，用于图像对准和图像配准任务。
+
+- Lucas-Kanade 加法对准是一种基于光流的对准方法。与传统的 Lucas-Kanade 光流估计方法不同，Lucas-Kanade 加法对准允许图像之间存在亮度的差异。它假设在两幅图像之间，存在一个局部线性变换，即图像上的像素值之间存在一个线性关系。
+
+> 图像对准（Image Alignment）：图像对准是将多幅图像中的特定特征或目标对齐到一个参考图像的过程。通常，这些图像可能有不同的尺度、角度、旋转或平移，或者存在轻微的形变和畸变。图像对准的目标是将这些图像进行变换，使得它们在某种准则下对齐，以便进行后续的分析、比较或叠加显示。图像对准常用于图像融合、图像拼接、图像叠加等应用，例如在航拍图像拼接中，将多幅航拍图像对齐形成一张大的全景图。
+>
+> 图像配准（Image Registration）： 图像配准是将多幅图像进行空间变换，使得它们在相同坐标系下对齐的过程。这些图像可能来自不同的传感器、不同时间或不同视角。图像配准的目标是找到一种变换方法，将这些图像映射到同一个坐标系下，以便进行像素级的对应和比较。图像配准常用于遥感图像处理、医学图像处理、多视角图像融合等应用，例如在医学影像中，将不同模态的图像进行配准，以便医生可以更好地比较和分析。
+
+### 4.1 数学：
+
+**w**:2d image transformation
+
+$\mathbf{x}$:2d image coordinate
+
+$\mathbf{p}=[p_1,p_2,\cdots]$: 变换参数warp parameters
+
+$I(x')=I(\mathbf{W(x;p)})$:warped image
+
+- 平移变换Translation：
+  $$
+  \begin{align}
+  \mathbf{W(x;p)}&=\left [\begin{array}{cccc}
+  x +p_1 \\
+  y +p_2   \\
+  \end{array}\right]\\
+  &=\left [\begin{array}{cccc}
+  1 & 0 & p_1 \\
+  0 & 1 & p_2   \\
+  \end{array}\right]\left [\begin{array}{cccc}
+  x\\
+  y\\
+  1
+  \end{array}\right]
+  \end{align}
+  $$
+
+- 仿射变换Affine ：
+  $$
+  \begin{align}
+  \mathbf{W(x;p)}&=\left [\begin{array}{cccc}
+  p_1x+p_2y+p_3 \\
+  p_4x+p_5y+p_6   \\
+  \end{array}\right]\\
+  &=\left [\begin{array}{cccc}
+  p_1+p_2+p_3 \\
+  p_4+p_5+p_6   \\
+  \end{array}\right]\left [\begin{array}{cccc}
+  x\\
+  y\\
+  1
+  \end{array}\right]
+  \end{align}
+  $$
+
+### 4.2 问题定义：
+
+$$
+\mathop{min}_p\sum_x[I(\mathbf{W(x;p)}-T(\mathbf{x})]^2 \tag{14}
+$$
+
+- 目标：找到一个变换参数warp parameters $\mathbf{p}$使得14式最小化
+
+  ![image-20230722164426604](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/lucasKandade%E9%97%AE%E9%A2%98%E5%AE%9A%E4%B9%89.png)
+
+  <center style="color:#C125C0C0">图7</center>
+
+- $I$: warped image
+
+- T:template image
+
+  它通常是一个小尺寸的图像，代表了要在其他图像中寻找或匹配的目标形状、纹理或特征。
+
+### 4.3 公式推导
+
+14式是一个非线性方程很难求解
+
+- 14式可以写成小扰动perturbation的形式：
+  $$
+  \mathop{min}_p\sum_x[I(\mathbf{W(x;p+\Delta p)}-T(\mathbf{x})]^2 \tag{15}
+  $$
+  但任然是非线性方程
+
+- 对15式泰勒展开并近似可得：
+  $$
+  \mathop{min}_{\Delta \mathbf{p}}\sum_{\mathbf{x}}[I(\mathbf{W(x;p)}+\nabla I\frac{\partial\mathbf{W}}{\partial\mathbf{p}}\Delta\mathbf{p}-T(\mathbf{x})]^2\tag{16}
+  $$
+
+  - $\nabla I=\frac{\partial I(\mathbf{W}(x;p))}{\partial x'}$
+
+  - $\frac{\partial\mathbf{W}}{\partial\mathbf{p}}$:
+    $$
+    \frac{\partial\mathbf{W}}{\partial\mathbf{p}}=\left [\begin{array}{cccc}
+    \frac{\partial\mathbf{W}_x}{\partial\mathbf{p}_1} & \frac{\partial\mathbf{W}_x}{\partial\mathbf{p}_2}&\cdots & \frac{\partial\mathbf{W}_x}{\partial\mathbf{p}_N}  \\
+    \frac{\partial\mathbf{W}_y}{\partial\mathbf{p}_1} & \frac{\partial\mathbf{W}_y}{\partial\mathbf{p}_2}&\cdots & \frac{\partial\mathbf{W}_y}{\partial\mathbf{p}_N}  \\
+    \end{array}\right]
+    $$
+  
+- 再把16式里的项换个位置
+
+  ![image-20230722185652389](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/LucasKanadde%E5%85%AC%E5%BC%8F%E6%8E%A8%E5%AF%BC.png)
+
+  <center style="color:#C125C0C0">图8：公式调个位姿</center>
+
+- 最小二乘法least squares approximation
+
+  对于最小二乘问题：
+  $$
+  \hat{x}=\mathop{arg\ min}_x||Ax-b||^2
+  $$
+  可以转为下面这个矩阵方程来求解：
+  $$
+  x=(A^TA)^{-1}A^Tb
+  $$
+
+- 最后对图8公式进行最小二乘问题等价转后就得到要求解的公式：
+
+  ![image-20230722190813567](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/LK%E5%85%89%E6%B5%81%E6%9C%80%E5%90%8E%E7%9A%84%E8%BF%AD%E4%BB%A3%E5%85%AC%E5%BC%8F.png)
+
+  <center style="color:#C125C0C0">图9：最后的迭代公式</center>
+
+  这种非线性优化方法叫做Gauss-Newton gradient decent non-linear optimization!
+
+### 4.4 L-K Additive alignment光流算法
+
+![image-20230722194135350](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/L-K%20Additive%20alignment%E7%AE%97%E6%B3%95.png)
+
 ## 5. Alignment: BakerMatthews
+
+ BakerMatthews光流法区别于上面属于Additive Alignment（加法对准）的L-K光流法， BakerMatthews光流法属于 Compositional Alignment（合成对准）方法。
+
+> Compositional Alignment（合成对准）：采用合成（composition）的方式对多幅图像进行对准。它假设图像间的变换是由一系列组合的变换构成的。通常，它会使用一个初始的变换模型，然后通过迭代优化的方式逐步改进变换模型，直到得到最佳的对准结果。
+>
+> Additive Alignment（加法对准）：采用加法（addition）的方式对多幅图像进行对准。它假设图像间的差异可以表示为参考图像加上一个平移项，即图像之间存在亮度的差异。这个平移项可以是常数项，也可以是位置依赖的项。Additive Alignment 的目标是估计这个平移项，使得将多幅图像加上这个平移项后能够对齐到参考图像。
+
+一个例子：打高尔夫
+
+- 合成对准：打一杆后，从球落地点开始打下一杆，如此反复直到打进
+
+- 加法对准：打一杆后，计算下一杆要增加的量，然后回到起点重新打，直到加的量正正好好一杆进洞。
+
+### 5.1 公式推导
+
+ 还是要求解4.2的14式这一个问题。
+
+- 与additive alignment的区别
+
+  - Additive alignment：
+
+    即4.3的15式：是incremental perturbation of parameters
+    $$
+    \mathop{min}_p\sum_x[I(\mathbf{W(x;p+\Delta p)}-T(\mathbf{x})]^2
+    $$
+
+  - Compositional Alignment:
+
+    是incremental warps of image
+    $$
+    \sum_x[I(\mathbf{W(W(x;\Delta p); p)}-T(\mathbf{x})]^2 \tag{17}
+    $$
+
+    - 其中$\mathbf{W(W(x;\Delta p); p)}$可写作：$\mathbf{W(x; p)}\circ \mathbf{W(x;\Delta p)}$
+    - 最后更新项：$\mathbf{W(x;p)}\leftarrow\mathbf{W(x;p)}\circ\mathbf{W(x;\Delta p)}$
+
+- 17式经过泰勒级数展开后，可得到：
+  $$
+  \sum_{\mathbf{x}}[I(\mathbf{W(x;p)}+\nabla I\frac{\partial\mathbf{W}(x;0)}{\partial\mathbf{p}}\Delta\mathbf{p}-T(\mathbf{x})]^2\tag{18}
+  $$
+
+  - 相比Additive alignment的16式，18式的jacobian$\frac{\partial\mathbf{W}(x;0)}{\partial\mathbf{p}}$是固定的
+
+### 5.2 Schum-Szeliski光流算法
+
+![image-20230722204943821](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/schum-Szeliski%E5%85%89%E6%B5%81%E7%AE%97%E6%B3%95.png)
+
+### 5.3 继续改进算法
+
+- 是否可以令template也被变换(warp)？
+
+  即同时更新17式：$\sum_x[I(\mathbf{W(W(x;\Delta p); p)}-T(\mathbf{x})]^2$中的$T(x)$
+
+  ![image-20230722205322411](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/compositional%E5%92%8Cinverse%20compositional%E7%9A%84%E5%AF%B9%E6%AF%94.png)
+
+  参考高尔夫例子：
+
+  - 合成对准：打一杆后，从球落地点开始打下一杆，如此反复直到打进。
+
+  - 逆合成对准：打一杆后，移动球洞到球落地点，让球掉进去。
+
+  - 加法对准：打一杆后，计算下一杆要增加的量，然后回到起点重新打，直到加的量正正好好一杆进洞。
+
+-  Inverse compositional alignment的性质：
+
+  ![image-20230722205807865](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/%20Inverse%20compositional%20alignment%E7%9A%84%E6%80%A7%E8%B4%A8.png)
+
+### 5.4Baker-Mattews光流算法
+
+![image-20230722210407032](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/Baker-Mattews%E5%85%89%E6%B5%81%E7%AE%97%E6%B3%95.png)
