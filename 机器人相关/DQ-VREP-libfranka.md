@@ -183,5 +183,40 @@ xd = r + E_*0.5*p*r;				   // 应用公式2
 
     
 
+# 二、路径规划
 
+## 1. Path Planning是如何做的
 
+- 总体轨迹overall trajectory被描述为：
+  $$
+  p(t):\mathbb{R}\rightarrow\mathbb{R}^3
+  $$
+
+- 下面将**空间规划**p(s)（机械臂在三维空间中的路径规划）与**时间规划**s(t)（机械臂运动的时间控制）分开处理：
+
+  - 路径参数用弧长(arc length)表示，即用路径上的弧长值s来表示机械臂在路径上的位置：
+    $$
+    p(s)\in\mathbb{R}^3,\ \ \ s\in[0,L] \tag{1}
+    $$
+    ![img](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/SpeedProfile.svg)
+
+    <center style="color:#C125C0C0">图1:speedProfile</center>
+
+  - 这个路径上的弧长值是关于时间的函数$s(t):\mathbb{R}\rightarrow\mathbb{R}$，映射了弧长值和时间坐标
+
+  - $s(t)$是由motion profile描述的，将其带入1式后，就可以得到：
+    $$
+    p(t)=p(s(t))\in\mathbb{R}^3 \tag{2}
+    $$
+    ![img](https://raw.githubusercontent.com/Fernweh-yang/ImageHosting/main/img/SampleTrajectory.svg)
+
+    <center style="color:#C125C0C0">图2:sample trajectory</center>
+
+- 
+
+## 2. Motion Profile
+
+### 2.1 基本概念
+
+- 机械臂路径规划中的Motion Profile（运动剖面）是指描述机械臂运动随时间变化的速度、加速度和位置的曲线。如上面的$s(t)$
+- 
