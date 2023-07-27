@@ -420,3 +420,23 @@ flowchart LR
 
   1. First, we introduce a new method of auto-differentiation involving 3D transformation groups by performing backpropagation in the tangent space.
   2. Second, we introduce LieTorch, an opensource, easy-to-use PyTorch library that implements tangent space backpropagation
+
+
+
+# 4. F2-NERF笔记
+
+[git](https://github.com/Fernweh-yang/CodeComments_f2-nerf)
+
+## 4.1 f2-nerf安装
+
+直接照着git readme的运行
+
+在以下环境可行:
+
+```
+ubuntu 20 
+Cuda:12.1
+Ubuntu:20.04
+CMake:3.26.3
+```
+

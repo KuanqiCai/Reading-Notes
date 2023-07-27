@@ -1482,7 +1482,12 @@ class FashionMNISTDataModule(pl.LightningDataModule):
 
 - VS CODE环境：
 
-  添加：`/home/yang/3rdLibrary/libtorch/include/torch/csrc/api/include`
+  添加：
+
+  ```
+  /home/yang/3rdLibrary/libtorch/include/torch/csrc/api/include
+  /home/yang/3rdLibrary/libtorch/include
+  ```
 
 - .cpp：
 
@@ -1545,4 +1550,25 @@ class FashionMNISTDataModule(pl.LightningDataModule):
    export CUDA_HOME=/usr/local/cuda-11.8
    ```
 
-   
+
+# 8.查看安装的各种包
+
+- apt-get安装的包
+
+  ```shell
+   sudo apt list/show | grep cuda
+  ```
+
+- conda安装的包
+
+  ```shell
+  conda list | grep cuda
+  ```
+
+- pip安装的包
+
+  ```
+  pip list/show | grep xxx
+  ```
+
+  
