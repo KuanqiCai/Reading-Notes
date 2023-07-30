@@ -67,7 +67,7 @@
      $$
      
 
-     - $F_\theta$: MLP神经网络
+     - $F_\theta$: MLP(Multilayer Perceptron.)神经网络
 
      - $\mathbf{x}$: 3D坐标
 
@@ -99,12 +99,12 @@
       - $\sigma(\mathbf{r}(t))$：神经辐射场算出来的体积密度，也就是消光系数（不透明度）
       - $\mathbf{c}(\mathbf{r}(t),\mathbf{d})dt$：神经辐射场算出来的颜色
 
-   2. 将近远平面等分成N份，在每份小区间内取样
+   2. 将近远平面等分成N份，在每份小区间内随机取样
       $$
       t_i\sim \mathcal{U}\big[t_n+\frac{i-1}{N}(t_f-t_n),t_n+\frac{i}{N}(t_f-t_n)\big] \tag{3}
       $$
 
-   3. 将2式写成电脑可处理的离散模式，将神经辐射场从3式中采样学来的各个颜色和体密度，渲染出近似颜色
+   3. 通过3式得到离散取样点后，就可以将2式写成电脑可处理的离散模式，将神经辐射场从3式中采样学来的各个颜色和体密度，渲染出近似颜色
       $$
       \hat{C}(\mathbf{r})=\sum_{i=1}^NT_i(1-exp(-\sigma_i\delta_i))\mathbf{c}_i,\ where\ T_i=exp(-\sum_{j=1}^{i-1}\sigma_j\delta_j) \tag{4}
       $$
@@ -116,15 +116,17 @@
    \mathcal{L}=\sum_{\mathbf{r}\in\mathcal{R}}\big[||\hat{C}_c(\mathbf{r})-C(\mathbf{r}) ||_2^2+||\hat{C}_f(\mathbf{r})-C(\mathbf{r}) ||_2^2\big]
    $$
 
-   - 这里精细/粗糙网络算出来的RGB值$\hat{C}$具体见1.6.2
+   - $\hat{C}_c$：corse volume predicted RGB colors for ray r
+   - $C$：ground truth RGB colors for ray r
+   - $\hat{C}_f$：fine volume predicted RGB colors for ray r
 
 ## 1.4NeRF的两个优化
 
-直接将5D坐标送入MLP学习，没法表达高分辨率的复杂场景，所以使用了2个提升措施：
+直接将5D坐标送入MLP(Multilayer Perceptron.)学习，没法表达高分辨率的复杂场景，所以使用了2个提升措施：
 
 ### 1.4.1 Positional encoding
 
-由于5D输入在颜色和几何的高频变换方面表现不好，所以在5D输入传递到NeRF网络之前，使用高频函数将输入映射到更高维空间可以更好地拟合包含高频变换的数据。
+由于5D输入在颜色和几何的高频变换方面表现不好，所以在5D输入传递到NeRF网络之前，使用高频函数将输入映射到更高维空间可以更好地拟合包含高频变换的数据。从而使得nerf可以同时兼顾低频和高频信息。
 
 - 什么是高频/低频信号：
 
@@ -145,6 +147,10 @@
 
     - 对$x,y,z$ L选择10，从而3个变量变成60个变量
     - 对$\theta,\phi$ L选择4，从而2个变量变成24个变量
+    
+    为什么用正弦余弦函数：
+    
+    - 因为可以生成周期性信号，可以捕捉到输入数据中的周期性变化
 
 - 为什么傅里叶变换后可以学习到更多特征？见[论证论文](https://arxiv.org/abs/2006.10739)
 
