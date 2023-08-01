@@ -408,106 +408,101 @@ $ echo $ROS_PACKAGE_PATH
 
 ### 简单的例子
 
-#### 1.Publisher
+#### 1.1 Publisher
 
 ```c++
-#include "ros/ros.h"
-#include "std_msgs/String.h"
+#include <ros/ros.h>
+#include <topic_demo/gps.h>
+int main(int argc, char**argv){
+    ros::init(argc,argv, "gps_talker"); //解析参数，命名节点
+    ros::NodeHandle nh; //初始化句柄， 实例化node
+    topic_demo::gps msg;  //创建gps的消息
+    msg.x=1; //初始化赋值
+    msg.y=1;
+    msg.state = "working";
+    ros::Publisher pub=nh.advertise<topic_demo::gps>("gps_info1", 1); //创建publisher, <消息的类型>（消息的名称，队列的长度『消息在pub的时候会先Pub到一个队列上』）
+    ros::Rate loop_rate(1.0); //定义循环发布的频率
+    while(ros::ok()){  //ros::ok只要循环没有关就一直循环
+        msg.x = 1.03*msg.x;
+        msg.y = 0.98*msg.y;
+        ROS_INFO("Talker: GPS: x=%f, y=%f", msg.x, msg.y);
+        pub.publish(msg); //发布消息
+        loop_rate.sleep();//循环休眠1s
+    }
+    return 0;
+}
+```
 
-#include <sstream>
+#### 1.2 Subscribe
 
-//main function
-int main(int argc, char **argv)
-{
+```c++
+#include<ros/ros.h>
+#include<topic_demo/gps.h>
+#include<std_msgs/Float32.h>
+#include<math.h>
 
-  //start node
-  ros::init(argc, argv, "SupeROS");
+void gpscallback(const topic_demo::gps::ConstPtr &msg){   // ConstPtr 是一个 ROS 消息类型的指针，它指向一个常量的 topic_dem::gps 消息对象
+    std_msgs::Float32 distance;
+    distance.data = sqrt(pow(msg->x,2)+ pow(msg->y,2));
+    ROS_INFO("Listerner: distancce to the origin = %f, state = %s", distance.data, msg->state.c_str());
+} 
 
-  //create variable for node
-  ros::NodeHandle n;
+int main(int argc, char** argv){
+    ros::init(argc,argv, "listener");
+    ros::NodeHandle n;
+    ros::Subscriber sub = n.subscribe("gps_info1",1,gpscallback); //创建subscriber
+    ros::spin(); //反复调用当前可触发的回调函数（gpscallback）
+    return 0;
+}
+```
 
-  //declare publishers (employees)
-  ros::Publisher MrFish = n.advertise<std_msgs::String>("fish", 1000);
-  ros::Publisher MrVeggies = n.advertise<std_msgs::String>("veggies", 1000);
-  ros::Publisher MrFruits = n.advertise<std_msgs::String>("fruits", 1000);
+#### 2.1 Client
 
+```c++
+#include<ros/ros.h>
+#include<service_demo/greeting.h>
 
-  ros::Rate loop_rate(10);
+int main(int argc, char** argv){
+    ros::init(argc, argv, "greetings_client");
+    ros::NodeHandle nh;
+    ros::ServiceClient client = nh.serviceClient<service_demo::greeting>("greeting");
 
-  int count = 0;
-  while (ros::ok())
-  {
-    // declare msg for publishing data
-    std_msgs::String msg_fisher;
-    std_msgs::String msg_veggies;
-    std_msgs::String msg_fruits;
-
-    //define possible options for food
-    std::vector<std::string> fisher_options = { "tuna", "salmon", "shark" };
-    std::vector<std::string> veggies_options = { "onion", "potatoes", "carrots" };
-    std::vector<std::string> fruit_options = { "bananas", "apples", "grapes" };
-
-    //store current option
-    if (count == 3){count = 0;} //reset counter if longer than amount of options
-    msg_fisher.data = fisher_options[count];
-    msg_veggies.data = veggies_options[count];
-    msg_fruits.data = fruit_options[count];
-
-
-    //publish
-    MrFish.publish(msg_fisher);
-    MrVeggies.publish(msg_veggies);
-    MrFruits.publish(msg_fruits);
-
-    ros::spinOnce();
-
-    loop_rate.sleep();
-
-    ++count;
-  }
-
-
-  return 0;
+    service_demo::greeting srv;
+    srv.request.name = "HANI";
+    srv.request.age = 18;
+    if(client.call(srv)){
+        ROS_INFO("Feedback from server: %s.", srv.response.feedback.c_str()); //.str()是改变字符串类型，使其能显示
+    }
+    else{
+        ROS_ERROR("Failed to connect.");
+        return 1;
+    }
+    return 0;
 }
 
 ```
 
-#### 2.Client
+#### 2.2 serve
 
 ```c++
-#include "ros/ros.h"
-#include "std_msgs/String.h"
+#include<ros/ros.h>
+#include<service_demo/greeting.h>
 
-void customerCallback1(const std_msgs::String& msg){
-        if (msg.data == "carrots")
-        {
-            //print in command window
-            ROS_INFO("Customer 1: I got carrots!");
-        }
-}
-void customerCallback2(const std_msgs::String& msg){
-        if (msg.data == "tuna")
-        {
-            //print in command window
-            ROS_INFO("Customer 2: I got tuna!");
-        }
+
+bool handle_function(service_demo::greeting::Request &req, service_demo::greeting::Response &res){
+    ROS_INFO("Reequest from %s with age %d", req.name.c_str(), req.age);
+    res.feedback = "Hi" + req.name + "Good!";
+    return true;
 }
 
-int main(int argc, char **argv)
-{
 
-  ros::init(argc, argv, "Clients");
-
-  ros::NodeHandle n;
-
-  ros::Subscriber customer1_sub = n.subscribe("veggies", 1000, customerCallback1);
-  ros::Subscriber customer2_sub = n.subscribe("fish", 1000, customerCallback2);
-
-  ros::spin();
-
-  return 0;
+int main(int argc, char** argv){
+    ros::init(argc, argv, "greetings_server");
+    ros::NodeHandle nh;
+    ros::ServiceServer service = nh.advertiseService("greeting", handle_function);
+    ros::spin();
+    return 0;
 }
-
 ```
 
 #### 3.将通信包装成一个类
