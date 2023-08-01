@@ -329,10 +329,12 @@ add_library(hello libHelloSlam.cpp)
 # 只有一个副本，更省空间
 add_library(hello_shared SHARED libHelloSlam.cpp)
 
-# ROS E.g.
+# ROS E.g.--------------------------------------------------------------------------------
 add_library(calculate src/calculate.cpp) #此时src里面不仅有calculate.cpp，还包含calculate.h
 add_executable(serve src/serve.cpp)
 target_link_libraries(serve calculate ${catkin_LIBRARIES}) #在serve.cpp中包含calculate.h头文件。ps.:${catkin_LIBRARIES}是包含ros package里面的文件，例如 roscpp, rospy, message_generation等。
+# ROS E.g.--------------------------------------------------------------------------------
+
 
 # 添加一个可执行程序
 # 语法：add_executable(程序名 源代码文件)
