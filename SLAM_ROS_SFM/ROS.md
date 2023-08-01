@@ -1007,7 +1007,7 @@ topic可以同时有多个subscribers，也可以有多个publishers。如/rosou
     Num.msg
   )
   
-  # 指定我们的msg用到的依赖项
+  # 指定我们的msg用到的依赖项 （如果没有添加这个则会出现.h文件找不到的情况）
   generate_messages(
     DEPENDENCIES
     std_msgs
