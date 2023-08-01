@@ -406,9 +406,9 @@ $ echo $ROS_PACKAGE_PATH
   
   - `rosnode cleanup`清除不可到达节点的注册信息
 
-### 简单的例子
+### 简单的例子 
 
-#### 1.1 Publisher
+#### 1.1 Publisher [Video](https://www.bilibili.com/video/BV1mJ411R7Ni?p=23&vd_source=376aaa34721bba5bbad88add6f938514)
 
 ```c++
 #include <ros/ros.h>
