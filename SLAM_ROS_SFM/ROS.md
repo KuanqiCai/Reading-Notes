@@ -1697,7 +1697,7 @@ $ cd -
 
 ### 五(二)使用python来写
 
-![Example Image](笔记配套图片/ROS/rospy-node.png)
+![](笔记配套图片/ROS/rospy-node.png)
 
 #### 1. 写一个Publisher Node
 
