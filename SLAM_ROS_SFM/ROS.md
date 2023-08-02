@@ -1738,7 +1738,7 @@ $ cd -
       #初始化，且定义该节点名为talker.
       #anonymous=True通过在talker后加随机数来确保节点名是唯一的，因为一个ROS系统中不能出现同名节点，否则会被刷掉。
       rospy.init_node('talker', anonymous=True)
-      rate = rospy.Rate(10) # 10hz
+      rate = rospy.Rate(10) # 10hz 休眠频率
       #rospy.is_shutdown()用于判断是否存在需要停止程序的情况，比如ctrl+c。
       while not rospy.is_shutdown():
           hello_str = "hello world %s" % rospy.get_time()
