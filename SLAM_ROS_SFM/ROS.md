@@ -1697,7 +1697,7 @@ $ cd -
 
 ### 五(二)使用python来写
 
-![](笔记配套图片/ROS/rospy-node.png)
+![](https://github.com/KuanqiCai/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/rospy-node.jpg?raw=true)
 
 #### 1. 写一个Publisher Node
 
