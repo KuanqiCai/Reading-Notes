@@ -1427,6 +1427,8 @@ $ cd -
   ```python
   rospy.sleep(duration)
   ```
+  ![](https://github.com/KuanqiCai/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/rospy-time.png)
+  
   sleep的使用场景
 - 初始化阶段：在ROS节点启动后，有时需要等待一段时间以确保其他节点都已经初始化完毕，再继续执行自身的任务。
 - 避免频繁占用资源：在某些情况下，ROS节点可能会以较高的频率执行某些任务，为了避免过度占用系统资源，可以在任务之间插入rospy.sleep()来降低执行频率。
@@ -1704,7 +1706,10 @@ $ cd -
 
 ### 五(二)使用python来写
 
-![](https://github.com/KuanqiCai/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/rospy-node.jpg?raw=true)
+![](https://github.com/KuanqiCai/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/rospy-node.png)
+![](https://github.com/KuanqiCai/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/rospy-param.png)
+![](https://github.com/KuanqiCai/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/rospy-service.png)
+![](https://github.com/KuanqiCai/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/rospy-topic.png)
 
 #### 1. 写一个Publisher Node
 
