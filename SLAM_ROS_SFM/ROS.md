@@ -1738,7 +1738,7 @@ $ cd -
       #初始化，且定义该节点名为talker.
       #anonymous=True通过在talker后加随机数来确保节点名是唯一的，因为一个ROS系统中不能出现同名节点，否则会被刷掉。
       rospy.init_node('talker', anonymous=True)
-      rate = rospy.Rate(10) # 10hz 休眠频率
+      rate = rospy.Rate(10) # 10hz 设置循环频率为10hz，即循环体中的代码快每秒执行10次
       #rospy.is_shutdown()用于判断是否存在需要停止程序的情况，比如ctrl+c。
       while not rospy.is_shutdown():
           hello_str = "hello world %s" % rospy.get_time()
@@ -1751,7 +1751,7 @@ $ cd -
           rospy.loginfo(hello_str)
           #发布消息给chatter话题
           pub.publish(hello_str)
-          rate.sleep()
+          rate.sleep() #根据前面rate设置的频率进行暂停，以控制代码块的执行速度。
   
   if __name__ == '__main__':
       try:
