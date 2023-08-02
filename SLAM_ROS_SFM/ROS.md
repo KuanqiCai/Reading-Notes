@@ -1249,6 +1249,28 @@ $ cd -
 
    利用api来对参数服务器进行操作
 
+4. param_demo.cpp
+   ```c++
+   #include <ros/ros.h>
+   int main(int argc, char** argv){
+   ros::init(argc,argv, "greeting_server");
+   ros::NodeHandle nh;
+   int parameter1. parameter2, parameter3, parameter4, parameter5;
+   //获取参数
+   ros::param::get("param1", parameter1);
+   nh.getParam("param2", parameter2);
+   nh.param("param3",parameter3, 123); //当取不到parameter3的值时，赋值123
+   //设置参数
+   ros::param::set("param4", parameter4);
+   nh.setParam("param5", parameter5);
+   //检查参数是否存在
+   ros::param::has("param5")
+   nh.hasParam("param6");
+   //删除参数
+   ros::param::del("param5");
+   nh.deleteParam("param6");
+   }
+
 ### 4)动作库Action
 
 一些常见的[动作库](https://sychaichangkun.gitbooks.io/ros-tutorial-icourse163/content/chapter4/4.6.html)
