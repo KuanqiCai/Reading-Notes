@@ -1423,7 +1423,14 @@ $ cd -
   - Today + 1 day = tomorrow (time + duration = time)
   - Today - tomorrow = -1 day (time - time = duration)
   - Today + tomorrow = error (time + time is undefined)
-
+    
+  ```python
+  rospy.sleep(duration)
+  ```
+  sleep的使用场景
+- 初始化阶段：在ROS节点启动后，有时需要等待一段时间以确保其他节点都已经初始化完毕，再继续执行自身的任务。
+- 避免频繁占用资源：在某些情况下，ROS节点可能会以较高的频率执行某些任务，为了避免过度占用系统资源，可以在任务之间插入rospy.sleep()来降低执行频率。
+- 定时任务：在需要定时执行某些任务的情况下，可以使用rospy.sleep()来实现简单的定时功能。
 
 
 ## $$调试(rqt_console)
