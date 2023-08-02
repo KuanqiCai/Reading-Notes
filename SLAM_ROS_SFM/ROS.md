@@ -377,7 +377,7 @@ $ echo $ROS_PACKAGE_PATH
   - [Nodes](http://wiki.ros.org/Nodes): A node is an executable process that uses ROS to communicate with other nodes.
   - [Messages](http://wiki.ros.org/Messages): ROS data type used when subscribing or publishing to a topic.
   - [Topics](http://wiki.ros.org/Topics): Nodes can *publish* messages to a topic as well as *subscribe* to a topic to receive messages.
-  - [Master](http://wiki.ros.org/Master): Name service for ROS (i.e. helps nodes find each other)
+  - [Master](http://wiki.ros.org/Master): Name service for ROS (i.e. helps nodes find each other) "master" 是指ROS系统中的一个核心节点，它负责管理整个ROS系统中的其他节点的通信。Master节点是ROS通信的中心枢纽，负责节点的注册、节点之间的连接以及消息的传递。当你启动ROS系统时，你需要先启动一个ROS Master节点。所有其他的节点（例如传感器节点、控制节点、视觉节点等）在运行前都会注册到Master节点上，注册的过程包括向Master节点报告节点的名称、话题（topics）、服务（services）等信息。
   - [rosout](http://wiki.ros.org/rosout): ROS equivalent of stdout/stderr
   - [roscore](http://wiki.ros.org/roscore): Master(provides name service for ROS) + rosout + parameter server 
   
