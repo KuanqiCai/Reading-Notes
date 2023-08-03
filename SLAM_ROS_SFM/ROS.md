@@ -2154,7 +2154,7 @@ int main(int argc, char** argv){
 
   - tf是一个树状结构，维护坐标系之间的关系，靠**话题通信机制**来持续地发布不同link(比如手部、头部、某关节)之间的坐标关系。
 
-    作为树状结构，要保证父子坐标系都有某个节点在持续地发布他们之间的位姿关系，才能使树状结构保持完整。只有父子坐标系的位姿关系能被正确的发布，才能保证任意两个frame之间的连通。
+    作为树状结构，要保证父子坐标系都有某个节点（node）在持续地发布他们之间的位姿关系，才能使树状结构保持完整。只有父子坐标系的位姿关系能被正确的发布，才能保证任意两个frame之间的连通。
 
   - 每两个相邻frame之间靠节点发布它们之间的位姿关系，这种节点称为**broadcaster**。broadcaster就是一个发布器publisher,如果两个frame之间发生了相对运动，broadcaster就会发布相关消息。
   
@@ -2318,6 +2318,7 @@ int main(int argc, char** argv){
   	  参照笔记 3.添加一个坐标frame
   	  如果把/turtle1改为/carrot1，这时乌龟2号就开始追着坐标系carrot1跑，而不是追着乌龟1号跑了
         */
+  // lookupTransform是寻找/turtle1到/turtle2之间的坐标转化关系 并且放在transform参数上，ros::Time(0)表示最新的时间下
         listener.lookupTransform("/turtle2", "/turtle1",
                                  ros::Time(0), transform);
       }
