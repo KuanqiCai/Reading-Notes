@@ -2158,11 +2158,13 @@ int main(int argc, char** argv){
 
   - 每两个相邻frame之间靠节点发布它们之间的位姿关系，这种节点称为**broadcaster**。broadcaster就是一个发布器publisher,如果两个frame之间发生了相对运动，broadcaster就会发布相关消息。
   
-- 分析
+- tf的命令
 
   - tf树的信息：`rosrun tf tf_monitor`
   - 2个frame坐标系之间转换的信息:`rosrun tf tf_echo source_frame target_frame`
-  -  可视化tf tree:`rosrun tf view_frames`
+  -  可视化tf tree,将当前的tf树创建一个pdf图:`rosrun tf view_frames`
+  -  查看当前的tf树(动态查看)： rosrun rqt_tf_tree rqt_tf_tree
+  -  查看两个frame之间的变换关系： rosrun tf tf_echo [reference_frame][target_frame]
   
 -tf::TransformListener类
 bool canTransform()  判断是否有坐标转换
