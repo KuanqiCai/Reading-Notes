@@ -2988,7 +2988,7 @@ bool waitForTransform() const  等待两个之间的transform联通
 
 # 五、URDF，SRDF和 Xacro
 
-## 1 URDF
+## 1 URDF-定义机器人的结构（机器人的tf,可视化）每一个坐标是一个link，连接两个link是joint
 
 - 一些学习网站
 
@@ -3029,7 +3029,7 @@ bool waitForTransform() const  等待两个之间的transform联通
       <node if="$(arg gui)" name="joint_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" />
       <node unless="$(arg gui)" name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
       
-      <!--第三个：robot_ state_publisher 发出机器人的状态-->>
+      <!--第三个：robot_state_publisher 发出机器人的状态-->>
       <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
       
       <!--打开rviz设置文件-->
@@ -3046,7 +3046,7 @@ bool waitForTransform() const  等待两个之间的transform联通
 
     mesh文件一般分2种：
 
-    - <.dae> 格式的，主要用来显示模型
+    - <.dae> 格式的，主要用来显示模型，通过外部建模的模型文件
     -  <.stl > 格式的,主要用来进行碰撞检测。
 
     可以用各种三维制图软件来生成。如果不进行碰撞检测，完全可以用圆柱体、长方体等常见形状来代替。只要质量、质心、惯量矩阵等设置正确，运动学和动力学仿真没有任何问题。显示模型的形状只是为了好看，而其设置的属性才是根本。
