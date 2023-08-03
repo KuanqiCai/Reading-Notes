@@ -413,7 +413,7 @@ $ echo $ROS_PACKAGE_PATH
 ```c++
 #include <ros/ros.h>
 #include <topic_demo/gps.h>
-int main(int argc, char**argv){
+int main(int argc, char**argv){ 
     ros::init(argc,argv, "gps_talker"); //解析参数，命名节点
     ros::NodeHandle nh; //初始化句柄， 实例化node
     topic_demo::gps msg;  //创建gps的消息
@@ -432,6 +432,19 @@ int main(int argc, char**argv){
     return 0;
 }
 ```
+tip: (int argc, char**argv)
+-argc 就表示传递的参数个数，包括程序本身的名称。至少为1，因为第一个参数是程序的名称。
+-argv：这是一个指向指针数组的指针。每个字符串指针指向一个传递的参数，其中第一个参数是程序的名称（例如，"./my_program"），后续参数是传递给程序的命令行参数（例如，"arg1", "arg2", 等等）。
+```c++
+//运行以下命令
+rosrun my_package my_node arg1 arg2
+//那么在main函数中，argc 将是4，argv将包含指向以下内容的指针数组：
+argv[0] = "my_node"
+argv[1] = "arg1"
+argv[2] = "arg2"
+argv[3] = NULL
+```
+
 
 #### 1.2 Subscribe
 
