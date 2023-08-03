@@ -2163,6 +2163,10 @@ int main(int argc, char** argv){
   - tf树的信息：`rosrun tf tf_monitor`
   - 2个frame坐标系之间转换的信息:`rosrun tf tf_echo source_frame target_frame`
   -  可视化tf tree:`rosrun tf view_frames`
+  
+-tf::TransformListener类
+bool canTransform()  判断是否有坐标转换
+bool waitForTransform() const  等待两个之间的transform联通
 
 
 ### 1. 用c++写一个tf broadcaster(subscriber)
