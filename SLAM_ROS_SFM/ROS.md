@@ -2216,6 +2216,7 @@ bool waitForTransform() const  等待两个之间的transform联通
   
   void poseCallback(const turtlesim::PoseConstPtr& msg){
     //创建一个TransformBroadcaster实例，用于发送transformations转换
+  //发布geometry_msgs/TransformStamped类型的消息，这些消息描述了坐标系之间的变换。其中 geometry_msgs/TransformStamped 是一个包含变换信息的消息类型，包括平移和旋转部分以及与之相关的时间戳和坐标系名称。
     static tf::TransformBroadcaster br;
     //创建一个Transform实例，存储转换信息
     tf::Transform transform;
@@ -2233,10 +2234,11 @@ bool waitForTransform() const  等待两个之间的transform联通
   int main(int argc, char** argv){
     ros::init(argc, argv, "my_tf_broadcaster");
     if (argc != 2){ROS_ERROR("need turtle name as argument"); return -1;};
-    turtle_name = argv[1];
+    turtle_name = argv[1]; //argv[0]是包名
   
     ros::NodeHandle node;
-    ros::Subscriber sub = node.subscribe(turtle_name+"/pose", 10, &poseCallback);
+    ros::Subscriber sub = node.subscribe(turtle_name+"/pose", 10, &poseCallback); ////第三个参数指定了消息队列的大小，其中 10 表示消息队列的最大长度。消息队列是用来缓存接收到的消息的数据结构，它允许你在处理消息时不必立即处理，而是将其暂时存储在队列中，然后按照队列中消息的顺序逐一处理。
+
   
     ros::spin();
     return 0;
@@ -2263,7 +2265,7 @@ bool waitForTransform() const  等待两个之间的transform联通
      ```xml
      <launch>
          <!-- Turtlesim Node-->
-         <node pkg="turtlesim" type="turtlesim_node" name="sim"/>
+         <node pkg="turtlesim" type="turtlesim_node" name="sim"/> //type="turtlesim_node" 表示要启动的节点是一个名为 turtlesim_node 的可执行文件。ROS将搜索名为 turtlesim_node 的可执行文件，并将其作为my_package软件包中的一个节点来运行。
      
          <node pkg="turtlesim" type="turtle_teleop_key" name="teleop" output="screen"/>
          <!-- Axes -->
@@ -2298,7 +2300,7 @@ bool waitForTransform() const  等待两个之间的transform联通
 
 - 复制[1.1](http://wiki.ros.org/tf/Tutorials/Writing%20a%20tf%20listener%20%28C%2B%2B%29)如下代码
 
-  ```c++
+  ```c++  
   #include <ros/ros.h>
   #include <tf/transform_listener.h>
   #include <geometry_msgs/Twist.h>
@@ -2308,7 +2310,7 @@ bool waitForTransform() const  等待两个之间的transform联通
     ros::init(argc, argv, "my_tf_listener");
   
     ros::NodeHandle node;
-    
+    //*---------------------创建一个新的turtle-------------*//
     //等待一个叫spawn的服务可用。
     ros::service::waitForService("spawn");
     //创建一个服务spawn的客户add_turtle
@@ -2317,6 +2319,7 @@ bool waitForTransform() const  等待两个之间的transform联通
     turtlesim::Spawn srv;
     //呼叫服务
     add_turtle.call(srv);
+  //*---------------------创建一个新的turtle-------------*//
   	
     //创建一个Publisher实例，将消息发送到给话题cmd_vel
     ros::Publisher turtle_vel = node.advertise<geometry_msgs::Twist>("turtle2/cmd_vel", 10);
