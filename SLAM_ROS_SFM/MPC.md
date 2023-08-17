@@ -1,4 +1,4 @@
-###MPC 通用代码
+### MPC 通用代码
 
 ```matlab
 本代码一共由三个部分组成，分别为主程序： MPC_Test.m。 以及两个函数： MPC_Matrices.m 和 Prediction.m
