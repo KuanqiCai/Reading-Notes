@@ -149,6 +149,58 @@ Student stus[100];
 该语句创建了一个 stus 数组，它拥有100个元素，每个元素都是 Student 类型的对象
 
 
+## 访问成员
+
+1. 使用.访问成员
+   创建对象以后，可以使用点号.来访问成员变量和成员函数，这和通过结构体变量来访问它的成员类似如下所示：
+
+code:
+
+```c++
+#include <iostream>
+
+using namespace std;
+
+// 类通常定义在函数外面
+class Student {
+public:
+    // 成员变量
+    char *name;
+    int age;
+    float score;
+
+    // 成员函数
+    void say() {
+        cout << name << "的年龄是" << age << "，成绩是" << score << endl;
+    }
+};
+
+int main() {
+    // 创建对象
+    Student boy;
+    // 通过.可以使用对象中的成员
+    boy.name = "小明";
+    boy.age = 15;
+    boy.score = 92.5f;
+    boy.say();
+
+    // 创建对象2
+    Student girl;
+    // 通过.可以使用对象2中的成员
+    girl.name = "菲菲";
+    girl.age = 18;
+    girl.score = 88.7f;
+    girl.say();
 
 
+    return 0;
+}
 
+```
+
+结果：
+小明的年龄是15，成绩是92.5；
+菲菲的年龄是18，成绩是88.7；
+
+解析
+![](https://github.com/KuanqiCai/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/c%2B%2B.png)
