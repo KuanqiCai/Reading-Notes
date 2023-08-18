@@ -204,3 +204,64 @@ int main() {
 
 解析
 ![](https://github.com/KuanqiCai/Reading-Notes/blob/main/%E7%AC%94%E8%AE%B0%E9%85%8D%E5%A5%97%E5%9B%BE%E7%89%87/ROS/c_plus_plus_cite.png)
+
+
+2. 使用->访问成员
+上面代码中创建的对象 boy在栈上分配内存，需要使用&获取它的地址，例如：
+
+```c++
+Student boy;
+Student *pStu = &boy;
+```
+
+pStu 是一个指针，它指向 Student 类型的数据，也就是通过 Student 创建出来的对象
+当然，你也可以在堆上创建对象，这个时候就需要使用前面讲到的new关键字，例如：
+
+```c++
+Student *pStu = new Student;
+```
+
+通过 new 创建出来的对象，它在堆上分配内存，没有名字，必须使用一个指针变量来接收这个指针，否则以后再也无法找到这个对象了，更没有办法使用它
+
+区别？
+-栈内存是程序自动管理的
+-堆内存由程序员管理，对象使用完毕后需要用 delete 删除
+有了对象指针后，可以通过箭头->来访问对象的成员变量和成员函数，这和通过结构体指针来访问它的成员类似
+
+示例：
+
+```c++
+#include <iostream>
+
+using namespace std;
+
+class Student {
+public:
+    char *name;
+    int age;
+    float score;
+
+    void say() {
+        cout << name << "的年龄是" << age << "，成绩是" << score << endl;
+    }
+};
+
+int main() {
+    // 创建1个对象，让pStu这个指针变量指向它
+    Student *pStu = new Student;
+    // 既然pStu指向了一个对象（内存空间），那么就可以调用这个内存空间中的某个成员
+    pStu->name = "小明";
+    pStu->age = 15;
+    pStu->score = 92.5f;
+    // 当然也可以调用它里面的函数
+    pStu->say();
+
+    // 当不要pStu指向的对象时，需要用delete进行删除（就是释放那个内存空间）
+    delete pStu;
+
+    return 0;
+}
+```
+
+注意：
+对不再使用的对象，记得用 delete 进行回收空间，这是一种良好的编程习惯
