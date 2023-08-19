@@ -286,13 +286,13 @@ public:
     }
 
     void setNewAgeScore(int ageTemp, float scoreTemp) {
-        age = ageTemp;
-        score = scoreTemp;
+        this->age = age;
+        this->score = score;
     }
 
     void setNewAgeScore2(int age, float score) {
-        age = age;
-        score = score;
+        this->age = age;
+        this->score = score;
     }
 };
 
@@ -320,3 +320,12 @@ int main() {
     return 0;
 }
 ```
+
+结果：
+小明的年龄是15，成绩是92.5
+小明的年龄是16，成绩是98.66
+小明的年龄是17，成绩是96.75
+
+
+2. This 是什么
+this 实际上是成员函数的一个形参，在调用成员函数时将对象的地址作为实参传递给 this。不过 this 这个形参是隐式的，它并不出现在代码中，而是在编译阶段由编译器默默地将它添加到参数列表中，本质上，this 作为隐式形参，是成员函数的局部变量，所以只能用在成员函数的内部，并且只有在通过对象调用成员函数时才给 this 赋值。
