@@ -265,3 +265,58 @@ int main() {
 
 注意：
 对不再使用的对象，记得用 delete 进行回收空间，这是一种良好的编程习惯
+
+## this 指针
+
+1. 引入
+
+```c++
+#include <iostream>
+
+using namespace std;
+
+class Student {
+public:
+    char *name;
+    int age;
+    float score;
+
+    void say() {
+        cout << name << "的年龄是" << age << "，成绩是" << score << endl;
+    }
+
+    void setNewAgeScore(int ageTemp, float scoreTemp) {
+        age = ageTemp;
+        score = scoreTemp;
+    }
+
+    void setNewAgeScore2(int age, float score) {
+        age = age;
+        score = score;
+    }
+};
+
+int main() {
+
+    // 创建一个对象
+    Student *pStu = new Student;
+
+    // 调用对象的成员变量
+    pStu->name = "小明";
+    pStu->age = 15;
+    pStu->score = 92.5f;
+
+    // 调用对象的成员函数
+    pStu->say();
+
+    // 设置新的年龄、分数
+    pStu->setNewAgeScore(16, 98.66f);
+    pStu->say();
+    pStu->setNewAgeScore2(17, 96.75);
+    pStu->say();
+
+    delete pStu;  //删除对象
+
+    return 0;
+}
+```
