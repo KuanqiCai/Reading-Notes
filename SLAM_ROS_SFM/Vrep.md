@@ -118,6 +118,34 @@ xml = '<ui title="'..sim.getObjectName(bubbleRobBase)..' speed" closeable="false
 
 ```
 
+6. dummy
+
+- 在 V-REP（Virtual Robot Experimentation Platform）中，"dummy" 是一种特殊的虚拟对象类型，用于在场景中作为虚拟引用点或坐标系的标记点。Dummies 可以用于定位、指示和操作其他对象，而本身并不具有实际的物理特性。
+
+- Dummies 具有以下特点：
+
+位置和姿态: 每个 Dummy 都有自己的位置和姿态，可以用来指定其他对象的位置或方向。
+
+父子关系: Dummies 可以成为其他对象的父对象，从而将它们连接在一起。子对象可以继承父对象的位置和方向。
+
+方便引用: Dummies 可以用作对象的引用点，用于控制、移动或定位其他对象。
+
+无碰撞: Dummies 是无碰撞的，它们不会与其他对象产生碰撞。
+
+- 使用 V-REP 的 Dummy 对象，你可以：
+
+将 Dummy 放置在机器人的特定部位，以便将其他对象附加到该部位，例如工具、末端执行器等。
+
+将 Dummy 用作机器人的坐标系，用于执行变换操作，例如设置机器人的末端执行器在特定位置和方向。创建复杂的对象组合，通过将多个 Dummy 连接在一起。
+
+要使用 Dummy 对象，通常的步骤包括：
+
+- 在 V-REP 场景中创建一个 Dummy 对象。
+
+将 Dummy 放置在适当的位置，并设置其姿态。
+
+将其他对象连接到 Dummy 上，或使用 Dummy 来执行位置和姿态变换操作。
+
 ### API
 #### sysCall_init() 
 这个初始化的函数里面我们要获取YouBot机器人的各个关节的Handle
