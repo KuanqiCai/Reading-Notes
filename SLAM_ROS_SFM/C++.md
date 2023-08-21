@@ -331,3 +331,142 @@ int main() {
 this 实际上是成员函数的一个形参，在调用成员函数时将对象的地址作为实参传递给 this。不过 this 这个形参是隐式的，它并不出现在代码中，而是在编译阶段由编译器默默地将它添加到参数列表中，本质上，this 作为隐式形参，是成员函数的局部变量，所以只能用在成员函数的内部，并且只有在通过对象调用成员函数时才给 this 赋值。
 
 ** Class定义的函数中用到 Class定义的变量的时候需要用：“ this-> ” 来修改class中的变量。**
+
+
+## 构造函数
+
+1. 是什么？
+
+构造函数是类的一种特殊的成员函数，它会在每次创建类的新对象时执行
+
+怎样定义？
+
+与类名同名，没有返回值，可以被重载
+
+有什么用？
+
+通常用来做初始化工作
+
+2. 定义构造函数
+
+```c++
+#include <iostream>
+
+using namespace std;
+
+class student {
+public :
+    char *name;
+    int age;
+
+    // 构造函数
+    student() {
+        cout << "执行无参构造函数" << endl;
+    }
+
+    student(char *name) {
+        cout << "执行含有一个参数的构造函数" << endl;
+    }
+
+    student(char *name, int age) {
+        cout << "执行含有两个参数的构造函数" << endl;
+    }
+
+};
+```
+3. 调用构造函数
+
+调用方式很简单，只要在创建对象时，会自动调用
+
+- ()：如果创建对象不需要传递实参，可以不写()
+
+```c++
+int main() {
+    student stu1;
+    student stu2("张三");
+    student stu3("张三", 28);
+
+    return 0;
+}
+```
+结果：
+
+执行无参构造函数
+执行含有一个参数的构造函数
+执行含有两个参数的构造函数
+
+
+## 析构函数
+
+1. 是什么？
+
+一种在对象销毁时，自动调用的函数
+
+怎样定义？
+
+析构函数名称与类名称相同，只是在前面加了个波浪号~作为前缀，它不会返回任何值，也不能带有任何参数，不能被重载
+
+有什么用？
+
+一般用于释放资源，例如关闭打开的文件，打开的网络socket套接字等
+
+2. 定义析构函数
+
+```c++
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+class Student {
+public :
+    char *name;
+    int age;
+
+    // 构造函数
+    Student() {
+        cout << "执行无参构造函数" << endl;
+    }
+
+    Student(char *name) {
+        cout << "执行含有一个参数的参构造函数" << endl;
+    }
+
+    Student(char *name, int age) {
+        cout << "执行含有两个参数的构造函数" << endl;
+    }
+
+    // 析构函数
+    ~Student() {
+        cout << "执行析构函数" << endl;
+    }
+};
+```
+
+3. 调用析构函数
+
+不需要调用，在对象销毁时，自动调用
+
+```c++
+int main() {
+    // 创建对象时，自动调用构造函数
+    Student *pStu1 = new Student;
+    Student *pStu2 = new Student;
+    Student *pStu3 = new Student;
+
+    // 销毁对象时，自动调用析构函数
+    delete pStu1;
+    delete pStu2;
+    delete pStu3;
+
+    return 0;
+}
+```
+结果：
+
+执行无参构造函数
+执行无参构造函数
+执行无参构造函数
+执行析构函数
+执行析构函数
+执行析构函数
