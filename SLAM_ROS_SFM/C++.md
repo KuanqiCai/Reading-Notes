@@ -479,3 +479,119 @@ int main() {
 执行析构函数
 
 执行析构函数
+
+
+### 成员访问限定符：private、protected、public
+
+1. 是什么？
+
+一句话：一种权限标记，就是你能不能使用该类中的成员
+
+2. 为什么要用？
+
+一个对象，由很多数据（成员变量）+很多函数（成员函数）组成，有些时候定义的成员变量数据比较重要不想通过 (对象.成员变量=xxx) 或 (对象指针->成员变量=xxx) 的方式直接修改，此时我们就需要使用到权限的限定就好比我们都是一家人，都可以用公用的数据，对外人是不能用的。
+
+3. 3种方式
+
+通过 public、protected、private 三个关键字来控制成员变量和成员函数的访问权限，被称为成员访问限定符
+
+- public：公有的
+
+- protected：受保护的
+
+- private：私有的
+
+在类的内部（定义类的代码内部），无论成员被声明为 public、protected 还是 private，都是可以互相访问的，没有访问权限的限制
+
+在类的外部（定义类的代码之外），只能通过对象或指针访问public修饰的成员，不能访问 private、protected 修饰的成员
+
+4. 示例
+```c++
+#include <iostream>
+
+using namespace std;
+
+
+class Student {
+private:
+    char *name;
+    int age;
+    float score;
+
+public:
+    // 成员函数的定义
+    void set_name(char *name) {
+        this->name = name;
+    }
+
+    void set_age(int age) {
+        this->age = age;
+    }
+
+    void set_score(float score) {
+        this->score = score;
+    }
+
+    void show() {
+        cout << this->name << "的年龄是" << this->age << "，成绩是" << this->score << endl;
+    }
+};
+
+
+int main() {
+    // 在栈上创建对象
+    Student stu;
+    stu.set_name("张三");
+    stu.set_age(15);
+    stu.set_score(92.5f);
+//    cout << stu.name << "\n";  // 失败，因为name是私有的，不能在类的外部通过对象访问
+    stu.show();
+
+    // 在堆上创建对象
+    Student *pstu = new Student;
+    pstu->set_name("李四");
+    pstu->set_age(16);
+    pstu->set_score(96);
+//    cout << pstu->name << "\n";  // 失败，因为name是私有的，不能在类的外部通过对象访问
+    pstu->show();
+
+    return 0;
+}
+```
+
+运行结果：
+
+张三的年龄是15，成绩是92.5
+
+李四的年龄是16，成绩是96
+
+注意
+
+- private 后面的成员都是私有的，直到有 public 出现才会变成共有的
+
+- public 之后再无其他限定符，所以 public 后面的成员都是共有的
+
+- private 的成员和 public 的成员的次序任意，既可以先出现 private 部分，也可以先出现 public 部分
+
+- 如果既不写 private 也不写 public，就默认为 private
+
+- 在一个类体中，private 和 public 可以分别出现多次
+
+- 每个部分的有效范围到出现另一个访问限定符或类体结束时（最后一个右花括号）为止。但是为了使程序清晰，应该养成这样的习惯，使每一种成员访问限定符在类定义体中只出现一次
+
+例：
+```c++
+class Student{
+private:
+    char *m_name;
+private:
+    int m_age;
+    float m_score;
+public:
+    void setname(char *name);
+    void setage(int age);
+public:
+    void setscore(float score);
+    void show();
+};
+```
