@@ -816,3 +816,115 @@ Children:test()
 继承的成员变量age=33，继承的money=1000000
 
 Father::display(), age=33, money=100000
+
+### 重写
+
+1. 是什么？
+
+一句话：子类定义了与父类相同名字的函数，覆盖了父类的这个函数
+
+2. 有什么用？
+
+一句话：扩展或者重新编写功能
+
+3. 示例
+
+‵‵‵ c++
+#include <iostream>
+
+using namespace std;
+
+
+class A {
+public:
+
+    void display() {
+        cout << "A::display()" << "\n";
+    }
+};
+
+class B : public A {
+public:
+
+    void display() {
+        A::display();
+        cout << "B::display()" << "\n";
+    }
+
+    void call_parent_display() {
+        this->display(); //调用的是自己类里面的display()函数
+        A::display();  // 调用被重写的父类函数
+    }
+};
+
+int main() {
+    class B b;
+    b.display();  // 调用子类的函数
+    cout << "--------------------\n";
+    b.call_parent_display();  // 调用子类中的函数，然后调用被重写的父类函数 
+
+    return 0;
+}
+```
+
+运行结果：
+
+A：：display()
+
+B：：display()
+
+--------------
+
+A：：display()
+
+B：：display() % this->display
+
+A：：display()
+
+4. 注意
+
+被重写的父类成员函数，无论是否有重载，子类中都不会继承，即在子类重写父类的函数后，在子类调用都不会再调用父类的函数了
+
+```c++
+#include <iostream>
+
+using namespace std;
+
+
+class A {
+public:
+
+    void display() {
+        cout << "A::display()" << "\n";
+    }
+
+    void display(int num) {
+        cout << "A::display(int num)" << "\n";
+    }
+};
+
+class B : public A {
+public:
+
+    void display() {
+        cout << "B::display()" << "\n";
+        // this->display(100);  // 编译失败 
+        A::display(100);
+    }
+
+};
+
+int main() {
+    class B b;
+    b.display();  // 调用子类的函数
+    // b.display(100);  // 编译失败 （无法再调用父类函数）
+
+    return 0;
+}
+```
+
+结果：
+
+B：：display()
+
+A::display（int num）
