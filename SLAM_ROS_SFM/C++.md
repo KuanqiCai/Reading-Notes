@@ -625,3 +625,194 @@ public:
 
 你可能会说，额外添加 set 函数和 get 函数多麻烦，直接将成员变量设置为 public 多省事！确实，这样做 99.9% 的情况下都不是一种错误，我也不认为这样做有什么不妥；但是，将成员变量设置为 private 是一种软件设计规范，尤其是在大中型项目中，还是请大家尽量遵守这一原则
 
+### 继承和派生
+
+1. 是什么？
+
+C++ 中的继承是类与类之间的关系，与现实世界中的继承类似
+
+例如：儿子继承父亲的财产
+
+继承（Inheritance）可以理解为一个类从另一个类获取成员变量和成员函数的过程
+
+例如：
+
+类B继承于类A，那么B就拥有A的成员变量和成员函数
+
+- 在C++中，派生（Derive）和继承是一个概念，只是站的角度不同，继承是儿子接收父亲的产业，派生是父亲把产业传承给儿子
+
+被继承的类称为父类或基类，继承的类称为子类或派生类
+
+“子类”和“父类”通常放在一起称呼，“基类”和“派生类”通常放在一起称呼
+
+2. 为什么？
+
+子类除了拥有父类的成员，还可以定义自己的新成员，以增强类的功能
+
+以下是两种典型的使用继承的场景：
+
+- 当你创建的新类与现有的类相似，只是多出若干成员变量或成员函数时，可以使用继承，这样不但会减少代码量，而且新类会拥有基类的所有功能
+
+- 当你需要创建多个类，它们拥有很多相似的成员变量或成员函数时，也可以使用继承。可以将这些类的共同成员提取出来，定义为父类，然后从父类继承，既可以节省代码，也方便后续修改成员
+
+下面我们定义一个父类 People，然后定义了子类Student
+
+```c++
+#include<iostream>
+
+using namespace std;
+
+//父类（基类） Pelple
+class People {
+private:
+    char *name;
+    int age;
+
+public:
+    void setName(char *name) {
+        this->name = name;
+    }
+
+    char *getName() {
+        return this->name;
+    }
+
+    void setAge(int age) {
+        this->age = age;
+    }
+
+    int getAge() {
+        return this->age;
+    }
+};
+
+//父类（派生类） Student
+class Student : public People {
+private:
+    float score;
+
+public:
+    void setScore(float score) {
+        this->score = score;
+    }
+
+    float getScore() {
+        return this->score;
+    }
+};
+
+//父类（派生类） Staff
+class Staff : public People {
+private:
+    float money;
+
+public:
+    void setMoney(float money) {
+        this->money = money;
+    }
+
+    float getMoney() {
+        return this->money;
+    }
+};
+
+
+int main() {
+
+    // 创建Student学生对象
+    Student boy;
+    boy.setName("小明");
+    boy.setAge(16);
+    boy.setScore(95.5f);
+    cout << boy.getName() << "的年龄是 " << boy.getAge() << "，成绩是 " << boy.getScore() << endl;
+
+    // 创建Staff员工对象
+    Staff girl;
+    girl.setName("小丽");
+    girl.setAge(18);
+    girl.setMoney(4500.67);
+    cout << girl.getName() << "的年龄是 " << girl.getAge() << "，月工资是 " << girl.getMoney() << "\n";
+
+    return 0;
+}
+```
+
+运行结果：
+
+小明的年龄是16，成绩是95.5
+
+小丽的年龄是18，月工资是4500.67
+
+说明：
+
+- Student 类继承了 People 类的成员，同时还新增了自己的成员变量 score 和成员函数 setScore()、getScore()
+- 继承过来的成员，可以通过子类对象访问，就像自己的一样
+
+继承的一般语法为：
+
+```c++
+class 子类名:［继承方式］父类名{
+  子类新增加的成员
+};
+```
+
+继承方式包括 public（公有的）、private（私有的）和 protected（受保护的），此项是可选的，如果不写，那么默认为 private。
+
+### 在子类的函数中调用父类的成员
+
+1. 使用this调用
+
+在子类的函数中，调用从父类继承而来的成员变量或成员函数，直接使用this
+
+‵‵‵c++
+#include <iostream>
+
+using namespace std;
+
+
+class Father {
+public:
+    int age;
+    int money;
+
+    void set_new_age_money(int age, int money) {
+        this->age = age;
+        this->money = money;
+    }
+
+    void display() {
+        cout << "Father::display(), age=" << this->age << ", money=" << this->money << "\n";
+    }
+
+};
+
+class Children : public Father {
+public:
+
+    void test() {
+        cout << "Children::test()" << "\n";
+        // 在子类的函数中，调用从父类继承而来的成员变量，直接使用this
+        cout << "继承的成员变量age=" << this->age << ", 继承的money=" << this->money << "\n";
+        // 在子类的函数中，调用从父类继承而来的成员函数，直接使用this
+        this->display();
+    }
+
+};
+
+int main() {
+
+    Children boy;
+    boy.set_new_age_money(33, 1000000);  // 直接调用继承的父类成员函数
+    boy.test();
+
+    return 0;
+}
+```
+
+输出：
+
+Children:test()
+
+继承的成员变量age=33，继承的money=1000000
+
+Father::display(), age=33, money=100000
