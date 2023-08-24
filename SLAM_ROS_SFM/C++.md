@@ -928,3 +928,227 @@ int main() {
 B：：display()
 
 A::display（int num）
+
+
+### 多层继承
+
+1. 是什么？
+
+就是父类还有父类，父类的父类还有父类......
+
+例如你爷爷有1000w，那么你爸爸就继承过来了，同样的道理 你也可以从你爸爸那里继承得到这笔钱
+
+2. 示例
+
+
+‵‵‵c++
+#include <iostream>
+
+using namespace std;
+
+class Grandpa {
+public:
+    void jiejian() {  // 节俭
+        cout << "节俭" << "\n";
+    }
+};
+
+class Father : public Grandpa {
+public:
+    void makeMoeny() {
+        cout << "赚钱" << endl;
+    }
+};
+
+
+class Son : public Father {
+
+};
+
+int main() {
+
+    Son s;
+    s.jiejian();
+    s.makeMoeny();
+
+    return 0;
+}
+‵‵‵
+
+运行结果：
+
+节俭
+
+赚钱
+
+-----
+
+
+```c++
+#include <iostream>
+
+using namespace std;
+
+
+class GrandPa {
+public:
+    void display() {
+        cout << "GrandPa::display()\n";
+    }
+
+    void display_3() {
+        cout << "GrandPa::display_3()\n";
+    }
+};
+
+class Father : public GrandPa {
+public:
+    void display() {
+        cout << "Father::display()\n";
+    }
+
+    void display_2() {
+        cout << "Father::display_2()\n";
+    }
+
+};
+
+class Children : public Father {
+public:
+    void display() {
+        cout << "Children::display()" << "\n";
+        // 调用父类的成员函数
+        this->display_2();
+        // 调用被重写的父类成员函数
+        Father::display();
+        // 调用爷爷类中的成员函数
+        this->display_3();
+        // 调用被重写的爷爷类中的成员函数
+        GrandPa::display();
+    }
+
+};
+
+int main() {
+
+    Children boy;
+    boy.display();
+
+    return 0;
+}
+```
+
+运行结果：
+
+Children::display()
+
+Father::display_2()
+
+Father::display()
+
+GrandPa::display_3()
+
+GrandPa::display()
+
+### 多重继承
+
+1. 是什么？
+
+C++ 允许存在多继承，也就是一个子类可以同时继承多个父类
+
+2. 示例
+```c++
+#include <iostream>
+
+using namespace std;
+
+class Father {
+public:
+    void make_money() {
+        cout << "赚钱" << endl;
+    }
+};
+
+class Mother {
+public:
+    void make_homework() {
+        cout << "做好菜" << endl;
+    }
+};
+
+class Son : public Father, public Mother {
+
+};
+
+int main() {
+
+    Son s;
+    s.make_money();
+    s.make_homework();
+
+    return 0;
+}
+```
+
+结果：
+
+赚钱
+
+做好菜
+
+3. 多个父类相同的函数名
+
+注意：要在子类中重写这个函数，否则会出现编译错误，原因是二义性
+
+‵‵‵c++
+
+#include <iostream>
+
+using namespace std;
+
+class Father {
+public:
+    void make_money() {
+        cout << "Father类的 make_money" << endl;
+    }
+};
+
+class Mother {
+public:
+    void make_homework() {
+        cout << "Mother类的 make_homework" << endl;
+    }
+
+    void make_money() {
+        cout << "Mother类的 make_money" << endl;
+    }
+};
+
+class Son : public Father, public Mother {
+public:
+    // 如果子类不重写make_money函数，会导致s.make_money()在编译时失败，因为存在二义性
+    void make_money() {
+        Father::make_money();
+        Mother::make_money();
+    }
+};
+
+int main() {
+
+    Son s;
+    s.make_money();
+    s.make_homework();
+
+    return 0;
+}
+
+```
+结果：
+
+Father类的make_money
+
+Mother类的make_money
+
+Father类的make_homework
+
+
