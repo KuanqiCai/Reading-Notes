@@ -1152,3 +1152,193 @@ Mother类的make_money
 Father类的make_homework
 
 
+### 多态
+
+1. 是什么？
+
+一句话：有多个相同名字的函数，当调用时，会根据调用时的方式不同，调用不同的函数
+
+2. 静态多态
+
+以下代码，是一个有2个相同名字，但参数不同的函数组成，这样就形成了重载
+
+当调用函数时，到底用哪个要根据调用时的参数而确定
+
+```c++
+#include <iostream>
+
+using namespace std;
+
+int Add(int a, int b) {
+    cout << "int类型的函数被调用\n";
+    return a + b;
+}
+
+double Add(double a, double b) {
+    cout << "double类型的函数被调用\n";
+    return a + b;
+}
+
+int main() {
+    Add(10, 20);
+    Add(10.0, 20.0);
+    return 0;
+}
+```
+
+运行结果：
+
+int类型性的函数被调用
+
+double类型的函数被调用
+
+说明：
+
+上述的Add函数，在编译阶段就已经确定了，因为编译器会根据实参的类型自动确定调用哪个函数，所以叫做静态多态
+
+3. 动态多态
+
+看下面的代码，f->show()到底调用哪个类中的show函数？
+
+‵‵‵c++
+#include<iostream>
+
+using namespace std;
+
+class Father {
+public:
+    void show() {
+        cout << "father show" << endl;
+    }
+};
+
+class Children : public Father {
+public:
+    void show() {
+        cout << "children  show" << endl;
+    }
+};
+
+int main() {
+    Father *father = new Father();
+    father->show();  // 调用父类的show函数
+
+    Children *children = new Children();
+    children->show();  // 调用子类的show函数
+
+    Father *p = new Children();
+    p->show();  // 调用哪个类中的show函数? 调用的是Father的
+
+    return 0;
+}
+```
+
+运行效果
+
+father show
+
+child show
+
+father show
+
+### Virtual
+
+1. 是什么？
+
+可以让一个函数成为虚函数
+
+2. 有什么用？
+
+通过virtual可以实现真正的多态
+
+虚函数可以在父类的指针指向子类对象的前提下，通过父类的指针调用子类的成员函数
+
+这种技术让父类的指针或引用具备了多种形态，这就是所谓的多态
+
+最终形成的功能：
+
+- 如果父类指针指向的是一个父类对象，则调用父类的函数
+
+- 如果父类指针指向的是一个子类对象，则调用子类的函数
+
+3. 怎样用？
+
+定义虚函数非常简单，只需要在函数声明前，加上 virtual 关键字即可
+
+注意：
+
+在父类的函数上添加 virtual 关键字，可使子类的同名函数也变成虚函数
+
+```c++
+#include<iostream>
+
+using namespace std;
+
+class Father {
+public:
+    virtual void show() {
+        cout << "father show" << endl;
+    }
+};
+
+class Children : public Father {
+public:
+    virtual void show() {
+        cout << "children  show" << endl;
+    }
+};
+
+int main() {
+    Father *father = new Father();
+    father->show();  // 调用父类的show函数
+
+    Children *children = new Children();
+    children->show();  // 调用子类的show函数
+
+    Father *p = new Children();
+    p->show();  // 如果父类指针指向的是一个子类对象，则调用子类的函数
+
+    return 0;
+}
+```
+
+结果：
+
+Father show
+
+Children show
+
+Children show
+
+```c++
+#include <iostream>
+
+using namespace std;
+
+class WashMachine {
+public:
+    virtual void wash() {
+        cout << "洗衣机在洗衣服" << endl;
+    }
+};
+
+
+class SmartWashMachine : public WashMachine {
+public:
+    virtual void wash() {
+        cout << "智能洗衣机在洗衣服" << endl;
+    }
+};
+
+
+int main() {
+    // 父类指针指向子类对象
+    WashMachine *w2 = new SmartWashMachine();
+    w2->wash();
+    return 0;
+}
+```
+结果
+
+智能洗衣机在洗衣服
+
