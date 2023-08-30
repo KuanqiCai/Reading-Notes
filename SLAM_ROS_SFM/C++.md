@@ -1795,3 +1795,466 @@ for (int& ref : refContainer) {
 
 引用可以作为容器（如数组、向量）的元素类型，允许在容器中存储对其他对象的引用。
 在上述示例中，我们通过引用将对象 obj 传递给函数 modifyObject，函数可以直接访问和修改对象的成员，而无需复制对象。
+
+
+### 容器
+1. 是什么？
+
+在C++中，容器是用于存储和管理数据的对象。容器提供了一种将多个元素组织在一起的方式，并提供了一系列操作来方便地访问、插入、删除和修改数据。C++标准库提供了许多不同类型的容器，每种容器都有其特定的功能和用途。
+
+2. String容器
+   
+std::string 是 C++ 标准库中提供的字符串容器，它用于存储和操作字符串。std::string 提供了许多字符串操作的方法，使得在 C++ 中处理字符串变得更加方便和高效。
+
+‵‵‵c++
+#include <iostream>
+#include <string>
+
+int main() {
+    // 创建一个空的 std::string 对象
+    std::string str;
+
+    // 使用赋值操作给 std::string 添加内容
+    str = "Hello, ";
+    str += "World!";
+
+    // 访问和修改 std::string 的内容
+    std::cout << "Length: " << str.length() << std::endl; // 输出: 13
+    std::cout << "First character: " << str[0] << std::endl; // 输出: H
+
+    // 使用迭代器遍历 std::string 的字符
+    for (auto it = str.begin(); it != str.end(); ++it) {
+        std::cout << *it << " ";
+    }
+    std::cout << std::endl;
+
+    // 在 std::string 中查找子串
+    std::size_t found = str.find("World");
+    if (found != std::string::npos) {
+        std::cout << "Substring 'World' found at position: " << found << std::endl;
+    } else {
+        std::cout << "Substring 'World' not found" << std::endl;
+    }
+
+    return 0;
+}
+```
+
+- 1.头文件
+
+```c++
+#include <string>
+using namespace std;
+```
+
+- 2.创建和初始化 std::string 对象：
+
+‵‵‵c++
+string str;  // 创建一个空字符串
+string str1 = "Hello";  // 使用字符串字面值初始化
+string str2("World");  // 使用字符串字面值或字符数组初始化
+string str3(str2);  // 使用另一个字符串初始化
+```
+
+- 3.获取字符串长度：
+
+```c++
+int length = str.length();  // 获取字符串的长度
+```
+
+- 4.连接字符串：
+
+```c++
+string fullName = str1 + " " + str2;  // 使用 + 运算符连接字符串
+```
+
+- 5.访问和修改字符：
+
+```c++
+char ch = str1[0];  // 获取字符串中的单个字符
+str1[0] = 'h';  // 修改字符串中的单个字符
+```
+
+- 6.比较字符串：
+
+
+```c++
+bool isEqual = (str1 == str2);  // 比较两个字符串是否相等
+bool isLess = (str1 < str2);  // 比较两个字符串的大小关系
+```
+
+- 7.搜索子字符串：
+
+```c++
+size_t found = str1.find("lo");  // 查找子字符串的位置
+if (found != string::npos) {
+    // 子字符串存在于原字符串中
+}
+```
+
+- 8.截取子字符串：
+
+```c++
+string subStr = str1.substr(2, 3);  // 从指定位置截取子字符串
+```
+
+- 9.插入和删除字符串：
+
+```c++
+str1.insert(2, "123");  // 在指定位置插入字符串
+str1.erase(2, 3);  // 从指定位置删除字符
+```
+
+- 10.转换为 C 风格字符串：
+
+```c++
+const char* cstr = str1.c_str();  // 转换为以空字符结尾的 C 风格字符串
+```
+
+- 11.输入和输出字符串：
+
+```c++
+cout << str1 << endl;  // 输出字符串
+cin >> str1;  // 输入字符串
+```
+
+3. Vector容器
+
+std::vector 是 C++ 标准库中提供的动态数组容器，它能够存储和管理任意类型的元素。std::vector 提供了方便的方法来操作数组，使得在 C++ 中处理动态数组变得更加灵活和高效。
+
+```c++
+#include <iostream>
+#include <vector>
+
+int main() {
+    // 创建一个空的 std::vector 对象
+    std::vector<int> vec;
+
+    // 向 std::vector 添加元素
+    vec.push_back(10);
+    vec.push_back(20);
+    vec.push_back(30);
+
+    // 使用索引操作符访问 std::vector 的元素
+    std::cout << "First element: " << vec[0] << std::endl;  // 输出: 10
+    std::cout << "Second element: " << vec[1] << std::endl;  // 输出: 20
+
+    // 使用迭代器遍历 std::vector 的元素
+    for (auto it = vec.begin(); it != vec.end(); ++it) {
+        std::cout << *it << " ";
+    }
+    std::cout << std::endl;
+
+    // 在 std::vector 中插入元素
+    vec.insert(vec.begin() + 1, 15);  // 在索引为1的位置插入元素15
+
+    // 在 std::vector 中删除元素
+    vec.erase(vec.begin() + 2);  // 删除索引为2的元素
+
+    // 检查 std::vector 是否为空
+    if (vec.empty()) {
+        std::cout << "Vector is empty" << std::endl;
+    } else {
+        std::cout << "Vector is not empty" << std::endl;
+    }
+
+    // 访问 std::vector 中的元素数量
+    std::cout << "Vector size: " << vec.size() << std::endl;
+
+    return 0;
+}
+```
+
+以下是关于 std::vector 的详细教程：
+
+- 1.包含头文件：
+
+```c++
+#include <vector>
+using namespace std;
+```
+
+- 2.创建和初始化 std::vector 对象：
+
+```c++
+vector<int> nums;  // 创建一个空的整型向量
+vector<int> nums1 = {1, 2, 3};  // 使用初始化列表初始化向量
+vector<int> nums2(5, 0);  // 创建包含5个元素，每个元素初始化为0的向量
+vector<int> nums3(nums1);  // 使用另一个向量初始化向量
+```
+
+- 3.获取向量的大小：
+
+```c++
+int size = nums.size();  // 获取向量中的元素个数
+```
+
+- 4.访问和修改元素：
+
+```c++
+int value = nums[0];  // 通过下标访问元素
+nums[0] = 10;  // 修改元素的值
+
+int frontValue = nums.front();  // 获取首个元素的值
+int backValue = nums.back();  // 获取最后一个元素的值
+```
+
+- 5.在向量末尾添加元素：
+
+```c++
+nums.push_back(5);  // 在向量末尾添加一个元素
+```
+
+- 6.在指定位置插入和删除元素：
+
+```c++
+nums.insert(nums.begin() + 2, 8);  // 在指定位置插入一个元素
+nums.erase(nums.begin() + 1);  // 删除指定位置的元素
+```
+
+- 7.迭代遍历向量：
+
+```c++
+// 普通的方式
+for (int i = 0; i < nums.size(); i++) {
+    cout << nums[i] << " ";
+}
+
+// 新的方式
+for (int num : nums) {
+    cout << num << " ";
+}
+```
+
+- 8.清空向量：
+
+```c++
+nums.clear();  // 清空向量中的所有元素
+```
+
+- 9.检查向量是否为空：
+
+```c++
+bool isEmpty = nums.empty();  // 检查向量是否为空
+```
+
+- 10.动态调整向量的大小：
+
+```c++
+nums.resize(10);  // 调整向量的大小为10，新增元素使用默认值
+nums.resize(5, 0);  // 调整向量的大小为5，新增元素初始化为0
+```
+
+- 11.排序向量中的元素：
+
+```c++
+sort(nums.begin(), nums.end());  // 对向量中的元素进行升序排序
+```
+
+4. 其它常用容器
+
+4.1 std::array
+
+功能：*固定*大小的数组，提供高效的随机访问，大小在编译时确定。
+
+头文件：#include <array>
+
+用法示例：
+
+```c++
+#include <iostream>
+#include <array>
+
+int main() {
+    std::array<int, 5> myArray = {1, 2, 3, 4, 5};
+
+    // 访问元素
+    std::cout << "First element: " << myArray[0] << std::endl;
+    std::cout << "Second element: " << myArray.at(1) << std::endl;
+    std::cout << "Last element: " << myArray.back() << std::endl;
+
+    // 修改元素
+    myArray[2] = 10;
+
+    // 下标遍历
+    for (int i = 0; i < myArray.size(); i++) {
+        std::cout << myArray[i] << " ";  // 使用下标访问元素
+    }
+    std::cout << "\n----------------\n";
+
+    // 迭代遍历
+    for (const auto &element: myArray) {
+        std::cout << element << " ";
+    }
+    std::cout << "\n----------------\n";
+
+    // 迭代器操作
+    for (auto it = myArray.begin(); it != myArray.end(); ++it) {
+        std::cout << *it << " ";
+    }
+    std::cout << std::endl;
+
+    return 0;
+}
+```
+
+5.2 std::set
+功能：有序集合，存储唯一值，支持快速的插入、查找和删除操作。
+
+特点：元素按照严格的排序顺序进行存储，即每个元素都会根据其值进行排序。
+
+头文件：#include <set>
+
+用法示例：
+
+```c++
+#include <iostream>
+#include <set>
+
+int main() {
+    std::set<int> mySet;
+
+    // 插入元素到 set
+    mySet.insert(10);
+    mySet.insert(20);
+    mySet.insert(30);
+    mySet.insert(20);  // 重复元素将被忽略
+
+    // 遍历 set 并打印元素
+    for (const auto &element: mySet) {
+        std::cout << element << " ";
+    }
+    std::cout << "\n";
+
+    // 查找元素
+    auto it = mySet.find(20);
+    if (it != mySet.end()) {
+        std::cout << "Element 20 found in set" << std::endl;
+    } else {
+        std::cout << "Element 20 not found in set" << std::endl;
+    }
+
+    // 删除元素
+    mySet.erase(20);
+
+    // 检查 set 是否为空
+    if (mySet.empty()) {
+        std::cout << "Set is empty" << std::endl;
+    } else {
+        std::cout << "Set is not empty" << std::endl;
+    }
+
+    // 访问 set 中的元素数量
+    std::cout << "Set size: " << mySet.size() << std::endl;
+
+    return 0;
+}
+```
+5.3 std::map
+功能：关联数组（字典），按键值对存储和访问数据。(设定字符串对应数字)
+
+头文件：#include <map>
+
+用法示例：
+
+```c++
+#include <map>
+#include "iostream"
+
+using namespace std;
+
+int main() {
+    map<string, int> scores;  // 创建空的字符串-整型映射
+    scores["Alice"] = 90;  // 添加键值对
+    scores["Bob"] = 85;
+    scores["Charlie"] = 95;
+
+    for (std::pair<string, int> xx: scores) {
+        cout << xx.first << ": " << xx.second << endl;
+    }
+
+    cout << "----------------------------\n";
+
+    for (const auto &pair: scores) {
+        cout << pair.first << ": " << pair.second << endl;
+    }
+    
+    return 0;
+}
+```
+
+5.4 std::stack
+功能：栈，遵循后进先出（LIFO）的原则，只能在栈顶进行插入和删除操作。
+
+头文件：#include <stack>
+
+用法示例：
+
+```c++
+#include <iostream>
+#include <stack>
+
+int main() {
+    std::stack<int> myStack;
+
+    // 添加元素到堆栈
+    myStack.push(10);
+    myStack.push(20);
+    myStack.push(30);
+
+    // 访问和移除堆栈顶部的元素
+    std::cout << "Top element: " << myStack.top() << std::endl;  // 输出: 30
+    myStack.pop();
+    std::cout << "Top element: " << myStack.top() << std::endl;  // 输出: 20
+
+    // 检查堆栈是否为空
+    if (myStack.empty()) {
+        std::cout << "Stack is empty" << std::endl;
+    } else {
+        std::cout << "Stack is not empty" << std::endl;
+    }
+
+    // 访问堆栈中的元素数量
+    std::cout << "Stack size: " << myStack.size() << std::endl;
+
+    return 0;
+}
+```
+
+5.5 std::queue
+功能：队列，遵循先进先出（FIFO）的原则，只能在队尾进行插入，在队头进行删除操作。
+
+头文件：#include <queue>
+
+用法示例：
+
+```c++
+#include <iostream>
+#include <queue>
+
+int main() {
+    std::queue<int> myQueue;
+
+    // 添加元素到队列
+    myQueue.push(10);
+    myQueue.push(20);
+    myQueue.push(30);
+
+    // 访问和移除队列的元素
+    std::cout << "Front: " << myQueue.front() << std::endl;  // 输出: 10
+    myQueue.pop();
+    std::cout << "Front: " << myQueue.front() << std::endl;  // 输出: 20
+
+    // 检查队列是否为空
+    if (myQueue.empty()) {
+        std::cout << "Queue is empty" << std::endl;
+    } else {
+        std::cout << "Queue is not empty" << std::endl;
+    }
+
+    // 访问队列中的元素数量
+    std::cout << "Queue size: " << myQueue.size() << std::endl;  // 输出: 2
+
+    return 0;
+}
+```
