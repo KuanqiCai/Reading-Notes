@@ -127,7 +127,7 @@ sudo cyclictest -a -t -p 99
 
 ### Franka_ros (https://frankaemika.github.io/docs/installation_linux.html#installing-from-the-ros-repositories)
 
-1. Building libfranka
+1. Building libfranka
 
 ```c++
 sudo apt install build-essential cmake git libpoco-dev libeigen3-dev
