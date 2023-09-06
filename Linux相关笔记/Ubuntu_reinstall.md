@@ -22,4 +22,14 @@ https://blog.csdn.net/YIBO0408/article/details/123937450
 分区：
 
 
+## 3. 安装pinyin输入
+
+安装fcitx-googlepinyin
+
+```
+sudo apt-get install fcitx-googlepinyin
+```
+
+配置language support， 从（6）开始
+
 https://blog.csdn.net/qq_20016593/article/details/127563380
