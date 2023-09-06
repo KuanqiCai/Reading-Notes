@@ -20,6 +20,10 @@ Minimal Bash-lke line editing is supported.  TAB lists possible comand completio
 https://blog.csdn.net/YIBO0408/article/details/123937450
 
 分区：
+1.swap area,主分区，32G,空间起始位置
+2. EFI分区，逻辑分区，500MB，空间起始位置
+3. / ，主分区，剩下所有G，空间起始位置
+
 
 
 ## 3. 安装pinyin输入
