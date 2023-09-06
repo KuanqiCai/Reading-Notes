@@ -35,3 +35,46 @@ https://blog.csdn.net/YIBO0408/article/details/123937450
 - Click on the "+" sign under Input sources.
 - Select Chinese (China) and then Chinese (Intelligent Pinyin).
 
+# 安装基础软件
+
+## 1. Terminator
+
+terminator:`sudo apt-get install terminator`
+
+美化：`sudo gedit ~/.config/terminator/config`并输入
+
+```
+[global_config]
+  handle_size = -3
+  title_transmit_fg_color = "#000000"
+  title_transmit_bg_color = "#3e3838"
+  inactive_color_offset = 1.0
+  enabled_plugins = CustomCommandsMenu, LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
+  suppress_multiple_term_dialog = True
+[keybindings]
+[profiles]
+  [[default]]
+    background_color = "#2e3436"
+    background_darkness = 0.8
+    background_type = transparent
+    cursor_shape = ibeam
+    cursor_color = "#e8e8e8"
+    font = Ubuntu Mono 14
+    foreground_color = "#e8e8e8"
+    show_titlebar = False
+    scroll_background = False
+    scrollback_lines = 3000
+    palette = "#292424:#5a8e1c:#00ff00:#cdcd00:#1e90ff:#cd00cd:#00cdcd:#d6d9d4:#4c4c4c:#868e09:#00ff00:#ffff00:#4682b4:#ff00ff:#00ffff:#ffffff"
+    use_system_font = False
+[layouts]
+  [[default]]
+    [[[child1]]]
+      parent = window0
+      profile = default
+      type = Terminal
+    [[[window0]]]
+      parent = ""
+      size = 925, 570
+      type = Window
+[plugins]
+```
