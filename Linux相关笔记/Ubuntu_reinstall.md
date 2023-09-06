@@ -41,7 +41,7 @@ https://blog.csdn.net/YIBO0408/article/details/123937450
 
 terminator:`sudo apt-get install terminator`
 
-美化：`sudo gedit ~/.config/terminator/config`并输入
+美化：`sudo gedit ~/.config/terminator/config`并输入 (ps. 如果没有terminator文件，则需要自己建立一个)
 
 ```
 [global_config]
