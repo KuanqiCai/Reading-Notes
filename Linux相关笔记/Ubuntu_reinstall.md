@@ -28,12 +28,10 @@ https://blog.csdn.net/YIBO0408/article/details/123937450
 
 ## 3. 安装pinyin输入
 
-安装fcitx-googlepinyin
+- Open Settings, go to Region & Language -> Manage Installed Languages -> Install / Remove languages.-
+- Select Chinese (Simplified). Make sure Keyboard Input method system has Ibus selected. Apply.
+- Reboot
+- Log back in, reopen Settings, go to Keyboard.
+- Click on the "+" sign under Input sources.
+- Select Chinese (China) and then Chinese (Intelligent Pinyin).
 
-```
-sudo apt-get install fcitx-googlepinyin
-```
-
-配置language support， 从（6）开始
-
-https://blog.csdn.net/qq_20016593/article/details/127563380
