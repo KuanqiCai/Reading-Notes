@@ -80,4 +80,6 @@ terminator:`sudo apt-get install terminator`
 ```
 ## 2.python3.9
 http://www.taodudu.cc/news/show-5381101.html?action=onClick
-## 2. ubuntu升级python3.8 ubuntu升级python3.10 
+
+https://stackoverflow.com/questions/65644782/how-to-install-pip-for-python-3-9-on-ubuntu-20-04
+
