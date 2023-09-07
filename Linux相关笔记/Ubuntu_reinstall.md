@@ -20,9 +20,11 @@ Minimal Bash-lke line editing is supported.  TAB lists possible comand completio
 https://blog.csdn.net/YIBO0408/article/details/123937450
 
 分区：
-1.swap area,主分区，32G,空间起始位置
-2. EFI分区，逻辑分区，500MB，空间起始位置
-3.Ext 4 journal，/ ，主分区，剩下所有G，空间起始位置
+-1.swap area,主分区，32G,空间起始位置
+
+-2. EFI分区，逻辑分区，500MB，空间起始位置
+
+-3.Ext 4 journal，/ ，主分区，剩下所有G，空间起始位置
 
 
 
@@ -179,20 +181,23 @@ sudo find / -iname opencv4.pc
 将路径加入到PKG_CONFIG_PATH（用gedit打开）：
 
 ```
-sudo vim /etc/profile.d/pkgconfig.sh
+sudo vim /etc/bash.bashrc
 ```
 
-在文件后面加入下面一行：
+打开文件后在末尾输入：
 
 ```
-export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig
+export PKG_CONFIG_PATH
+
 ```
 
 保存并退出后激活：
 
 ```
 # 激活
-source /etc/profile
+source /etc/bash.bashrc
+
 ```
 
 用以下命令验证是否成功：
@@ -209,7 +214,7 @@ pkg-config --libs opencv4
 ① 打开文件（可能为空文件）：
 
 ```
-sudo vim /etc/ld.so.conf.d/opencv4.conf
+sudo gedit /etc/ld.so.conf.d/opencv4.conf
 ```
 ② 在该文件末尾加上OpenCV的lib路径，保存退出：
 
@@ -240,3 +245,36 @@ make
 ## 6. google
 
 https://blog.csdn.net/xyywendy/article/details/124342058
+
+## 7. openrave - fast IK solution
+
+https://robots.uc3m.es/installation-guides/install-openrave.html#install-openrave-via-scripts-ubuntu-1804-bionic-and-ubuntu-2004-focal
+
+Install OpenRAVE via scripts (Ubuntu 18.04 Bionic and Ubuntu 20.04 Focal)
+Tested and works on fresh installs. Easy, but not guaranteed to work, nor to be the fastest mechanism (e.g. fcl not mandatory, and osg could alternatively be installed via apt in 20.04 Focal). Provides:
+
+- Ubuntu 20.04 Focal: OpenRAVE 0.54.0 with Python 2 bindings, FCL, and OpenSceneGraph viewer.
+- Ubuntu 18.04 Bionic: OpenRAVE 0.9.0 with Python 2 bindings, FCL, and Qtcoin viewer.
+
+```
+sudo apt install git lsb-release # probably already installed
+```
+
+On a fresh 20.04 Focal had to configure git email and user, even dummy okay:
+
+```
+git config --global user.name "FIRST_NAME LAST_NAME"
+git config --global user.email "MY_NAME@example.com"
+```
+
+Always pay attention to prompts for sudo (and insert password):
+
+```
+cd  # go home
+git clone https://github.com/crigroup/openrave-installation
+cd openrave-installation
+./install-dependencies.sh
+./install-osg.sh
+./install-fcl.sh
+./install-openrave.sh
+```
