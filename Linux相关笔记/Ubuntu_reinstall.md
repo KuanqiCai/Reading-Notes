@@ -294,3 +294,51 @@ sudo apt-get install libeigen3-dev
 ```
 sudo ln -s /usr/include/eigen3/Eigen /usr/include/Eigen
 ```
+
+## 9.Matlab
+
+1. 下载地址：
+
+https://ww2.mathworks.cn/downloads/
+
+2. 解压后 “sudo ./install”安装
+   
+3. When given the option to 'Create symbolick links to MATLAB scripts in:' it is recommended that you check the box and use the supplied path /usr/local/bin.
+
+4. 创建快捷方式：
+
+   创建matlab.desktop文件：
+
+    在终端中输入以下代码（CTRL+C复制，CTRL+SHIFT+V粘贴），并按下ENTER键。输入登录密码（不会显示密码），并按下ENTER键。
+```
+sudo gedit /usr/share/applications/matlab.desktop
+```
+
+2、配置文件：
+
+    在打开的文本文件中复制并粘贴以下文字，点击保存：
+```
+[Desktop Entry]
+
+Version=1.0
+
+Type=Application
+
+Terminal=false
+
+Exec=/usr/local/MATLAB/R2023a/bin/matlab -desktop
+
+Name=MATLAB
+
+Icon=/usr/local/MATLAB/R2023a/bin/glnxa64/cef_resources/matlab_icon.png
+
+Categories=Math;Science
+
+Comment=Scientific computing environment
+
+StartupNotify=true
+
+StartupWMClass=com-mathworks-util-PostVMInit
+```
+
+注：Exec的值是MATLAB执行文件，Icon的值是MATLAB应用程序图标的位置。如果安装matlabR2023a时未使用默认安装路径，请自行调整路径。 
