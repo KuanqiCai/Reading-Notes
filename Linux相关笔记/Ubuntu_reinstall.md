@@ -86,7 +86,7 @@ https://stackoverflow.com/questions/65644782/how-to-install-pip-for-python-3-9-o
 ## solve terminal cannot open
 https://blog.csdn.net/weixin_46584887/article/details/120702843
 
-## 3. Ubuntu每次启动都显示System program problem detected
+## 3. BUG: Ubuntu每次启动都显示System program problem detected
 
 解决方案：
 ```
@@ -101,11 +101,141 @@ enabled=1 修改为 enabled=0
 
 https://blog.csdn.net/weixin_44244190/article/details/126854911
 
-## 5. 安装 opencv
+## 5. 安装 opencv (ubuntu 20.04 + opencv 4.5)
 
 https://blog.csdn.net/weixin_44796670/article/details/115900538
 
 https://blog.csdn.net/bj233/article/details/113351023
+
+1. 安装依赖
+
+①安装g++, cmake, make, wget, unzip，若已安装，此步跳过
+
+```
+sudo apt install -y g++
+sudo apt install -y cmake
+sudo apt install -y make
+sudo apt install -y wget unzip
+```
+
+②安装opencv依赖的库
+
+```
+sudo apt-get install build-essential libgtk2.0-dev libgtk-3-dev libavcodec-dev libavformat-dev libjpeg-dev libswscale-dev libtiff5-dev
+```
+
+③安装一些可选的库
+
+```
+# python3支持（首次安装了python的库，但make报错了，之后删了这两个库，若不使用python，建议不安装）
+sudo apt install python3-dev python3-numpy
+# streamer支持
+sudo apt install libgstreamer-plugins-base1.0-dev libgstreamer1.0-dev
+# 可选的依赖
+sudo apt install libpng-dev libopenexr-dev libtiff-dev libwebp-dev
+```
+
+2. 下载OpenCV 4.5.0源文件
+
+可以在官网下载相应版本的OpenCV，主要有Source和GitHub两种方式下载。
+
+- Opencv：https://opencv.org/releases/ （点击source下载） 
+
+- Opencv_contrib: https://github.com/opencv/opencv_contrib/tree/4.8.0 在Tags里找到相应版本下载，注意版本要与opencv一致
+
+- 下载好解压后，将opencv_contrib3.4.13放在opencv3.4.13文件夹里面（为方便后续操作，可将上面两个文件夹分别命名为opencv和opencv_conrib）
+
+3. 安装
+
+- 在opencv文件夹下新建build文件夹
+
+```
+cd opencv
+mkdir build
+cd build
+cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local -D OPENCV_EXTRA_MODULES_PATH=../opencv_contrib/modules -D OPENCV_GENERATE_PKGCONFIG=YES ..
+//后面“../opencv_contrib-3.4.0/modules”为你opencv_contrib的modules文件夹所在的路径
+// -D OPENCV_GENERATE_PKGCONFIG=YES; OpenCV4以上默认不使用pkg-config，该编译选项开启生成opencv4.pc文件，支持pkg-config功能
+
+make -j24
+
+sudo make install
+```
+4. 环境配置
+4.1 配置pkg-config环境
+
+opencv4.pc文件的默认路径：/usr/local/lib/pkgconfig/opencv4.pc
+若此目录下没有，可以使用以下命令搜索：
+
+```
+sudo find / -iname opencv4.pc
+```
+
+可以看到的确在这个目录下:
+
+- /home/ckq/opencv-4.8.0/build/unix-install/opencv4.pc
+- /usr/lib/x86_64-linux-gnu/pkgconfig/opencv4.pc
+
+将路径加入到PKG_CONFIG_PATH（用gedit打开）：
+
+```
+sudo vim /etc/profile.d/pkgconfig.sh
+```
+
+在文件后面加入下面一行：
+
+```
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+```
+
+保存并退出后激活：
+
+```
+# 激活
+source /etc/profile
+```
+
+用以下命令验证是否成功：
+
+```
+pkg-config --libs opencv4
+```
+
+-lopencv_stitching -lopencv_aruco -lopencv_bgsegm -lopencv_bioinspired -lopencv_ccalib -lopencv_dnn_objdetect -lopencv_dnn_superres -lopencv_dpm -lopencv_highgui -lopencv_face -lopencv_freetype -lopencv_fuzzy -lopencv_hdf -lopencv_hfs -lopencv_img_hash -lopencv_line_descriptor -lopencv_quality -lopencv_reg -lopencv_rgbd -lopencv_saliency -lopencv_shape -lopencv_stereo -lopencv_structured_light -lopencv_phase_unwrapping -lopencv_superres -lopencv_optflow -lopencv_surface_matching -lopencv_tracking -lopencv_datasets -lopencv_text -lopencv_dnn -lopencv_plot -lopencv_ml -lopencv_videostab -lopencv_videoio -lopencv_viz -lopencv_ximgproc -lopencv_video -lopencv_xobjdetect -lopencv_objdetect -lopencv_calib3d -lopencv_imgcodecs -lopencv_features2d -lopencv_flann -lopencv_xphoto -lopencv_photo -lopencv_imgproc -lopencv_core
+
+
+4.2 配置动态库环境
+
+① 打开文件（可能为空文件）：
+
+```
+sudo vim /etc/ld.so.conf.d/opencv4.conf
+```
+② 在该文件末尾加上OpenCV的lib路径，保存退出：
+
+```
+/usr/local/lib
+```
+
+③ 使配置的路径生效：
+
+```
+sudo ldconfig
+```
+
+
+5. 测试OpenCV
+
+cd 到/opencv/samples/cpp/example_cmake目录下，依次执行以下命令：
+
+```
+cmake .
+make
+./opencv_example
+```
+
+该测试需要电脑有摄像头，若启动摄像头看到了画面，说明安装成功
+
 
 ## 6. google
 
