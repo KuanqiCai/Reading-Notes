@@ -164,6 +164,11 @@ After setting up ROS Noetic, create a Catkin workspace in a directory of your ch
 Then clone the franka_ros repository from GitHub:
 
 ```c++
+mkdir -p catkin_ws/src
+cd catkin_ws
+source /opt/ros/noetic/setup.sh
+catkin_init_workspace src
+
 git clone --recursive https://github.com/frankaemika/franka_ros src/franka_ros
 
 sudo apt install ros-noetic-combined-robot-hw
