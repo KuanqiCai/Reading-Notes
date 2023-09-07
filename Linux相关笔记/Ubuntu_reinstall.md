@@ -242,11 +242,11 @@ make
 该测试需要电脑有摄像头，若启动摄像头看到了画面，说明安装成功
 
 
-## 6. google
+## 6. 安装google浏览器
 
 https://blog.csdn.net/xyywendy/article/details/124342058
 
-## 7. openrave - fast IK solution
+## 7. 安装openrave - fast IK solution
 
 https://robots.uc3m.es/installation-guides/install-openrave.html#install-openrave-via-scripts-ubuntu-1804-bionic-and-ubuntu-2004-focal
 
