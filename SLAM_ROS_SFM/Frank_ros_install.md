@@ -30,7 +30,7 @@ sudo apt-get install autoconf bison build-essential dkms dwarves fakeroot flex l
 5.复制当前内核的配置文件（用 TAB 补全），进入 config 交互界面调整下面设置，SAVE 后 EXIT
 
 ```c++
-cp /boot/config-xxxx-generic .config
+cp /boot/config-xxxx-generic ~/.config
 make menuconfig
 ```
 
