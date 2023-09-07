@@ -358,3 +358,22 @@ opengl('save','software')
 2. sudo apt install ./<file>.deb
 
 3. https://blog.csdn.net/qq_27386899/article/details/121455952 (vsccode 配置)
+
+## 11. 安装Vrep
+
+下载网址:
+       https://www.coppeliarobotics.com/downloads
+
+下载后，找到下载的目录，执行命令解压（或者直接右击下载的压缩包---Extract Here）
+
+tar -xf CoppeliaSim_Edu_V4_2_0_Ubuntu20_04.tar.xz
+（注：目前应该已经更新到了4.4版本，以后应该还会更新，这个版本问题根据需要选择就可）
+
+添加环境变量。
+
+在Home中打开.bashrc文件，添加（要根据自己的实际文件路径）
+
+export COPPELIASIM_ROOT=/home/ckq/Downloads/CoppeliaSim_Edu_V4_2_0_rev0_Ubuntu20_04
+运行，在解压好的文件中，打开终端，运行
+
+xxx@xxx:~/Downloads/CoppeliaSim_Edu_V4_2_0_Ubuntu20_04$ ./coppeliaSim.sh
