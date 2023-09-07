@@ -278,3 +278,19 @@ cd openrave-installation
 ./install-fcl.sh
 ./install-openrave.sh
 ```
+
+
+## 8.ubuntu + eigen3 安装（解决 fatal error: Eigen/Core: No such file or directory）
+
+１．安装
+```
+sudo apt-get install libeigen3-dev
+```
+2. 解决 fatal error: Eigen/Core: No such file or directory
+
+当调用 eigen 库时，会报错：fatal error: Eigen/Core: No such file or directory
+
+这是因为 eigen 库默认安装在了 /usr/include/eigen3/Eigen 路径下，需使用下面命令映射到 /usr/include 路径下
+```
+sudo ln -s /usr/include/eigen3/Eigen /usr/include/Eigen
+```
