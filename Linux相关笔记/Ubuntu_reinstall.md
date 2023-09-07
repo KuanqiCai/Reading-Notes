@@ -78,3 +78,5 @@ terminator:`sudo apt-get install terminator`
       type = Window
 [plugins]
 ```
+
+## 2. ubuntu升级python3.8 ubuntu升级python3.10 
