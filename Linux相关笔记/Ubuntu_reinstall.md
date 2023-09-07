@@ -81,5 +81,7 @@ terminator:`sudo apt-get install terminator`
 ## 2.python3.9
 http://www.taodudu.cc/news/show-5381101.html?action=onClick
 
+## pip
 https://stackoverflow.com/questions/65644782/how-to-install-pip-for-python-3-9-on-ubuntu-20-04
-
+## solve terminal cannot open
+https://blog.csdn.net/weixin_46584887/article/details/120702843
