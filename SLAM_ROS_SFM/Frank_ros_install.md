@@ -172,6 +172,7 @@ catkin_init_workspace src
 git clone --recursive https://github.com/frankaemika/franka_ros src/franka_ros
 
 sudo apt install ros-noetic-combined-robot-hw
+sudo apt-get install ros-${ROS_DISTRO}-boost-sml
 
 ```
 
