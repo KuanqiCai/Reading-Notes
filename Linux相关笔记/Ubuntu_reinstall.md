@@ -80,7 +80,7 @@ terminator:`sudo apt-get install terminator`
       type = Window
 [plugins]
 ```
-## 2.python3.9
+## 2.python3.9 (不一定需要)
 http://www.taodudu.cc/news/show-5381101.html?action=onClick
 
 ## pip install
