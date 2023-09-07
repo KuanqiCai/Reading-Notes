@@ -178,7 +178,7 @@ sudo apt-get install ros-${ROS_DISTRO}-boost-sml
 
 
 
-### Allow a user to set real-time permissions for its processes
+### Allow a user to set real-time permissions for its processes （in the real time kernal）
 
 1. After the real time kernel is installed and running, add a group named realtime and add the user controlling your robot to this group:
 
@@ -199,3 +199,6 @@ groups // check whether realtime group is added
 - @realtime hard memlock 102400
 
 The limits will be applied after you log out and in again.
+
+3. 修改网络
+插入网线，打开网络连接（Network Connection），接下来，单击 IPv4 设置选项卡，将方法设置为手动，然后输入以下值：192.168.3.1， Netmark: 255.255.255.0
