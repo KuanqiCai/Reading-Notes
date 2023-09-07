@@ -100,3 +100,9 @@ enabled=1 修改为 enabled=0
 ## 4. 安装ros
 
 https://blog.csdn.net/weixin_44244190/article/details/126854911
+
+## 5. 安装 opencv
+
+https://blog.csdn.net/weixin_44796670/article/details/115900538
+
+https://blog.csdn.net/bj233/article/details/113351023
