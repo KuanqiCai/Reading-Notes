@@ -342,3 +342,19 @@ StartupWMClass=com-mathworks-util-PostVMInit
 ```
 
 注：Exec的值是MATLAB执行文件，Icon的值是MATLAB应用程序图标的位置。如果安装matlabR2023a时未使用默认安装路径，请自行调整路径。 
+
+Bug: com.jogamp.opengl.GLException: X11GLXDrawableFactory - Could not initialize shared resources for X11GraphicsDevice[type .x11, connection :1, unitID 0, handle 0x0, owner false, ResourceToolkitLock[obj 0x7c1bc33e, isOwner false, <2af5b1a, 46860956>[count 0, qsz 0, owner <NULL>]]] at jogamp.opengl.x11.glx.X11GLXDrawableFactory$SharedResourceImple
+
+打开 matlab在command line输入：
+```
+opengl('save','software')
+```
+重启matlab
+
+## 10.Visual Studio Code
+
+1. Install link: https://code.visualstudio.com/docs/setup/linux (.deb package (64-bit))
+   
+2. sudo apt install ./<file>.deb
+
+3. https://blog.csdn.net/qq_27386899/article/details/121455952 (vsccode 配置)
