@@ -165,7 +165,12 @@ Then clone the franka_ros repository from GitHub:
 
 ```c++
 git clone --recursive https://github.com/frankaemika/franka_ros src/franka_ros
+
+sudo apt install ros-noetic-combined-robot-hw
+
 ```
+
+
 
 ### Allow a user to set real-time permissions for its processes
 
