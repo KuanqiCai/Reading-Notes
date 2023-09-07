@@ -96,3 +96,7 @@ sudo gedit /etc/default/apport
 enabled=1 修改为 enabled=0
 
 保存退出重启就不会提示了
+
+## 4. 安装ros
+
+https://blog.csdn.net/weixin_44244190/article/details/126854911
