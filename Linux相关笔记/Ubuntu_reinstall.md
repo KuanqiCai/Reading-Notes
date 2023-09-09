@@ -382,6 +382,15 @@ xxx@xxx:~/Downloads/CoppeliaSim_Edu_V4_2_0_Ubuntu20_04$ ./coppeliaSim.sh
 
 sudo apt-get install kazam
 
+## 13. 下载 Edge Dev
+
+下载网站： https://www.microsoft.com/en-us/edge/download/insider?form=MA13FJ
+
+下载后在安装包所在的位置打开terminal: 
+```
+sudo dpkg -i microsoft-edge-dev_88.0.673.0-1_amd64.deb
+```
+
 ## 壁纸
 
 推荐⼏个下载 4K 8K 超⾼清壁纸的⽹站：
