@@ -381,3 +381,15 @@ xxx@xxx:~/Downloads/CoppeliaSim_Edu_V4_2_0_Ubuntu20_04$ ./coppeliaSim.sh
 ## 12. Kazam 录屏
 
 sudo apt-get install kazam
+
+## 壁纸
+
+推荐⼏个下载 4K 8K 超⾼清壁纸的⽹站：
+
+https://pixabay.com
+
+https://unsplash.com
+
+https://wallpapersite.com
+
+https://wallpapershome.com
