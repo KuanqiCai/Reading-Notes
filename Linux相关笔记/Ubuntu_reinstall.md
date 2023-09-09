@@ -377,3 +377,7 @@ export COPPELIASIM_ROOT=/home/ckq/Downloads/CoppeliaSim_Edu_V4_2_0_rev0_Ubuntu20
 运行，在解压好的文件中，打开终端，运行
 
 xxx@xxx:~/Downloads/CoppeliaSim_Edu_V4_2_0_Ubuntu20_04$ ./coppeliaSim.sh
+
+## 12. Kazam 录屏
+
+sudo apt-get install kazam
