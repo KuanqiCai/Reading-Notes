@@ -313,6 +313,16 @@ https://ww2.mathworks.cn/downloads/
 ```
 sudo gedit /usr/share/applications/matlab.desktop
 ```
+5. Ubuntu高分屏下Matlab工具栏字体过小
+
+在matlab中使用如下命令：
+```
+#在命令行内输入如下命令，其中1.5是放大的尺度
+s = settings;
+s.matlab.desktop.DisplayScaleFactor;
+s.matlab.desktop.DisplayScaleFactor.PersonalValue = 1.5;
+```
+
 
 2、配置文件：
 
